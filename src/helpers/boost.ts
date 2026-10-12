@@ -10,7 +10,8 @@ import { loc } from './locale'
 
 // Config (env overridable): 1 Star = +0.3 weight (x1.3), max 10 boosts per user per raffle
 export const BOOST_PRICE = Math.max(1, parseInt(process.env.BOOST_PRICE || '1', 10))
-export const BOOST_STEP = parseFloat(process.env.BOOST_STEP || '1')
+// Each ⭐ = BOOST_STEP whole entries (min 1, so an old value like 0.3 can't break labels)
+export const BOOST_STEP = Math.max(1, Math.round(parseFloat(process.env.BOOST_STEP || '1')) || 1)
 export const BOOST_MAX = Math.max(1, parseInt(process.env.BOOST_MAX || '10', 10))
 
 // Packs offered in private chat (number of boosts per pack)
