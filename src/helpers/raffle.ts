@@ -173,15 +173,28 @@ export function setupCallback(bot: Telegraf<ContextMessageUpdate>) {
         }
       }
     }
-    // Add participant and update number
-    await RaffleModel.updateOne({
+    // Add participant atomically: $addToSet never stores the same id twice,
+    // even if the button is tapped several times at once
+    const added: any = await RaffleModel.updateOne({
       chatId: raffle.chatId,
       messageId: raffle.messageId,
     }, {
-      $push : {
+      $addToSet: {
         participantsIds: ctx.from.id,
       },
     })
+    if (added && added.nModified === 0) {
+      try {
+        await (<any>ctx).answerCbQuery(
+          loc('already_participating', chat.language),
+          undefined,
+          true
+        )
+      } catch {
+        // do nothing
+      }
+      return
+    }
     // Reply that they are in
     try {
       await (<any>ctx).answerCbQuery(
@@ -349,7 +362,8 @@ function getButtons(raffle: InstanceType<Raffle>, language: string) {
 export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, defaultChat?: Chat) {
   console.log(`Finishing raffle for chat ${raffle.chatId}`)
   // Get participants ids
-  let ids = raffle.participantsIds
+  // One entry per person (also cleans duplicates saved by older versions)
+  let ids = Array.from(new Set(raffle.participantsIds))
   const idsOriginalLength = ids.length
   // Get chat
   const chat = defaultChat || await findChat(ctx.chat.id)
