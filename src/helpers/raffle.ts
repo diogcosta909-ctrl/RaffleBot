@@ -239,8 +239,6 @@ export async function refreshRaffleMessage(
         .replace('$total', `${total}`)
         .replace('$n', `${extra}`)
     )
-  } else if (value !== 1) {
-    lines.push(loc('entries_total', chat.language).replace('$total', `${total}`))
   }
   if (raffle.boostEnabled && boosts === 0) {
     lines.push(loc('boost_first', chat.language))
