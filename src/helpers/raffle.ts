@@ -14,6 +14,7 @@ import {
   weightFor,
   weightedIndex,
   BOOST_PRICE,
+  BOOST_STEP,
   entriesLabel,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
@@ -226,11 +227,14 @@ export async function refreshRaffleMessage(
     parse_mode: 'HTML',
     disable_web_page_preview: true,
   }
+  // Entries = 1 per participant + extra entries bought with Boost
+  const extra = +(boosts * BOOST_STEP).toFixed(2)
+  const total = +(participants + extra).toFixed(2)
   const boostLine = !raffle.boostEnabled
     ? ''
-    : boosts > 0
-    ? `\n${loc('boost_count', chat.language).replace('$n', `${boosts}`)}`
-    : `\n${loc('boost_first', chat.language)}`
+    : `\n${loc(boosts > 0 ? 'boost_count' : 'boost_first', chat.language)
+        .replace('$total', `${total}`)
+        .replace('$n', `${extra}`)}`
   let text: string
   if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
