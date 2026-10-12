@@ -3,6 +3,7 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { RaffleModel, Raffle } from '../models'
 import { findChat } from '../models/chat'
 import { PaymentModel } from '../models/payment'
+import { BoostEventModel, trackBoost } from '../models/boostEvent'
 import { getChatIdForConfig } from './getChatIdForConfig'
 import { loc } from './locale'
 
@@ -113,6 +114,7 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   if (res.error) {
     return ctx.reply(errorText(res.error, res.language))
   }
+  await trackBoost({ type: 'menu', userId: ctx.from.id, raffleId })
   const left = BOOST_MAX - res.used
   const options = BOOST_OPTIONS.filter((n) => n <= left)
   const keyboard = options.map((n) => [
@@ -141,6 +143,7 @@ async function sendBoostInvoice(
     return ctx.reply(errorText(res.error, res.language))
   }
   const language = res.language
+  await trackBoost({ type: 'invoice', userId: ctx.from.id, raffleId, boosts: n })
   await (ctx.telegram as any).callApi('sendInvoice', {
     chat_id: ctx.chat.id,
     title: loc('boost_invoice_title', language).replace('$pct', pctLabel(n)),
@@ -266,10 +269,42 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const where = pay.chatId ? esc(titles.get(pay.chatId) || '') : '—'
       return `${date} · ${who} · ${pay.stars}⭐ · ${where}`
     })
+    // Funnel: unique people per step
+    const funnel = await BoostEventModel.aggregate([
+      { $group: { _id: { type: '$type', ok: '$ok' }, users: { $addToSet: '$userId' }, total: { $sum: 1 } } },
+    ])
+    const step = (type: string, ok?: boolean) => {
+      const rows = funnel.filter(
+        (f) => f._id.type === type && (ok === undefined || f._id.ok === ok)
+      )
+      const users = new Set<number>()
+      let total = 0
+      for (const r of rows) {
+        r.users.forEach((u: number) => users.add(u))
+        total += r.total
+      }
+      return { people: users.size, total }
+    }
+    const clicks = step('click')
+    const clicksBlocked = step('click', false)
+    const menus = step('menu')
+    const invoices = step('invoice')
+    const payers = (await PaymentModel.distinct('userId', { status: 'applied' })).length
+    const pct = (a: number, b: number) =>
+      b ? `${Math.round((a / b) * 1000) / 10}%` : '—'
+    const funnelText =
+      `<b>Embudo Boost</b> (personas únicas)\n` +
+      `👆 Clic en Boost: <b>${clicks.people}</b> (${clicks.total} clics)\n` +
+      `   ↳ rechazados (sin participar, sorteo cerrado o máximo): ${clicksBlocked.people}\n` +
+      `📋 Vieron las opciones: <b>${menus.people}</b>\n` +
+      `🧾 Eligieron un pack: <b>${invoices.people}</b>\n` +
+      `✅ Pagaron: <b>${payers}</b>\n` +
+      `📈 Conversión clic → pago: <b>${pct(payers, clicks.people)}</b>\n\n`
     const text =
       `⭐ <b>Stars</b>\n` +
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
       `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n\n` +
+      funnelText +
       `<b>Últimos pagos</b> (UTC)\n` +
       (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
     return ctx.replyWithHTML(text, { disable_web_page_preview: true })
@@ -293,6 +328,12 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const raffleId = (ctx as any).match[1]
     const res = await validateBoost(raffleId, ctx.from.id)
     const cbId = ctx.callbackQuery.id
+    await trackBoost({
+      type: 'click',
+      userId: ctx.from.id,
+      raffleId,
+      ok: !res.error,
+    })
     if (res.error) {
       try {
         await (ctx.telegram as any).callApi('answerCallbackQuery', {
