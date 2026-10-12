@@ -337,12 +337,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 Boost',
   },
   boost_invoice_title: {
-    en: 'Raffle boost $mult',
-    es: 'Boost de sorteo $mult',
+    en: 'Raffle boost $pct',
+    es: 'Boost de sorteo $pct',
   },
   boost_invoice_description: {
-    en: 'Adds $mult chance to your entry in this raffle. Boosts used: $used/$max.',
-    es: 'Suma $mult de probabilidad a tu participación en este sorteo. Boosts usados: $used/$max.',
+    en: '$pct chance to win this raffle. Your entry will count $mult ($after/$max boosts).',
+    es: '$pct de probabilidad de ganar este sorteo. Tu participación contará $mult ($after/$max boosts).',
   },
   boost_disabled: {
     en: 'Boost is not active for this raffle.',
@@ -353,8 +353,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'Primero participa en el sorteo y después haz boost.',
   },
   boost_max: {
-    en: 'You already have the maximum of $max boosts in this raffle.',
-    es: 'Ya tienes el máximo de $max boosts en este sorteo.',
+    en: 'That goes over the maximum of $max boosts per person in this raffle.',
+    es: 'Eso supera el máximo de $max boosts por persona en este sorteo.',
+  },
+  boost_choose: {
+    en: '🚀 Choose your boost for this raffle.\nEach ⭐ adds chance to win. Current: $mult ($used/$max boosts).',
+    es: '🚀 Elige tu boost para este sorteo.\nCada ⭐ suma probabilidad de ganar. Actual: $mult ($used/$max boosts).',
   },
   boost_applied: {
     en: '🚀 Boost applied! Your chance is now $mult ($used/$max boosts).',

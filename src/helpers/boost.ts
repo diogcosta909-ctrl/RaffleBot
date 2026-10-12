@@ -11,7 +11,23 @@ export const BOOST_PRICE = Math.max(1, parseInt(process.env.BOOST_PRICE || '1', 
 export const BOOST_STEP = parseFloat(process.env.BOOST_STEP || '0.3')
 export const BOOST_MAX = Math.max(1, parseInt(process.env.BOOST_MAX || '10', 10))
 
+// Packs offered in private chat (number of boosts per pack)
+export const BOOST_OPTIONS = (process.env.BOOST_OPTIONS || '1,3,5,10')
+  .split(',')
+  .map((v) => parseInt(v.trim(), 10))
+  .filter((v) => v > 0)
+
 const PAYLOAD_PREFIX = 'boost:'
+
+/** "+30%" for n boosts */
+function pctLabel(n: number) {
+  return `+${Math.round(BOOST_STEP * n * 100)}%`
+}
+
+/** Total multiplier label for n boosts, e.g. "x1.9" */
+function multLabel(n: number) {
+  return `x${+(1 + BOOST_STEP * n).toFixed(2)}`
+}
 
 /** Multiplier label for one boost, e.g. "x1.3" */
 export function boostLabel() {
@@ -63,7 +79,7 @@ export function boostButton(raffle: Raffle & { id?: string }, language: string) 
 }
 
 /** Checks that the raffle is open, boostable and the user can still boost */
-async function validateBoost(raffleId: string, userId: number) {
+async function validateBoost(raffleId: string, userId: number, amount = 1) {
   let raffle
   try {
     raffle = await RaffleModel.findById(raffleId).select('-participantsIds')
@@ -81,7 +97,9 @@ async function validateBoost(raffleId: string, userId: number) {
   })
   if (!isIn) return { error: 'boost_join_first', language, raffle }
   const used = boostCounts(raffle).get(userId) || 0
-  if (used >= BOOST_MAX) return { error: 'boost_max', language, raffle }
+  if (used + amount > BOOST_MAX) {
+    return { error: 'boost_max', language, raffle, used }
+  }
   return { raffle, language, used }
 }
 
@@ -89,24 +107,59 @@ function errorText(key: string, language = 'en') {
   return loc(key, language).replace('$max', `${BOOST_MAX}`)
 }
 
-async function sendBoostInvoice(ctx: ContextMessageUpdate, raffleId: string) {
+/** Private chat: show the boost packs the user can still buy */
+async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   const res = await validateBoost(raffleId, ctx.from.id)
+  if (res.error) {
+    return ctx.reply(errorText(res.error, res.language))
+  }
+  const left = BOOST_MAX - res.used
+  const options = BOOST_OPTIONS.filter((n) => n <= left)
+  const keyboard = options.map((n) => [
+    {
+      text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n)}`,
+      callback_data: `b~${raffleId}~${n}`,
+    },
+  ])
+  return ctx.reply(
+    loc('boost_choose', res.language)
+      .replace('$mult', multLabel(res.used))
+      .replace('$used', `${res.used}`)
+      .replace('$max', `${BOOST_MAX}`),
+    { reply_markup: { inline_keyboard: keyboard } }
+  )
+}
+
+/** Sends the Stars invoice for a pack of n boosts */
+async function sendBoostInvoice(
+  ctx: ContextMessageUpdate,
+  raffleId: string,
+  n: number
+) {
+  const res = await validateBoost(raffleId, ctx.from.id, n)
   if (res.error) {
     return ctx.reply(errorText(res.error, res.language))
   }
   const language = res.language
   await (ctx.telegram as any).callApi('sendInvoice', {
     chat_id: ctx.chat.id,
-    title: loc('boost_invoice_title', language).replace('$mult', boostLabel()),
+    title: loc('boost_invoice_title', language).replace('$pct', pctLabel(n)),
     description: loc('boost_invoice_description', language)
-      .replace('$mult', boostLabel())
-      .replace('$used', `${res.used}`)
+      .replace('$pct', pctLabel(n))
+      .replace('$mult', multLabel(res.used + n))
+      .replace('$after', `${res.used + n}`)
       .replace('$max', `${BOOST_MAX}`),
-    payload: `${PAYLOAD_PREFIX}${raffleId}`,
+    payload: `${PAYLOAD_PREFIX}${raffleId}:${n}`,
     provider_token: '',
     currency: 'XTR',
-    prices: [{ label: 'Boost', amount: BOOST_PRICE }],
+    prices: [{ label: `Boost ${pctLabel(n)}`, amount: n * BOOST_PRICE }],
   })
+}
+
+/** Parses "boost:<raffleId>:<n>" (n defaults to 1) */
+function parsePayload(payload: string) {
+  const [raffleId, n] = payload.substr(PAYLOAD_PREFIX.length).split(':')
+  return { raffleId, n: Math.max(1, parseInt(n || '1', 10) || 1) }
 }
 
 async function refund(ctx: ContextMessageUpdate, userId: number, chargeId: string) {
@@ -149,7 +202,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const match = text && /^\/start boost_([a-f0-9]{24})$/.exec(text)
     if (!match || ctx.chat.type !== 'private') return next()
     try {
-      await sendBoostInvoice(ctx, match[1])
+      await sendBoostOptions(ctx, match[1])
     } catch (err) {
       console.error(err)
       await ctx.reply(loc('please_retry', 'en'))
@@ -184,14 +237,31 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
   })
 
+  // Pack chosen in private chat: send the invoice
+  bot.action(/^b~([a-f0-9]{24})~(\d+)$/, async (ctx) => {
+    const raffleId = (ctx as any).match[1]
+    const n = parseInt((ctx as any).match[2], 10)
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    if (!BOOST_OPTIONS.includes(n)) return
+    try {
+      await sendBoostInvoice(ctx, raffleId, n)
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
   // Validate right before Telegram charges the user
   bot.on('pre_checkout_query', async (ctx) => {
     const q = ctx.preCheckoutQuery
     if (!q.invoice_payload.startsWith(PAYLOAD_PREFIX)) {
       return ctx.answerPreCheckoutQuery(false, 'Unknown payment')
     }
-    const raffleId = q.invoice_payload.substr(PAYLOAD_PREFIX.length)
-    const res = await validateBoost(raffleId, q.from.id)
+    const { raffleId, n } = parsePayload(q.invoice_payload)
+    const res = await validateBoost(raffleId, q.from.id, n)
     if (res.error) {
       return ctx.answerPreCheckoutQuery(false, errorText(res.error, res.language))
     }
@@ -202,7 +272,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   bot.on('successful_payment', async (ctx) => {
     const p = (ctx.message as any).successful_payment
     if (!p || !p.invoice_payload.startsWith(PAYLOAD_PREFIX)) return
-    const raffleId = p.invoice_payload.substr(PAYLOAD_PREFIX.length)
+    const { raffleId, n } = parsePayload(p.invoice_payload)
     const chargeId = p.telegram_payment_charge_id
     const userId = ctx.from.id
     // Idempotency: ignore duplicates
@@ -213,7 +283,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       raffleId,
       stars: p.total_amount,
     })
-    const res = await validateBoost(raffleId, userId)
+    const res = await validateBoost(raffleId, userId, n)
     if (res.error) {
       const ok = await refund(ctx, userId, chargeId)
       return ctx.reply(
@@ -225,7 +295,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
     const upd: any = await RaffleModel.updateOne(
       { _id: res.raffle._id, winners: { $exists: false } },
-      { $push: { boostIds: userId } }
+      { $push: { boostIds: { $each: Array(n).fill(userId) } } }
     )
     if (!upd || !upd.nModified) {
       const ok = await refund(ctx, userId, chargeId)
@@ -236,7 +306,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         )}`
       )
     }
-    const used = res.used + 1
+    const used = res.used + n
     return ctx.reply(
       loc('boost_applied', res.language)
         .replace('$mult', `x${+(1 + BOOST_STEP * used).toFixed(2)}`)
