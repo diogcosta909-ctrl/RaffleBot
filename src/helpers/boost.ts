@@ -1,7 +1,7 @@
 // Dependencies
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { RaffleModel, Raffle } from '../models'
-import { findChat } from '../models/chat'
+import { findChat, ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
 import { acceptTerms, hasAcceptedTerms, termsText } from './terms'
@@ -306,12 +306,16 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   bot.command('stars', async (ctx) => {
     if (ctx.chat.type !== 'private') return
     if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+    const ownerChat = await findChat(ctx.from.id)
+    const since = ownerChat.statsResetAt
+    const sinceMatch: any = since ? { createdAt: { $gte: since } } : {}
     const totals = await PaymentModel.aggregate([
+      { $match: sinceMatch },
       { $group: { _id: '$status', stars: { $sum: '$stars' }, count: { $sum: 1 } } },
     ])
     const applied = totals.find((t) => t._id === 'applied') || { stars: 0, count: 0 }
     const refunded = totals.find((t) => t._id === 'refunded') || { stars: 0, count: 0 }
-    const last = await PaymentModel.find({ status: 'applied' })
+    const last = await PaymentModel.find({ status: 'applied', ...sinceMatch })
       .sort({ createdAt: -1 })
       .limit(20)
     const titles = new Map<number, string>()
@@ -338,6 +342,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     })
     // Funnel: unique people per step
     const funnel = await BoostEventModel.aggregate([
+      { $match: sinceMatch },
       { $group: { _id: { type: '$type', ok: '$ok' }, users: { $addToSet: '$userId' }, total: { $sum: 1 } } },
     ])
     const step = (type: string, ok?: boolean) => {
@@ -356,11 +361,18 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const clicksBlocked = step('click', false)
     const menus = step('menu')
     const invoices = step('invoice')
-    const payers = (await PaymentModel.distinct('userId', { status: 'applied' })).length
+    const payers = (await PaymentModel.distinct('userId', { status: 'applied', ...sinceMatch })).length
+    const termsQuery: any = { termsAccepted: true }
+    if (since) termsQuery.termsAcceptedAt = { $gte: since }
+    const termsCount = await ChatModel.countDocuments(termsQuery)
+    const termsTotal = await ChatModel.countDocuments({ termsAccepted: true })
     const pct = (a: number, b: number) =>
       b ? `${Math.round((a / b) * 1000) / 10}%` : '—'
     const funnelText =
       `<b>Embudo Boost</b> (personas únicas)\n` +
+      `📜 Aceptaron los términos: <b>${termsCount}</b>${
+        since ? ` (total histórico: ${termsTotal})` : ''
+      }\n` +
       `👆 Clic en Boost: <b>${clicks.people}</b> (${clicks.total} clics)\n` +
       `   ↳ rechazados (sin participar, sorteo cerrado o máximo): ${clicksBlocked.people}\n` +
       `📋 Vieron las opciones: <b>${menus.people}</b>\n` +
@@ -368,13 +380,27 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `✅ Pagaron: <b>${payers}</b>\n` +
       `📈 Conversión clic → pago: <b>${pct(payers, clicks.people)}</b>\n\n`
     const text =
-      `⭐ <b>Stars</b>\n` +
+      `⭐ <b>Stars</b>${
+        since
+          ? ` · desde ${since.toISOString().slice(0, 16).replace('T', ' ')} UTC`
+          : ''
+      }\n` +
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
       `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n\n` +
       funnelText +
       `<b>Últimos pagos</b> (UTC)\n` +
       (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
     return ctx.replyWithHTML(text, { disable_web_page_preview: true })
+  })
+
+  // Bot owner: reset the /stars stats to 0 (data is kept, only the counting start changes)
+  bot.command('resetstars', async (ctx) => {
+    if (ctx.chat.type !== 'private') return
+    if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+    const chat = await findChat(ctx.from.id)
+    chat.statsResetAt = new Date()
+    await chat.save()
+    return ctx.reply('✅ /stars reset to 0. Counting from now.')
   })
 
   // Deep link from the boost button: /start boost_<raffleId>

@@ -18,6 +18,9 @@ export class Chat extends Typegoose {
   termsAccepted?: boolean
   @prop()
   termsAcceptedAt?: Date
+  // Owner's chat only: /stars stats count from this date (set by /resetstars)
+  @prop()
+  statsResetAt?: Date
   @prop({ required: true, default: false })
   boost: boolean
   // Value of each entry (1 normally, 1.5 or 2 on special days)
@@ -36,7 +39,7 @@ export class Chat extends Typegoose {
 }
 
 // Get Chat model
-const ChatModel = new Chat().getModelForClass(Chat)
+export const ChatModel = new Chat().getModelForClass(Chat)
 
 /**
  * Returns chat, creates one if required
