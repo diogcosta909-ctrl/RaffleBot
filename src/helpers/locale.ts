@@ -365,8 +365,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'entradas',
   },
   boost_first: {
-    en: '🎟 $total entries · no boosts yet',
-    es: '🎟 $total entradas · aún sin boosts',
+    en: '🎟 No boosts yet',
+    es: '🎟 Aún sin boosts',
   },
   boost_count: {
     en: '🎟 $total entries ($n from Boost)',
