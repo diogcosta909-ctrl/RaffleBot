@@ -7,7 +7,14 @@ import {
   Message,
 } from 'telegraf/typings/telegram-types'
 import { shuffle } from 'lodash'
-import { boostButton, boostCounts, boostNote, weightFor, weightedIndex } from './boost'
+import {
+  boostButton,
+  boostCounts,
+  boostNote,
+  weightFor,
+  weightedIndex,
+  BOOST_PRICE,
+} from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
@@ -218,10 +225,11 @@ export async function refreshRaffleMessage(
     parse_mode: 'HTML',
     disable_web_page_preview: true,
   }
-  const boostLine =
-    raffle.boostEnabled && boosts > 0
-      ? `\n${loc('boost_count', chat.language).replace('$n', `${boosts}`)}`
-      : ''
+  const boostLine = !raffle.boostEnabled
+    ? ''
+    : boosts > 0
+    ? `\n${loc('boost_count', chat.language).replace('$n', `${boosts}`)}`
+    : `\n${loc('boost_first', chat.language)}`
   let text: string
   if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
@@ -466,10 +474,9 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       const n = counts.get(winner.user.id) || 0
       text = `${text}\n\n${
         n > 0
-          ? loc('winner_boosted', chat.language).replace(
-              '$mult',
-              `x${+weightFor(counts, winner.user.id).toFixed(2)}`
-            )
+          ? loc('winner_boosted', chat.language)
+              .replace('$stars', `${n * BOOST_PRICE}`)
+              .replace('$mult', `x${+weightFor(counts, winner.user.id).toFixed(2)}`)
           : loc('winner_free', chat.language)
       }`
     }
