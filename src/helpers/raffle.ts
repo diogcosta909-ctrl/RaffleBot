@@ -471,13 +471,8 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // Boost transparency for the announcement
   const boostedMark = (id: number) =>
     raffle.boostEnabled && (counts.get(id) || 0) > 0 ? ' 🚀' : ''
-  const boostedWinners = winners.filter((w) => boostedMark(w.winner.user.id))
-    .length
-  const boostSummary = raffle.boostEnabled
-    ? `\n\n${loc('winners_boost_summary', chat.language)
-        .replace('$k', `${boostedWinners}`)
-        .replace('$total', `${winners.length}`)}`
-    : ''
+  // No summary line: each boosted winner is marked with 🚀 next to the name
+  const boostSummary = ''
   // Announce winner
   if (winners.length == 1) {
     const winner = winners[0].winner
