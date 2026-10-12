@@ -13,9 +13,9 @@ export function loc(text: string, language: string) {
 export const localizations: { [index: string]: { [index: string]: string } } = {
   public_help_start: {
     en:
-      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n/setentryvalue — value of each entry for special days (e.g. `/setentryvalue 1.5`)\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.",
+      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n/setentryvalue — value of each entry for special days (e.g. `/setentryvalue 1.5`)\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.\n\n/terms · /support · /paysupport",
     es:
-      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n/setentryvalue — valor de cada entrada para días especiales (ej. `/setentryvalue 1.5`)\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.",
+      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n/setentryvalue — valor de cada entrada para días especiales (ej. `/setentryvalue 1.5`)\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.\n\n/terms · /support · /paysupport",
   },
   no_work_private: {
     ru: 'Простите, но эта команда не работает в личке с ботом.',
@@ -379,6 +379,30 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
   entry_value_format: {
     en: 'Current entry value: $value. Use /setentryvalue followed by a number from 1 to 10, e.g. /setentryvalue 1.5',
     es: 'Valor de entrada actual: $value. Usa /setentryvalue seguido de un número del 1 al 10, ej. /setentryvalue 1.5',
+  },
+  terms_text: {
+    en: '📄 <b>Terms for Boost purchases</b>\n\n1. Boost is an optional digital add-on paid with Telegram Stars. Each Boost adds extra entries to your participation in one specific giveaway.\n2. Boost increases your chances but never guarantees a win. Free entries can also win. The winner is picked at random by the bot.\n3. Boosts only apply to the giveaway you bought them for and cannot be transferred.\n4. Purchases are final. If the giveaway ends before your Boost is applied, your Stars are refunded automatically.\n5. Prizes are offered and delivered by the giveaway organizer (the channel or group admin), not by Telegram.\n6. This bot is run by an independent operator. Telegram is not responsible for these purchases and its support cannot help with them.\n7. For payment issues use /paysupport, for anything else /support. Contact: $contact',
+    es: '📄 <b>Términos de compra del Boost</b>\n\n1. El Boost es un extra digital opcional que se paga con Telegram Stars. Cada Boost añade entradas extra a tu participación en un sorteo concreto.\n2. El Boost aumenta tus opciones pero nunca garantiza ganar. Las entradas gratis también pueden ganar. El ganador lo elige el bot al azar.\n3. Los Boosts solo valen para el sorteo en el que los compraste y no se pueden transferir.\n4. Las compras son definitivas. Si el sorteo termina antes de aplicar tu Boost, se te devuelven las Stars automáticamente.\n5. Los premios los ofrece y entrega el organizador del sorteo (el admin del canal o grupo), no Telegram.\n6. Este bot lo gestiona un operador independiente. Telegram no es responsable de estas compras y su soporte no puede ayudar con ellas.\n7. Para problemas de pago usa /paysupport, para lo demás /support. Contacto: $contact',
+  },
+  terms_accept_prompt: {
+    en: 'To buy a Boost you need to accept these terms.',
+    es: 'Para comprar un Boost tienes que aceptar estos términos.',
+  },
+  terms_accept_button: {
+    en: '✅ I accept the terms',
+    es: '✅ Acepto los términos',
+  },
+  support_text: {
+    en: '💬 Need help with the bot or a giveaway? Contact $contact. For payment issues use /paysupport.',
+    es: '💬 ¿Necesitas ayuda con el bot o un sorteo? Contacta con $contact. Para problemas de pago usa /paysupport.',
+  },
+  paysupport_text: {
+    en: '💳 Payment support: send a message to $contact with the date, the Stars amount and the charge ID of your payment. Telegram support cannot help with purchases in this bot.',
+    es: '💳 Soporte de pagos: escribe a $contact con la fecha, las Stars y el ID de cargo de tu pago. El soporte de Telegram no puede ayudar con compras en este bot.',
+  },
+  paysupport_list: {
+    en: 'Your latest payments:',
+    es: 'Tus últimos pagos:',
   },
   boost_first: {
     en: '🎟 No boosts yet',

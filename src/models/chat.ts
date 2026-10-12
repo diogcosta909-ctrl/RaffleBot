@@ -13,6 +13,11 @@ export class Chat extends Typegoose {
   subscribe?: string
   @prop({ required: true, default: false })
   nodelete: boolean
+  // Payment terms accepted (stored on the user's private chat)
+  @prop({ default: false })
+  termsAccepted?: boolean
+  @prop()
+  termsAcceptedAt?: Date
   @prop({ required: true, default: false })
   boost: boolean
   // Value of each entry (1 normally, 1.5 or 2 on special days)

@@ -4,6 +4,7 @@ import { RaffleModel, Raffle } from '../models'
 import { findChat } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
+import { acceptTerms, hasAcceptedTerms, termsText } from './terms'
 import { getChatIdForConfig } from './getChatIdForConfig'
 import { loc } from './locale'
 
@@ -132,6 +133,25 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   const res = await validateBoost(raffleId, ctx.from.id)
   if (res.error) {
     return ctx.reply(errorText(res.error, res.language))
+  }
+  // Telegram requires users to accept the terms before purchasing
+  if (!(await hasAcceptedTerms(ctx.from.id))) {
+    return ctx.replyWithHTML(
+      `${termsText(res.language)}\n\n${loc('terms_accept_prompt', res.language)}`,
+      {
+        disable_web_page_preview: true,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: loc('terms_accept_button', res.language),
+                callback_data: `t~${raffleId}`,
+              },
+            ],
+          ],
+        },
+      }
+    )
   }
   await trackBoost({ type: 'menu', userId: ctx.from.id, raffleId })
   const left = BOOST_MAX - res.used
@@ -400,6 +420,22 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       })
     } catch {
       // do nothing
+    }
+  })
+
+  // Terms accepted: store it and show the boost packs
+  bot.action(/^t~([a-f0-9]{24})$/, async (ctx) => {
+    const raffleId = (ctx as any).match[1]
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    await acceptTerms(ctx.from.id)
+    try {
+      await sendBoostOptions(ctx, raffleId)
+    } catch (err) {
+      console.error(err)
     }
   })
 
