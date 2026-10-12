@@ -231,13 +231,12 @@ export async function refreshRaffleMessage(
   const value = entryValueOf(raffle)
   // Shown as whole numbers; the draw itself keeps the exact weights
   const extra = Math.round(boosts * BOOST_STEP)
-  const total = Math.round(participants * value + boosts * BOOST_STEP)
+  // $numberOfParticipants = free entries (participants × entry value)
+  const entries = Math.round(participants * value)
   const lines: string[] = []
   if (boosts > 0) {
     lines.push(
-      loc('boost_count', chat.language)
-        .replace('$total', `${total}`)
-        .replace('$n', `${extra}`)
+      loc('boost_count', chat.language).replace('$n', `${extra}`)
     )
   }
   if (raffle.boostEnabled && boosts === 0) {
@@ -248,7 +247,7 @@ export async function refreshRaffleMessage(
   if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
     text = `${(raffleMessage.text || raffleMessage.caption)
-      .replace('$numberOfParticipants', `${participants}`)
+      .replace('$numberOfParticipants', `${entries}`)
       .replace('$numberOfBoosts', `${boosts}`)}${boostLine}`
   } else {
     text = `${loc(
@@ -257,7 +256,7 @@ export async function refreshRaffleMessage(
     )}${boostNote(raffle, chat.language)}\n\n${loc(
       'participants_number',
       chat.language
-    )}: ${participants}${boostLine}`
+    )}: ${entries}${boostLine}`
   }
   if (!raffle.raffleMessage || raffle.raffleMessage.text) {
     await telegram.editMessageText(
