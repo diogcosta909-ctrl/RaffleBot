@@ -417,8 +417,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 El ganador usó Boost: $stars⭐ ($mult).',
   },
   winner_free: {
-    en: '🎟 The winner joined for free, no Boost.',
-    es: '🎟 El ganador participó gratis, sin Boost.',
+    en: '🎟 The winner didn\'t use Boost',
+    es: '🎟 El ganador no usó Boost',
   },
   winners_boost_summary: {
     en: '🚀 = used Boost · $k of $total winners boosted',
