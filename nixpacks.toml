@@ -5,7 +5,7 @@ cmds = ["yarn install"]
 cmds = ["yarn build-ts"]
 
 [start]
-cmd = "yarn start"
+cmd = 'sh -c "[ -f dist/app.js ] || node_modules/.bin/tsc --skipLibCheck; exec node --max-old-space-size=128 dist/app.js"'
 
 [variables]
 NODE_ENV = "production"

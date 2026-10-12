@@ -13,6 +13,8 @@ mongoose.connect(mongoUrl, {
   dbName: process.env.MONGO_DB || 'rafflebot',
   useNewUrlParser: true,
   useCreateIndex: true,
+  // Small bot: fewer open connections = less memory
+  poolSize: 2,
 })
 
 // Get models

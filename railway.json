@@ -4,6 +4,6 @@
     "buildCommand": "yarn build"
   },
   "deploy": {
-    "startCommand": "yarn start"
+    "startCommand": "sh -c \"[ -f dist/app.js ] || node_modules/.bin/tsc --skipLibCheck; exec node --max-old-space-size=128 dist/app.js\""
   }
 }
