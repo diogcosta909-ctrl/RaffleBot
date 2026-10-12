@@ -13,6 +13,8 @@ export class Chat extends Typegoose {
   subscribe?: string
   @prop({ required: true, default: false })
   nodelete: boolean
+  @prop({ required: true, default: false })
+  boost: boolean
 
   @prop()
   raffleMessage?: Message

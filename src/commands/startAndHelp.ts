@@ -16,7 +16,10 @@ export function setupStartAndHelp(bot: Telegraf<ContextMessageUpdate>) {
     // Get chat
     const chat = await findChat(ctx.chat.id)
     // Reply
-    const text = loc('public_help_start', chat.language)
+    const text = `${loc('public_help_start', chat.language)}\n\n${loc(
+      'boost_help',
+      chat.language
+    )}`
     ctx.replyWithMarkdown(text, {
       disable_notification: true,
       disable_web_page_preview: true,

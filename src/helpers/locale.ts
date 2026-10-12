@@ -318,4 +318,56 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: 'Great! Now you are editting the config of this chat',
     ru: 'Отлично! Теперь вы редактируете настройки этого чата',
   },
+  boost_help: {
+    en: '⭐ *Stars boost:* use /boost to let participants buy extra chances with Telegram Stars. The raffle message shows a Boost button and says boosts are active. Run /boost again to turn it off.',
+    es: '⭐ *Boost con Stars:* usa /boost para que los participantes puedan comprar más probabilidad con Telegram Stars. El mensaje del sorteo muestra un botón Boost e indica que los boosts están activos. Vuelve a usar /boost para desactivarlo.',
+  },
+  boost_true: {
+    en: '🚀 Stars boost ON for new raffles: $price⭐ = $mult chance. Participants will see it on the raffle message.',
+    es: '🚀 Boost con Stars ACTIVADO para los nuevos sorteos: $price⭐ = $mult de probabilidad. Los participantes lo verán en el mensaje del sorteo.',
+  },
+  boost_false: {
+    en: 'Stars boost OFF for new raffles.',
+    es: 'Boost con Stars DESACTIVADO para los nuevos sorteos.',
+  },
+  boost_note: {
+    en: '🚀 Boost active: each $price⭐ gives $mult chance (max $max per person).',
+    es: '🚀 Boost activo: cada $price⭐ da $mult de probabilidad (máx. $max por persona).',
+  },
+  boost_button: {
+    en: '🚀 Boost',
+    es: '🚀 Boost',
+  },
+  boost_invoice_title: {
+    en: 'Raffle boost $mult',
+    es: 'Boost de sorteo $mult',
+  },
+  boost_invoice_description: {
+    en: 'Adds $mult chance to your entry in this raffle. Boosts used: $used/$max.',
+    es: 'Suma $mult de probabilidad a tu participación en este sorteo. Boosts usados: $used/$max.',
+  },
+  boost_disabled: {
+    en: 'Boost is not active for this raffle.',
+    es: 'El boost no está activo en este sorteo.',
+  },
+  boost_join_first: {
+    en: 'Join the raffle first, then boost.',
+    es: 'Primero participa en el sorteo y después haz boost.',
+  },
+  boost_max: {
+    en: 'You already have the maximum of $max boosts in this raffle.',
+    es: 'Ya tienes el máximo de $max boosts en este sorteo.',
+  },
+  boost_applied: {
+    en: '🚀 Boost applied! Your chance is now $mult ($used/$max boosts).',
+    es: '🚀 ¡Boost aplicado! Tu probabilidad ahora es $mult ($used/$max boosts).',
+  },
+  boost_refunded: {
+    en: 'Your Stars have been refunded.',
+    es: 'Te hemos devuelto las Stars.',
+  },
+  boost_refund_failed: {
+    en: 'We could not refund automatically, please contact the bot admin.',
+    es: 'No pudimos devolver las Stars automáticamente, contacta con el admin del bot.',
+  },
 }

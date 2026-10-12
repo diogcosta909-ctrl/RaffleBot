@@ -6,7 +6,8 @@ import {
   ChatMember,
   Message,
 } from 'telegraf/typings/telegram-types'
-import { shuffle, random } from 'lodash'
+import { shuffle } from 'lodash'
+import { boostButton, boostCounts, boostNote, weightFor, weightedIndex } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
@@ -21,6 +22,11 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   const chat = await findChat(ctx.chat.id)
   // Add raffle
   const raffle = await addRaffle(ctx.chat.id)
+  // Snapshot boost setting for this raffle
+  if (chat.boost) {
+    raffle.boostEnabled = true
+    await raffle.save()
+  }
   // Save raffle message if required
   if (chat.raffleMessage) {
     raffle.raffleMessage = chat.raffleMessage
@@ -58,10 +64,10 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
     })
   } else {
     sent = await ctx.replyWithHTML(
-      loc(
+      `${loc(
         chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
         chat.language
-      ),
+      )}${boostNote(raffle, chat.language)}`,
       options
     )
   }
@@ -78,7 +84,7 @@ export function setupCallback(bot: Telegraf<ContextMessageUpdate>) {
   ;(<any>bot).action(async (data: string, ctx: ContextMessageUpdate) => {
     // Get raffle
     const datas = data.split('~')
-    if (['l', 'n', 'c'].indexOf(datas[0]) > -1) return
+    if (['l', 'n', 'c', 'b'].indexOf(datas[0]) > -1) return
     const chatId = Number(datas[0])
     let raffle = await getRaffleWithoutParticipantIds(chatId, datas[1])
     // Get chat
@@ -206,9 +212,10 @@ export function setupCallback(bot: Telegraf<ContextMessageUpdate>) {
         text = `${loc(
           chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
           chat.language
-        )}\n\n${loc('participants_number', chat.language)}: ${
-          participantsIdsLength
-        }`
+        )}${boostNote(raffle, chat.language)}\n\n${loc(
+          'participants_number',
+          chat.language
+        )}: ${participantsIdsLength}`
       }
       if (!raffle.raffleMessage || raffle.raffleMessage.text) {
         await ctx.telegram.editMessageText(
@@ -283,16 +290,18 @@ export function setupListener(bot: Telegraf<ContextMessageUpdate>) {
  * @returns buttons for a raffle
  */
 function getButtons(raffle: InstanceType<Raffle>, language: string) {
-  return {
-    inline_keyboard: [
-      [
-        {
-          text: loc('participate_button', language),
-          callback_data: `${raffle.chatId}~${raffle.id}`,
-        },
-      ],
+  const keyboard = [
+    [
+      {
+        text: loc('participate_button', language),
+        callback_data: `${raffle.chatId}~${raffle.id}`,
+      },
     ],
+  ]
+  if (raffle.boostEnabled) {
+    keyboard.push(boostButton(raffle, language))
   }
+  return { inline_keyboard: keyboard }
 }
 
 /**
@@ -339,6 +348,9 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   }
   // Get winners
   ids = shuffle(ids)
+  // Weights: 1 for everybody, +BOOST_STEP per Stars boost bought
+  const counts = raffle.boostEnabled ? boostCounts(raffle) : new Map<number, number>()
+  const weights = ids.map((id) => weightFor(counts, id))
   let winners: {
     name: string
     winner: ChatMember
@@ -373,8 +385,9 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       }
       return
     }
-    const winnerIndex = random(ids.length - 1)
+    const winnerIndex = weightedIndex(weights)
     const winnerId = ids.splice(winnerIndex, 1)[0]
+    weights.splice(winnerIndex, 1)
     try {
       const winner = await ctx.telegram.getChatMember(raffle.chatId, winnerId)
       if (

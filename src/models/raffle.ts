@@ -14,6 +14,13 @@ export class Raffle extends Typegoose {
   @prop()
   winners?: string
 
+  // Stars boost: snapshot of the chat setting when the raffle started
+  @prop({ default: false })
+  boostEnabled?: boolean
+  // One entry per boost bought (a user id repeated N times = N boosts)
+  @arrayProp({ default: [], items: Number })
+  boostIds?: number[]
+
   @prop()
   raffleMessage?: Message
   @prop()

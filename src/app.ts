@@ -20,6 +20,7 @@ import { setupConfigRaffle } from './commands/configRaffle'
 import { setupAddChat } from './commands/addChat'
 import { setupId } from './commands/id'
 import { setupDebug } from './commands/debug'
+import { setupBoost } from './helpers/boost'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
 const telegraf = require('telegraf')
@@ -37,6 +38,9 @@ setupCallback(bot)
 // Setup listeners
 setupListener(bot)
 setupListenForForwards(bot)
+
+// Setup Stars boost (before /start so boost deep links are handled first)
+setupBoost(bot)
 
 // Setup commands
 setupStartAndHelp(bot)
@@ -63,7 +67,7 @@ bot.on('message', async (ctx) => {
   ) {
     return
   }
-  if (ctx.from.id !== 76104711) {
+  if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) {
     const chatMember = await ctx.telegram.getChatMember(
       ctx.message.forward_from_chat.id,
       ctx.from.id
