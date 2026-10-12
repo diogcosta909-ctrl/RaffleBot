@@ -56,7 +56,7 @@ export function boostNote(raffle: Raffle, language: string) {
 export function boostButton(raffle: Raffle & { id?: string }, language: string) {
   return [
     {
-      text: `${loc('boost_button', language)} ${boostLabel()} · ${BOOST_PRICE}⭐`,
+      text: `${loc('boost_button', language)} ⭐`,
       callback_data: `b~${raffle.id}`,
     },
   ]
