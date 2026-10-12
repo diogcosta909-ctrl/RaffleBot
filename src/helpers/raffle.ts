@@ -16,7 +16,6 @@ import {
   BOOST_PRICE,
   BOOST_STEP,
   entriesLabel,
-  entryNote,
   entryValueOf,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
@@ -37,7 +36,6 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   raffle.boostEnabled = !!chat.boost
   raffle.entryValue = chat.entryValue > 0 ? chat.entryValue : 1
   await raffle.save()
-  const note = entryNote(raffle, chat.language)
   // Save raffle message if required
   if (chat.raffleMessage) {
     raffle.raffleMessage = chat.raffleMessage
@@ -58,15 +56,15 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
     if (raffleMessage.text) {
-      raffleMessage.text = `${raffleMessage.text.replace(
+      raffleMessage.text = raffleMessage.text.replace(
         '$numberOfParticipants',
         '0'
-      )}${note ? `\n\n${note}` : ''}`
+      )
     } else {
-      raffleMessage.caption = `${raffleMessage.caption.replace(
+      raffleMessage.caption = raffleMessage.caption.replace(
         '$numberOfParticipants',
         '0'
-      )}${note ? `\n\n${note}` : ''}`
+      )
     }
     sent = await ctx.telegram.sendCopy(ctx.chat.id, raffleMessage, {
       reply_markup: getButtons(raffle, chat.language),
@@ -78,7 +76,7 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
       `${loc(
         chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
         chat.language
-      )}${note ? `\n\n${note}` : ''}${boostNote(raffle, chat.language)}`,
+      )}${boostNote(raffle, chat.language)}`,
       options
     )
   }
@@ -231,7 +229,6 @@ export async function refreshRaffleMessage(
   }
   // Entries = entry value per participant + extra entries bought with Boost
   const value = entryValueOf(raffle)
-  const note = entryNote(raffle, chat.language)
   // Shown as whole numbers; the draw itself keeps the exact weights
   const extra = Math.round(boosts * BOOST_STEP)
   const total = Math.round(participants * value + boosts * BOOST_STEP)
@@ -254,14 +251,12 @@ export async function refreshRaffleMessage(
     const raffleMessage = raffle.raffleMessage
     text = `${(raffleMessage.text || raffleMessage.caption)
       .replace('$numberOfParticipants', `${participants}`)
-      .replace('$numberOfBoosts', `${boosts}`)}${
-      note ? `\n\n${note}` : ''
-    }${boostLine}`
+      .replace('$numberOfBoosts', `${boosts}`)}${boostLine}`
   } else {
     text = `${loc(
       chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
       chat.language
-    )}${note ? `\n\n${note}` : ''}${boostNote(raffle, chat.language)}\n\n${loc(
+    )}${boostNote(raffle, chat.language)}\n\n${loc(
       'participants_number',
       chat.language
     )}: ${participants}${boostLine}`
