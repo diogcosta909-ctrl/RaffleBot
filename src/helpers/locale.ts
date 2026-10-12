@@ -357,12 +357,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'Eso supera el máximo de $max boosts por persona en este sorteo.',
   },
   boost_first: {
-    en: '🚀 No boosts yet. Be the first to boost your chances!',
-    es: '🚀 Aún no hay boosts. ¡Sé el primero en aumentar tus opciones!',
+    en: '🎟 No boosts yet. Be the first to boost your chances!',
+    es: '🎟 Aún no hay boosts. ¡Sé el primero en aumentar tus opciones!',
   },
   boost_count: {
-    en: '🚀 $n boosts so far',
-    es: '🚀 $n boosts hasta ahora',
+    en: '🎟 $n boosts so far',
+    es: '🎟 $n boosts hasta ahora',
   },
   winner_boosted: {
     en: '🚀 The winner used Boost: $stars⭐ ($mult chance).',
