@@ -6,16 +6,16 @@ export const START_COMMAND = (process.env.START_COMMAND || 'start')
 export function loc(text: string, language: string) {
   const value = localizations[text][language] || localizations[text].en
   return value
-    .replace(/\/randy\b/g, `/${START_COMMAND}`)
-    .replace(/@randymbot\b/g, `@${process.env.USERNAME}`)
+    .replace(/\/start\b/g, `/${START_COMMAND}`)
+    .replace(/@BOTUSERNAME\b/g, `@${process.env.USERNAME}`)
 }
 
 export const localizations: { [index: string]: { [index: string]: string } } = {
   public_help_start: {
     en:
-      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /randy to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.",
+      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.",
     es:
-      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /randy para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.",
+      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.",
   },
   no_work_private: {
     ru: 'Простите, но эта команда не работает в личке с ботом.',
@@ -36,7 +36,7 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     ar: 'الرجاء تحديد اللغة',
     es: 'Selecciones el lenguaje',
   },
-  language_selected_randy: {
+  language_selected: {
     ru: 'Спасибо, теперь я говорю по-русски!',
     en: 'Thank you! Now I speak English',
     pt: 'Obrigado! Agora eu falarei português',
@@ -211,16 +211,16 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'El bot no verificará la suscripción.',
   },
   bot_not_admin: {
-    ru: 'Пожалуйста, сделайте @randymbot админом в этом чате.',
-    en: 'Please make @randymbot an admin in this chat.',
-    tr: 'Lütfen, @randymbot u yönetici yapın',
-    es: 'Por favor, haga de @randymbot un administrador en este grupo.',
+    ru: 'Пожалуйста, сделайте @BOTUSERNAME админом в этом чате.',
+    en: 'Please make @BOTUSERNAME an admin in this chat.',
+    tr: 'Lütfen, @BOTUSERNAME u yönetici yapın',
+    es: 'Por favor, haga de @BOTUSERNAME un administrador en este grupo.',
   },
   bot_not_admin_chat: {
-    en: 'Please make @randymbot an admin in the chat ',
-    tr: 'Lütfen, @randymbot u yönetici yapın',
-    es: 'Por favor, haga de @randymbot un administrador en este chat.',
-    ru: 'Пожалуйста, сделайте @randymbot админом в этом чате',
+    en: 'Please make @BOTUSERNAME an admin in the chat ',
+    tr: 'Lütfen, @BOTUSERNAME u yönetici yapın',
+    es: 'Por favor, haga de @BOTUSERNAME un administrador en este chat.',
+    ru: 'Пожалуйста, сделайте @BOTUSERNAME админом в этом чате',
   },
   subscribe_success: {
     ru:

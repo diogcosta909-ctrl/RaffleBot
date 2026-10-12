@@ -29,12 +29,12 @@ export function setupListenForForwards(bot: Telegraf<ContextMessageUpdate>) {
     ) {
       return next()
     }
-    // Get randy
-    const randy = await ctx.telegram.getMe()
+    // Get this bot
+    const me = await ctx.telegram.getMe()
     const thisChat = await findChat(ctx.chat.id)
-    // Check if randy is an admin there
-    const randyMember = await ctx.telegram.getChatMember(chatId, randy.id)
-    if (randyMember.status !== 'administrator') {
+    // Check if this bot is an admin there
+    const botMember = await ctx.telegram.getChatMember(chatId, me.id)
+    if (botMember.status !== 'administrator') {
       return ctx.reply(loc('bot_not_admin_chat', thisChat.language))
     }
     // Check if user is administrator in that chat

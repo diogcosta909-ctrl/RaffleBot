@@ -6,10 +6,10 @@ import { findChat } from '../models/chat'
 import { loc, START_COMMAND } from '../helpers/locale'
 
 /**
- * Setting up the randy command
+ * Setting up the command that starts a raffle (/start)
  * @param bot Bot to setup the command
  */
-export function setupRandy(bot: Telegraf<ContextMessageUpdate>) {
+export function setupStartRaffle(bot: Telegraf<ContextMessageUpdate>) {
   bot.command(START_COMMAND, async ctx => {
     // Check if admin
     const isAdmin = await checkIfAdmin(ctx)

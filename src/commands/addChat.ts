@@ -8,8 +8,8 @@ export function setupAddChat(bot: Telegraf<ContextMessageUpdate>) {
     if (!ctx.message || ctx.message.chat.type !== 'private') {
       return
     }
-    // Get randy
-    const randy = await ctx.telegram.getMe()
+    // Get this bot
+    const me = await ctx.telegram.getMe()
     const thisChat = await findChat(ctx.chat.id)
     // Get chat id
     let chatId: string | number = ctx.message.text.split(' ')[1]
@@ -19,10 +19,10 @@ export function setupAddChat(bot: Telegraf<ContextMessageUpdate>) {
     if (!isNaN(+chatId)) {
       chatId = +chatId
     }
-    // Check if randy is an admin there
+    // Check if this bot is an admin there
     try {
-      const randyMember = await ctx.telegram.getChatMember(chatId, randy.id)
-      if (randyMember.status !== 'administrator') {
+      const botMember = await ctx.telegram.getChatMember(chatId, me.id)
+      if (botMember.status !== 'administrator') {
         return ctx.reply(loc('bot_not_admin_chat', thisChat.language))
       }
     } catch {
