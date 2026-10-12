@@ -22,7 +22,8 @@ const PAYLOAD_PREFIX = 'boost:'
 
 /** "1 entry" / "3 entries" in the chat language */
 export function entriesLabel(k: number, language = 'en') {
-  const value = +k.toFixed(2)
+  // Shown entries are always whole numbers (the draw keeps exact weights)
+  const value = Math.round(k)
   return `${value} ${loc(value === 1 ? 'entry_one' : 'entry_many', language)}`
 }
 

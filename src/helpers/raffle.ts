@@ -232,8 +232,9 @@ export async function refreshRaffleMessage(
   // Entries = entry value per participant + extra entries bought with Boost
   const value = entryValueOf(raffle)
   const note = entryNote(raffle, chat.language)
-  const extra = +(boosts * BOOST_STEP).toFixed(2)
-  const total = +(participants * value + extra).toFixed(2)
+  // Shown as whole numbers; the draw itself keeps the exact weights
+  const extra = Math.round(boosts * BOOST_STEP)
+  const total = Math.round(participants * value + boosts * BOOST_STEP)
   const lines: string[] = []
   if (boosts > 0) {
     lines.push(
