@@ -15,6 +15,9 @@ export class Chat extends Typegoose {
   nodelete: boolean
   @prop({ required: true, default: false })
   boost: boolean
+  // Value of each entry (1 normally, 1.5 or 2 on special days)
+  @prop({ default: 1 })
+  entryValue?: number
 
   @prop()
   raffleMessage?: Message

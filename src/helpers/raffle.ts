@@ -16,6 +16,8 @@ import {
   BOOST_PRICE,
   BOOST_STEP,
   entriesLabel,
+  entryNote,
+  entryValueOf,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { Chat, findChat } from '../models/chat'
@@ -31,11 +33,11 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   const chat = await findChat(ctx.chat.id)
   // Add raffle
   const raffle = await addRaffle(ctx.chat.id)
-  // Snapshot boost setting for this raffle
-  if (chat.boost) {
-    raffle.boostEnabled = true
-    await raffle.save()
-  }
+  // Snapshot boost setting and entry value for this raffle
+  raffle.boostEnabled = !!chat.boost
+  raffle.entryValue = chat.entryValue > 0 ? chat.entryValue : 1
+  await raffle.save()
+  const note = entryNote(raffle, chat.language)
   // Save raffle message if required
   if (chat.raffleMessage) {
     raffle.raffleMessage = chat.raffleMessage
@@ -56,15 +58,15 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
     if (raffleMessage.text) {
-      raffleMessage.text = raffleMessage.text.replace(
+      raffleMessage.text = `${raffleMessage.text.replace(
         '$numberOfParticipants',
         '0'
-      )
+      )}${note ? `\n\n${note}` : ''}`
     } else {
-      raffleMessage.caption = raffleMessage.caption.replace(
+      raffleMessage.caption = `${raffleMessage.caption.replace(
         '$numberOfParticipants',
         '0'
-      )
+      )}${note ? `\n\n${note}` : ''}`
     }
     sent = await ctx.telegram.sendCopy(ctx.chat.id, raffleMessage, {
       reply_markup: getButtons(raffle, chat.language),
@@ -76,7 +78,7 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
       `${loc(
         chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
         chat.language
-      )}${boostNote(raffle, chat.language)}`,
+      )}${note ? `\n\n${note}` : ''}${boostNote(raffle, chat.language)}`,
       options
     )
   }
@@ -227,25 +229,38 @@ export async function refreshRaffleMessage(
     parse_mode: 'HTML',
     disable_web_page_preview: true,
   }
-  // Entries = 1 per participant + extra entries bought with Boost
+  // Entries = entry value per participant + extra entries bought with Boost
+  const value = entryValueOf(raffle)
+  const note = entryNote(raffle, chat.language)
   const extra = +(boosts * BOOST_STEP).toFixed(2)
-  const total = +(participants + extra).toFixed(2)
-  const boostLine = !raffle.boostEnabled
-    ? ''
-    : `\n${loc(boosts > 0 ? 'boost_count' : 'boost_first', chat.language)
+  const total = +(participants * value + extra).toFixed(2)
+  const lines: string[] = []
+  if (boosts > 0) {
+    lines.push(
+      loc('boost_count', chat.language)
         .replace('$total', `${total}`)
-        .replace('$n', `${extra}`)}`
+        .replace('$n', `${extra}`)
+    )
+  } else if (value !== 1) {
+    lines.push(loc('entries_total', chat.language).replace('$total', `${total}`))
+  }
+  if (raffle.boostEnabled && boosts === 0) {
+    lines.push(loc('boost_first', chat.language))
+  }
+  const boostLine = lines.length ? `\n${lines.join('\n')}` : ''
   let text: string
   if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
     text = `${(raffleMessage.text || raffleMessage.caption)
       .replace('$numberOfParticipants', `${participants}`)
-      .replace('$numberOfBoosts', `${boosts}`)}${boostLine}`
+      .replace('$numberOfBoosts', `${boosts}`)}${
+      note ? `\n\n${note}` : ''
+    }${boostLine}`
   } else {
     text = `${loc(
       chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
       chat.language
-    )}${boostNote(raffle, chat.language)}\n\n${loc(
+    )}${note ? `\n\n${note}` : ''}${boostNote(raffle, chat.language)}\n\n${loc(
       'participants_number',
       chat.language
     )}: ${participants}${boostLine}`
@@ -379,7 +394,8 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   ids = shuffle(ids)
   // Weights: 1 for everybody, +BOOST_STEP per Stars boost bought
   const counts = raffle.boostEnabled ? boostCounts(raffle) : new Map<number, number>()
-  const weights = ids.map((id) => weightFor(counts, id))
+  const base = entryValueOf(raffle)
+  const weights = ids.map((id) => weightFor(counts, id, base))
   let winners: {
     name: string
     winner: ChatMember
@@ -481,7 +497,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         n > 0
           ? loc('winner_boosted', chat.language)
               .replace('$stars', `${n * BOOST_PRICE}`)
-              .replace('$mult', entriesLabel(weightFor(counts, winner.user.id), chat.language))
+              .replace('$mult', entriesLabel(weightFor(counts, winner.user.id, base), chat.language))
           : loc('winner_free', chat.language)
       }`
     }

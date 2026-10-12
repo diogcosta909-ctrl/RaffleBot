@@ -13,9 +13,9 @@ export function loc(text: string, language: string) {
 export const localizations: { [index: string]: { [index: string]: string } } = {
   public_help_start: {
     en:
-      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.",
+      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n/setentryvalue — value of each entry for special days (e.g. `/setentryvalue 1.5`)\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.",
     es:
-      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.",
+      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n/setentryvalue — valor de cada entrada para días especiales (ej. `/setentryvalue 1.5`)\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.",
   },
   no_work_private: {
     ru: 'Простите, но эта команда не работает в личке с ботом.',
@@ -364,6 +364,22 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: 'entries',
     es: 'entradas',
   },
+  entry_special: {
+    en: '🔥 Special giveaway: every entry counts as $value!',
+    es: '🔥 Sorteo especial: ¡cada entrada vale $value!',
+  },
+  entries_total: {
+    en: '🎟 $total entries',
+    es: '🎟 $total entradas',
+  },
+  entry_value_set: {
+    en: '✅ Entry value set to $value for new raffles. Use /setentryvalue 1 to go back to normal.',
+    es: '✅ Valor de entrada fijado en $value para los nuevos sorteos. Usa /setentryvalue 1 para volver a lo normal.',
+  },
+  entry_value_format: {
+    en: 'Current entry value: $value. Use /setentryvalue followed by a number from 1 to 10, e.g. /setentryvalue 1.5',
+    es: 'Valor de entrada actual: $value. Usa /setentryvalue seguido de un número del 1 al 10, ej. /setentryvalue 1.5',
+  },
   boost_first: {
     en: '🎟 No boosts yet',
     es: '🎟 Aún sin boosts',
@@ -385,8 +401,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 = usó Boost · $k de $total ganadores hicieron boost',
   },
   boost_choose: {
-    en: '🚀 Choose your boost for this raffle.\nFree = 1 entry. Each ⭐ = +1 more entry.\nYou have: $mult ($used/$max boosts).',
-    es: '🚀 Elige tu boost para este sorteo.\nGratis = 1 entrada. Cada ⭐ = +1 entrada más.\nTienes: $mult ($used/$max boosts).',
+    en: '🚀 Choose your boost for this raffle.\nFree = $free. Each ⭐ = $step.\nYou have: $mult ($used/$max boosts).',
+    es: '🚀 Elige tu boost para este sorteo.\nGratis = $free. Cada ⭐ = $step.\nTienes: $mult ($used/$max boosts).',
   },
   boost_applied: {
     en: '🚀 Boost applied! You now have $mult in this raffle ($used/$max boosts).',
