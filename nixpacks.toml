@@ -5,7 +5,7 @@ cmds = ["yarn install"]
 cmds = ["yarn build-ts"]
 
 [start]
-cmd = "node dist/app.js"
+cmd = "yarn start"
 
 [variables]
 NODE_ENV = "production"
