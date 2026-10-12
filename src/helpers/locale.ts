@@ -1,5 +1,13 @@
+// Command that starts a raffle (default /sorteo), configurable with START_COMMAND
+export const START_COMMAND = (process.env.START_COMMAND || 'sorteo')
+  .replace(/^\//, '')
+  .trim()
+
 export function loc(text: string, language: string) {
-  return localizations[text][language] || localizations[text].en
+  const value = localizations[text][language] || localizations[text].en
+  return value
+    .replace(/\/randy\b/g, `/${START_COMMAND}`)
+    .replace(/@randymbot\b/g, `@${process.env.USERNAME}`)
 }
 
 export const localizations: { [index: string]: { [index: string]: string } } = {
