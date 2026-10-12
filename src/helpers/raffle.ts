@@ -183,61 +183,77 @@ export function setupCallback(bot: Telegraf<ContextMessageUpdate>) {
     } catch {
       // do nothing
     }
-    // Update counter of participants
-    // Get length of RaffleModel.participantsIds
-    const participantsIdsLength = (await RaffleModel.aggregate([
-      { $match: { chatId: raffle.chatId, messageId: raffle.messageId } },
-      { $project : { participantsIds: { $size: '$participantsIds' } } },
-    ]))[0].participantsIds
+    // Update counters on the raffle message
     try {
-      // Add buttons
-      const options: ExtraEditMessage = {
-        reply_markup: getButtons(raffle, chat.language),
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      }
-      let text: string
-      if (raffle.raffleMessage) {
-        const raffleMessage = raffle.raffleMessage
-        text = raffleMessage.text
-          ? raffleMessage.text.replace(
-              '$numberOfParticipants',
-              `${participantsIdsLength}`
-            )
-          : raffleMessage.caption.replace(
-              '$numberOfParticipants',
-              `${participantsIdsLength}`
-            )
-      } else {
-        text = `${loc(
-          chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
-          chat.language
-        )}${boostNote(raffle, chat.language)}\n\n${loc(
-          'participants_number',
-          chat.language
-        )}: ${participantsIdsLength}`
-      }
-      if (!raffle.raffleMessage || raffle.raffleMessage.text) {
-        await ctx.telegram.editMessageText(
-          raffle.chatId,
-          raffle.messageId,
-          undefined,
-          text,
-          options
-        )
-      } else {
-        await ctx.telegram.editMessageCaption(
-          raffle.chatId,
-          raffle.messageId,
-          undefined,
-          text,
-          options as any
-        )
-      }
+      await refreshRaffleMessage(ctx.telegram, raffle, chat)
     } catch (err) {
       // Do nothing
     }
   })
+}
+
+/**
+ * Re-renders the raffle message with the participants and boosts counters
+ */
+export async function refreshRaffleMessage(
+  telegram: any,
+  raffle: InstanceType<Raffle>,
+  chat: { language: string; number: number }
+) {
+  const counts = (
+    await RaffleModel.aggregate([
+      { $match: { chatId: raffle.chatId, messageId: raffle.messageId } },
+      {
+        $project: {
+          participantsIds: { $size: '$participantsIds' },
+          boosts: { $size: { $ifNull: ['$boostIds', []] } },
+        },
+      },
+    ])
+  )[0]
+  const participants = counts.participantsIds
+  const boosts = counts.boosts
+  const options: ExtraEditMessage = {
+    reply_markup: getButtons(raffle, chat.language),
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+  }
+  const boostLine =
+    raffle.boostEnabled && boosts > 0
+      ? `\n${loc('boost_count', chat.language).replace('$n', `${boosts}`)}`
+      : ''
+  let text: string
+  if (raffle.raffleMessage) {
+    const raffleMessage = raffle.raffleMessage
+    text = `${(raffleMessage.text || raffleMessage.caption)
+      .replace('$numberOfParticipants', `${participants}`)
+      .replace('$numberOfBoosts', `${boosts}`)}${boostLine}`
+  } else {
+    text = `${loc(
+      chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
+      chat.language
+    )}${boostNote(raffle, chat.language)}\n\n${loc(
+      'participants_number',
+      chat.language
+    )}: ${participants}${boostLine}`
+  }
+  if (!raffle.raffleMessage || raffle.raffleMessage.text) {
+    await telegram.editMessageText(
+      raffle.chatId,
+      raffle.messageId,
+      undefined,
+      text,
+      options
+    )
+  } else {
+    await telegram.editMessageCaption(
+      raffle.chatId,
+      raffle.messageId,
+      undefined,
+      text,
+      options as any
+    )
+  }
 }
 
 /**
@@ -416,6 +432,16 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // Save winners
   raffle.winners = winners.map((w) => w.winner.user.id).join(',')
   await (<any>raffle).save()
+  // Boost transparency for the announcement
+  const boostedMark = (id: number) =>
+    raffle.boostEnabled && (counts.get(id) || 0) > 0 ? ' 🚀' : ''
+  const boostedWinners = winners.filter((w) => boostedMark(w.winner.user.id))
+    .length
+  const boostSummary = raffle.boostEnabled
+    ? `\n\n${loc('winners_boost_summary', chat.language)
+        .replace('$k', `${boostedWinners}`)
+        .replace('$total', `${winners.length}`)}`
+    : ''
   // Announce winner
   if (winners.length == 1) {
     const winner = winners[0].winner
@@ -435,6 +461,17 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         'participants_number',
         chat.language
       )} — ${idsOriginalLength}.`
+    }
+    if (raffle.boostEnabled) {
+      const n = counts.get(winner.user.id) || 0
+      text = `${text}\n\n${
+        n > 0
+          ? loc('winner_boosted', chat.language).replace(
+              '$mult',
+              `x${+weightFor(counts, winner.user.id).toFixed(2)}`
+            )
+          : loc('winner_free', chat.language)
+      }`
     }
     if (!nodelete) {
       if (!raffle.raffleMessage || raffle.raffleMessage.text) {
@@ -482,17 +519,18 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
               .join(', ')
           )
           .replace('$numberOfParticipants', `${idsOriginalLength}`)
+        text = `${text}${boostSummary}`
       } else {
         text = `🎉 ${loc('winners', chat.language)}:\n`
         for (let i = 0; i < names.length; i++) {
           text = `${text}\n${i + 1}. <a href="tg://user?id=${
             winners[i].winner.user.id
-          }">${names[i]}</a>`
+          }">${names[i]}</a>${boostedMark(winners[i].winner.user.id)}`
         }
         text = `${text}\n\n${loc('congratulations', chat.language)}!\n\n${loc(
           'participants_number',
           chat.language
-        )} — ${idsOriginalLength}.`
+        )} — ${idsOriginalLength}.${boostSummary}`
       }
       if (!nodelete) {
         if (!raffle.raffleMessage || raffle.raffleMessage.text) {
@@ -531,12 +569,12 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       const firstWinners = winners.splice(0, 50)
       for (let i = 0; i < firstNames.length; i++) {
         commonI++
-        text = `${text}\n${commonI}. <a href="tg://user?id=${firstWinners[i].winner.user.id}">${firstNames[i]}</a>`
+        text = `${text}\n${commonI}. <a href="tg://user?id=${firstWinners[i].winner.user.id}">${firstNames[i]}</a>${boostedMark(firstWinners[i].winner.user.id)}`
       }
       text = `${text}\n\n${loc('congratulations', chat.language)}!\n\n${loc(
         'participants_number',
         chat.language
-      )} — ${idsOriginalLength}.`
+      )} — ${idsOriginalLength}.${boostSummary}`
       console.log(`Announcing winners for ${raffle.chatId}`, raffle.messageId)
       if (!nodelete) {
         if (!raffle.raffleMessage || raffle.raffleMessage.text) {
@@ -574,7 +612,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         const nextWinners = winners.splice(0, 50)
         for (let i = 0; i < nextNames.length; i++) {
           commonI++
-          text = `${text}\n${commonI}. <a href="tg://user?id=${nextWinners[i].winner.user.id}">${nextNames[i]}</a>`
+          text = `${text}\n${commonI}. <a href="tg://user?id=${nextWinners[i].winner.user.id}">${nextNames[i]}</a>${boostedMark(nextWinners[i].winner.user.id)}`
         }
         await ctx.telegram.sendMessage(raffle.chatId, text, {
           parse_mode: 'HTML',

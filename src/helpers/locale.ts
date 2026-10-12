@@ -356,6 +356,22 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: 'That goes over the maximum of $max boosts per person in this raffle.',
     es: 'Eso supera el máximo de $max boosts por persona en este sorteo.',
   },
+  boost_count: {
+    en: '🚀 $n boosts so far',
+    es: '🚀 $n boosts hasta ahora',
+  },
+  winner_boosted: {
+    en: '🚀 The winner used Boost ($mult).',
+    es: '🚀 El ganador usó Boost ($mult).',
+  },
+  winner_free: {
+    en: '🎟 The winner joined for free, no Boost.',
+    es: '🎟 El ganador participó gratis, sin Boost.',
+  },
+  winners_boost_summary: {
+    en: '🚀 = used Boost · $k of $total winners boosted',
+    es: '🚀 = usó Boost · $k de $total ganadores hicieron boost',
+  },
   boost_choose: {
     en: '🚀 Choose your boost for this raffle.\nEach ⭐ adds chance to win. Current: $mult ($used/$max boosts).',
     es: '🚀 Elige tu boost para este sorteo.\nCada ⭐ suma probabilidad de ganar. Actual: $mult ($used/$max boosts).',

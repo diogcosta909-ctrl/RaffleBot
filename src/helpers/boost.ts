@@ -394,6 +394,20 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       )
     }
     const used = res.used + n
+    try {
+      const fresh = await RaffleModel.findById(res.raffle._id).select(
+        '-participantsIds'
+      )
+      const raffleChat = await findChat(fresh.chatId)
+      // Lazy require to avoid a circular import with raffle.ts
+      await require('./raffle').refreshRaffleMessage(
+        ctx.telegram,
+        fresh,
+        raffleChat
+      )
+    } catch (err) {
+      // message may be unchanged or deleted
+    }
     await notifyOwner(ctx, {
       userId,
       stars: p.total_amount,
