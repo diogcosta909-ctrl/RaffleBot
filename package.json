@@ -5,7 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc --skipLibCheck",
-    "start": "tsc --skipLibCheck && node dist/app.js",
+    "start": "node dist/app.js",
     "distribute": "yarn build-ts && node dist/app.js",
     "develop": "concurrently -i -k -p \"[{name}]\" -n \"Node,TS\" -c \"yellow.bold,cyan.bold\" \"yarn watch-js\" \"yarn watch-ts\"",
     "build-ts": "tsc --skipLibCheck",
