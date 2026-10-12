@@ -9,6 +9,8 @@ if (!mongoUrl) {
   process.exit(1)
 }
 mongoose.connect(mongoUrl, {
+  // Railway's MONGO_URL has no database name in the path
+  dbName: process.env.MONGO_DB || 'rafflebot',
   useNewUrlParser: true,
   useCreateIndex: true,
 })
