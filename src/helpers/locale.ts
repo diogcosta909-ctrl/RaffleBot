@@ -321,16 +321,16 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '⭐ *Boost con Stars:* usa /boost para que los participantes puedan comprar más probabilidad con Telegram Stars. El mensaje del sorteo muestra un botón Boost e indica que los boosts están activos. Vuelve a usar /boost para desactivarlo.',
   },
   boost_true: {
-    en: '🚀 Stars boost ON for new raffles: $price⭐ = $mult chance. Participants will see it on the raffle message.',
-    es: '🚀 Boost con Stars ACTIVADO para los nuevos sorteos: $price⭐ = $mult de probabilidad. Los participantes lo verán en el mensaje del sorteo.',
+    en: '🚀 Stars boost ON for new raffles: $price⭐ = $mult. Participants will see it on the raffle message.',
+    es: '🚀 Boost con Stars ACTIVADO para los nuevos sorteos: $price⭐ = $mult. Los participantes lo verán en el mensaje del sorteo.',
   },
   boost_false: {
     en: 'Stars boost OFF for new raffles.',
     es: 'Boost con Stars DESACTIVADO para los nuevos sorteos.',
   },
   boost_note: {
-    en: '🚀 Boost active: each $price⭐ gives $mult chance (max $max per person).',
-    es: '🚀 Boost activo: cada $price⭐ da $mult de probabilidad (máx. $max por persona).',
+    en: '🚀 Boost active: each $price⭐ = $mult (max $max per person).',
+    es: '🚀 Boost activo: cada $price⭐ = $mult (máx. $max por persona).',
   },
   boost_button: {
     en: '🚀 Boost',
@@ -341,8 +341,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'Boost de sorteo $pct',
   },
   boost_invoice_description: {
-    en: '$pct chance to win this raffle. Your entry will count $mult ($after/$max boosts).',
-    es: '$pct de probabilidad de ganar este sorteo. Tu participación contará $mult ($after/$max boosts).',
+    en: '$pct in this raffle. You will have $mult in total ($after/$max boosts).',
+    es: '$pct en este sorteo. Tendrás $mult en total ($after/$max boosts).',
   },
   boost_disabled: {
     en: 'Boost is not active for this raffle.',
@@ -356,6 +356,14 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: 'That goes over the maximum of $max boosts per person in this raffle.',
     es: 'Eso supera el máximo de $max boosts por persona en este sorteo.',
   },
+  entry_one: {
+    en: 'entry',
+    es: 'entrada',
+  },
+  entry_many: {
+    en: 'entries',
+    es: 'entradas',
+  },
   boost_first: {
     en: '🎟 No boosts yet',
     es: '🎟 Aún sin boosts',
@@ -365,8 +373,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🎟 $n boosts',
   },
   winner_boosted: {
-    en: '🚀 The winner used Boost: $stars⭐ ($mult chance).',
-    es: '🚀 El ganador usó Boost: $stars⭐ ($mult de probabilidad).',
+    en: '🚀 The winner used Boost: $stars⭐ ($mult).',
+    es: '🚀 El ganador usó Boost: $stars⭐ ($mult).',
   },
   winner_free: {
     en: '🎟 The winner joined for free, no Boost.',
@@ -377,12 +385,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 = usó Boost · $k de $total ganadores hicieron boost',
   },
   boost_choose: {
-    en: '🚀 Choose your boost for this raffle.\nEach ⭐ adds chance to win. Current: $mult ($used/$max boosts).',
-    es: '🚀 Elige tu boost para este sorteo.\nCada ⭐ suma probabilidad de ganar. Actual: $mult ($used/$max boosts).',
+    en: '🚀 Choose your boost for this raffle.\nFree = 1 entry. Each ⭐ = +1 more entry.\nYou have: $mult ($used/$max boosts).',
+    es: '🚀 Elige tu boost para este sorteo.\nGratis = 1 entrada. Cada ⭐ = +1 entrada más.\nTienes: $mult ($used/$max boosts).',
   },
   boost_applied: {
-    en: '🚀 Boost applied! Your chance is now $mult ($used/$max boosts).',
-    es: '🚀 ¡Boost aplicado! Tu probabilidad ahora es $mult ($used/$max boosts).',
+    en: '🚀 Boost applied! You now have $mult in this raffle ($used/$max boosts).',
+    es: '🚀 ¡Boost aplicado! Ahora tienes $mult en este sorteo ($used/$max boosts).',
   },
   boost_refunded: {
     en: 'Your Stars have been refunded.',

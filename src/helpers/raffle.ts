@@ -14,6 +14,7 @@ import {
   weightFor,
   weightedIndex,
   BOOST_PRICE,
+  entriesLabel,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { Chat, findChat } from '../models/chat'
@@ -476,7 +477,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         n > 0
           ? loc('winner_boosted', chat.language)
               .replace('$stars', `${n * BOOST_PRICE}`)
-              .replace('$mult', `x${+weightFor(counts, winner.user.id).toFixed(2)}`)
+              .replace('$mult', entriesLabel(weightFor(counts, winner.user.id), chat.language))
           : loc('winner_free', chat.language)
       }`
     }

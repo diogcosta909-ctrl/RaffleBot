@@ -9,7 +9,7 @@ import { loc } from './locale'
 
 // Config (env overridable): 1 Star = +0.3 weight (x1.3), max 10 boosts per user per raffle
 export const BOOST_PRICE = Math.max(1, parseInt(process.env.BOOST_PRICE || '1', 10))
-export const BOOST_STEP = parseFloat(process.env.BOOST_STEP || '0.3')
+export const BOOST_STEP = parseFloat(process.env.BOOST_STEP || '1')
 export const BOOST_MAX = Math.max(1, parseInt(process.env.BOOST_MAX || '10', 10))
 
 // Packs offered in private chat (number of boosts per pack)
@@ -20,19 +20,25 @@ export const BOOST_OPTIONS = (process.env.BOOST_OPTIONS || '1,3,5,10')
 
 const PAYLOAD_PREFIX = 'boost:'
 
-/** "+30%" for n boosts */
-function pctLabel(n: number) {
-  return `+${Math.round(BOOST_STEP * n * 100)}%`
+/** "1 entry" / "3 entries" in the chat language */
+export function entriesLabel(k: number, language = 'en') {
+  const value = +k.toFixed(2)
+  return `${value} ${loc(value === 1 ? 'entry_one' : 'entry_many', language)}`
 }
 
-/** Total multiplier label for n boosts, e.g. "x1.9" */
-function multLabel(n: number) {
-  return `x${+(1 + BOOST_STEP * n).toFixed(2)}`
+/** "+3 entries" for a pack of n boosts */
+function pctLabel(n: number, language = 'en') {
+  return `+${entriesLabel(BOOST_STEP * n, language)}`
 }
 
-/** Multiplier label for one boost, e.g. "x1.3" */
-export function boostLabel() {
-  return `x${+(1 + BOOST_STEP).toFixed(2)}`
+/** Total entries with n boosts, e.g. "4 entries" */
+function multLabel(n: number, language = 'en') {
+  return entriesLabel(1 + BOOST_STEP * n, language)
+}
+
+/** Label for one boost, e.g. "+1 entry" */
+export function boostLabel(language = 'en') {
+  return pctLabel(1, language)
 }
 
 /** Count how many boosts each user bought in a raffle */
@@ -65,7 +71,7 @@ export function boostNote(raffle: Raffle, language: string) {
   if (!raffle.boostEnabled) return ''
   return `\n\n${loc('boost_note', language)
     .replace('$price', `${BOOST_PRICE}`)
-    .replace('$mult', boostLabel())
+    .replace('$mult', boostLabel(language))
     .replace('$max', `${BOOST_MAX}`)}`
 }
 
@@ -119,13 +125,13 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   const options = BOOST_OPTIONS.filter((n) => n <= left)
   const keyboard = options.map((n) => [
     {
-      text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n)}`,
+      text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language)}`,
       callback_data: `b~${raffleId}~${n}`,
     },
   ])
   return ctx.reply(
     loc('boost_choose', res.language)
-      .replace('$mult', multLabel(res.used))
+      .replace('$mult', multLabel(res.used, res.language))
       .replace('$used', `${res.used}`)
       .replace('$max', `${BOOST_MAX}`),
     { reply_markup: { inline_keyboard: keyboard } }
@@ -146,16 +152,16 @@ async function sendBoostInvoice(
   await trackBoost({ type: 'invoice', userId: ctx.from.id, raffleId, boosts: n })
   await (ctx.telegram as any).callApi('sendInvoice', {
     chat_id: ctx.chat.id,
-    title: loc('boost_invoice_title', language).replace('$pct', pctLabel(n)),
+    title: loc('boost_invoice_title', language).replace('$pct', pctLabel(n, language)),
     description: loc('boost_invoice_description', language)
-      .replace('$pct', pctLabel(n))
-      .replace('$mult', multLabel(res.used + n))
+      .replace('$pct', pctLabel(n, language))
+      .replace('$mult', multLabel(res.used + n, language))
       .replace('$after', `${res.used + n}`)
       .replace('$max', `${BOOST_MAX}`),
     payload: `${PAYLOAD_PREFIX}${raffleId}:${n}`,
     provider_token: '',
     currency: 'XTR',
-    prices: [{ label: `Boost ${pctLabel(n)}`, amount: n * BOOST_PRICE }],
+    prices: [{ label: `Boost ${pctLabel(n, language)}`, amount: n * BOOST_PRICE }],
   })
 }
 
@@ -185,9 +191,9 @@ async function notifyOwner(
       admin,
       `🚀 <b>Nuevo boost</b>\n` +
         `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
-        `⭐ ${info.stars} Stars · ${pctLabel(info.n)}\n` +
+        `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'es')}\n` +
         `📢 ${escHtml(where)}\n` +
-        `🎯 Su probabilidad ahora: ${info.mult}`,
+        `🎯 Ahora tiene: ${info.mult}`,
       { parse_mode: 'HTML', disable_web_page_preview: true }
     )
   } catch (err) {
@@ -230,7 +236,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     return ctx.reply(
       loc(`boost_${chat.boost}`, chat.language)
         .replace('$price', `${BOOST_PRICE}`)
-        .replace('$mult', boostLabel()),
+        .replace('$mult', boostLabel(chat.language)),
       { disable_notification: true }
     )
   })
@@ -454,11 +460,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       stars: p.total_amount,
       n,
       chatId: res.raffle.chatId,
-      mult: multLabel(used),
+      mult: multLabel(used, 'es'),
     })
     return ctx.reply(
       loc('boost_applied', res.language)
-        .replace('$mult', `x${+(1 + BOOST_STEP * used).toFixed(2)}`)
+        .replace('$mult', multLabel(used, res.language))
         .replace('$used', `${used}`)
         .replace('$max', `${BOOST_MAX}`)
     )
