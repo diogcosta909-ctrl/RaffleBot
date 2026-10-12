@@ -11,6 +11,12 @@ export class Payment extends Typegoose {
   raffleId: string
   @prop({ required: true })
   stars: number
+  @prop({ index: true })
+  chatId?: number
+  @prop()
+  userName?: string
+  @prop({ default: 1 })
+  boosts?: number
   // applied | refunded
   @prop({ required: true, default: 'applied' })
   status: string

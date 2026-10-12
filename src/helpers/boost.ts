@@ -196,6 +196,49 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     )
   })
 
+  // Bot owner: Stars earned and who paid
+  bot.command('stars', async (ctx) => {
+    if (ctx.chat.type !== 'private') return
+    if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+    const totals = await PaymentModel.aggregate([
+      { $group: { _id: '$status', stars: { $sum: '$stars' }, count: { $sum: 1 } } },
+    ])
+    const applied = totals.find((t) => t._id === 'applied') || { stars: 0, count: 0 }
+    const refunded = totals.find((t) => t._id === 'refunded') || { stars: 0, count: 0 }
+    const last = await PaymentModel.find({ status: 'applied' })
+      .sort({ createdAt: -1 })
+      .limit(20)
+    const titles = new Map<number, string>()
+    for (const pay of last) {
+      if (!pay.chatId || titles.has(pay.chatId)) continue
+      try {
+        const c: any = await ctx.telegram.getChat(pay.chatId)
+        titles.set(pay.chatId, c.title || `${pay.chatId}`)
+      } catch {
+        titles.set(pay.chatId, `${pay.chatId}`)
+      }
+    }
+    const esc = (t: string) =>
+      t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const lines = last.map((pay: any) => {
+      const date = pay.createdAt
+        ? new Date(pay.createdAt).toISOString().slice(0, 16).replace('T', ' ')
+        : ''
+      const who = `<a href="tg://user?id=${pay.userId}">${esc(
+        pay.userName || `${pay.userId}`
+      )}</a>`
+      const where = pay.chatId ? esc(titles.get(pay.chatId) || '') : '—'
+      return `${date} · ${who} · ${pay.stars}⭐ · ${where}`
+    })
+    const text =
+      `⭐ <b>Stars</b>\n` +
+      `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
+      `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n\n` +
+      `<b>Últimos pagos</b> (UTC)\n` +
+      (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
+    return ctx.replyWithHTML(text, { disable_web_page_preview: true })
+  })
+
   // Deep link from the boost button: /start boost_<raffleId>
   bot.use(async (ctx, next) => {
     const text = ctx.message && ctx.message.text
@@ -277,13 +320,21 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const userId = ctx.from.id
     // Idempotency: ignore duplicates
     if (await PaymentModel.countDocuments({ chargeId })) return
+    const u = ctx.from
     await PaymentModel.create({
       chargeId,
       userId,
       raffleId,
       stars: p.total_amount,
+      boosts: n,
+      userName: u.username
+        ? `@${u.username}`
+        : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`,
     })
     const res = await validateBoost(raffleId, userId, n)
+    if (res.raffle) {
+      await PaymentModel.updateOne({ chargeId }, { chatId: res.raffle.chatId })
+    }
     if (res.error) {
       const ok = await refund(ctx, userId, chargeId)
       return ctx.reply(
