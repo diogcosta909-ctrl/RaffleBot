@@ -1,5 +1,5 @@
-// Command that starts a raffle (default /sorteo), configurable with START_COMMAND
-export const START_COMMAND = (process.env.START_COMMAND || 'sorteo')
+// Command that starts a raffle (default /start), configurable with START_COMMAND
+export const START_COMMAND = (process.env.START_COMMAND || 'start')
   .replace(/^\//, '')
   .trim()
 
