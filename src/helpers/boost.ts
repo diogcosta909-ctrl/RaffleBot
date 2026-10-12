@@ -156,6 +156,42 @@ async function sendBoostInvoice(
   })
 }
 
+const escHtml = (t: string) =>
+  t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/** Private notification to the bot owner (ADMIN) for every paid boost */
+async function notifyOwner(
+  ctx: ContextMessageUpdate,
+  info: { userId: number; stars: number; n: number; chatId: number; mult: string }
+) {
+  const admin = parseInt(process.env.ADMIN, 10)
+  if (!admin) return
+  try {
+    const u = ctx.from
+    const name = u.username
+      ? `@${u.username}`
+      : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`
+    let where = `${info.chatId}`
+    try {
+      const c: any = await ctx.telegram.getChat(info.chatId)
+      where = c.title || where
+    } catch {
+      // keep id
+    }
+    await ctx.telegram.sendMessage(
+      admin,
+      `🚀 <b>Nuevo boost</b>\n` +
+        `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
+        `⭐ ${info.stars} Stars · ${pctLabel(info.n)}\n` +
+        `📢 ${escHtml(where)}\n` +
+        `🎯 Su probabilidad ahora: ${info.mult}`,
+      { parse_mode: 'HTML', disable_web_page_preview: true }
+    )
+  } catch (err) {
+    console.error('Owner notification failed', err)
+  }
+}
+
 /** Parses "boost:<raffleId>:<n>" (n defaults to 1) */
 function parsePayload(payload: string) {
   const [raffleId, n] = payload.substr(PAYLOAD_PREFIX.length).split(':')
@@ -358,6 +394,13 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       )
     }
     const used = res.used + n
+    await notifyOwner(ctx, {
+      userId,
+      stars: p.total_amount,
+      n,
+      chatId: res.raffle.chatId,
+      mult: multLabel(used),
+    })
     return ctx.reply(
       loc('boost_applied', res.language)
         .replace('$mult', `x${+(1 + BOOST_STEP * used).toFixed(2)}`)
