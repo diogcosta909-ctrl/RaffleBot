@@ -65,7 +65,7 @@ function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: numb
 }
 
 /** Small ticket icon drawn with paths (no emoji font needed) */
-function ticket(ctx: any, t: Tier, cx: number, cy: number, w: number) {
+function ticket(ctx: any, t: Tier, cx: number, cy: number, w: number, notch = '#1b2038') {
   const h = w * 0.62
   const x = cx - w / 2
   const y = cy - h / 2
@@ -77,7 +77,7 @@ function ticket(ctx: any, t: Tier, cx: number, cy: number, w: number) {
   ctx.fillStyle = g
   ctx.fill()
   // notches
-  ctx.fillStyle = '#1c2a55'
+  ctx.fillStyle = notch
   ctx.beginPath()
   ctx.arc(x, cy, h * 0.16, 0, Math.PI * 2)
   ctx.arc(x + w, cy, h * 0.16, 0, Math.PI * 2)
@@ -116,6 +116,7 @@ type Tier = {
   rays: boolean
   sparkles: number
   crown: boolean
+  light: string
 }
 
 // One look per pack: the bigger the pack, the more epic the card
@@ -126,7 +127,7 @@ const TIERS: Record<number, Tier> = {
     header: '#e7b48a',
     starTop: '#f3c299', starBottom: '#c9783a', starStroke: '#ffe3c8',
     accent: '#e0975a', accent2: '#b86a2d', boxText: '#f3d9c3',
-    frame: 0, rays: false, sparkles: 4, crown: false,
+    frame: 0, rays: false, sparkles: 4, crown: false, light: '#f3c299',
   },
   2: {
     title: 'SUPER BOOST',
@@ -134,7 +135,7 @@ const TIERS: Record<number, Tier> = {
     header: '#9fe6ff',
     starTop: '#f4fdff', starBottom: '#8fc4d8', starStroke: '#ffffff',
     accent: '#7fe0ff', accent2: '#3aa8d0', boxText: '#cdf3ff',
-    frame: 2, rays: false, sparkles: 8, crown: false,
+    frame: 2, rays: false, sparkles: 8, crown: false, light: '#e6faff',
   },
   3: {
     title: 'MEGA BOOST',
@@ -142,7 +143,7 @@ const TIERS: Record<number, Tier> = {
     header: '#ffe08a',
     starTop: '#ffe27a', starBottom: '#f5a30a', starStroke: '#fff3b8',
     accent: '#ffd54a', accent2: '#ff9d1c', boxText: '#fff1c4',
-    frame: 3, rays: true, sparkles: 12, crown: false,
+    frame: 3, rays: true, sparkles: 12, crown: false, light: '#fff3b8',
   },
   4: {
     title: 'LEGENDARY BOOST',
@@ -150,7 +151,7 @@ const TIERS: Record<number, Tier> = {
     header: '#ffe9a8',
     starTop: '#fff6c9', starBottom: '#ffb300', starStroke: '#ffffff',
     accent: '#ff5fd2', accent2: '#ffd54a', boxText: '#ffe6fa',
-    frame: 5, rays: true, sparkles: 22, crown: true,
+    frame: 5, rays: true, sparkles: 22, crown: true, light: '#ffe6fa',
   },
 }
 
@@ -200,7 +201,7 @@ function crownIcon(ctx: any, t: Tier, cx: number, cy: number, w: number) {
 }
 
 /**
- * Renders the boost card as a PNG.
+ * Renders the boost card as a PNG (medal style).
  * @param name person's name or @username (characters the font cannot draw are dropped)
  * @param stars Stars paid in this boost
  * @param entries total entries the person has now
@@ -215,160 +216,126 @@ export async function renderBoostImage(info: {
 }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const S = 2 // render at 2x for sharpness
-  const W = 372 * S
-  const H = 300 * S
-  const canvas = createCanvas(W, H)
+  const canvas = createCanvas(372 * S, 300 * S)
   const ctx = canvas.getContext('2d')
   ctx.scale(S, S)
 
-  const t = TIERS[tierFor(info.boosts || info.stars)]
+  const lv = tierFor(info.boosts || info.stars)
+  const t = TIERS[lv]
+  const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
+    ctx.font = font
+    ctx.fillStyle = color
+    ctx.textAlign = align
+    ;(ctx as any).letterSpacing = ls
+    ctx.fillText(s, x, y)
+    ;(ctx as any).letterSpacing = '0px'
+  }
+  const medalStar = (cx: number, cy: number, r: number) => {
+    const g = ctx.createLinearGradient(0, cy - r, 0, cy + r)
+    g.addColorStop(0, t.light)
+    g.addColorStop(1, t.accent2)
+    starPath(ctx, cx, cy, r)
+    ctx.fillStyle = g
+    ctx.fill()
+    ctx.lineWidth = 1.5
+    ctx.strokeStyle = '#ffffff'
+    ctx.stroke()
+  }
 
   // Background
-  const bg = ctx.createRadialGradient(186, 100, 10, 186, 130, 340)
-  bg.addColorStop(0, t.bgInner)
-  bg.addColorStop(1, t.bgOuter)
-  ctx.fillStyle = bg
+  ctx.fillStyle = '#0f1320'
+  ctx.fillRect(0, 0, 372, 300)
+  const glow = ctx.createRadialGradient(100, 110, 5, 100, 110, 200)
+  glow.addColorStop(0, 'rgba(255,255,255,0.12)')
+  glow.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = glow
   ctx.fillRect(0, 0, 372, 300)
 
-  // Light rays behind the stars on the top tiers
-  if (t.rays) {
+  // Medal
+  const cx = 92
+  const cy = 120
+  if (lv >= 3) {
     ctx.save()
-    ctx.translate(186, 140)
-    const rayCount = 18
-    for (let i = 0; i < rayCount; i++) {
-      ctx.rotate((Math.PI * 2) / rayCount)
+    ctx.translate(cx, cy)
+    for (let k = 0; k < 16; k++) {
+      ctx.rotate(Math.PI / 8)
       ctx.beginPath()
       ctx.moveTo(0, 0)
-      ctx.lineTo(-16, -320)
-      ctx.lineTo(16, -320)
-      ctx.closePath()
-      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.025)'
+      ctx.lineTo(-9, -84)
+      ctx.lineTo(9, -84)
+      ctx.fillStyle = 'rgba(255,255,255,0.07)'
       ctx.fill()
     }
     ctx.restore()
   }
-
-  // Sparkles (more of them on higher tiers)
-  const sparkles: [number, number, number, number][] = [
-    [18, 28, 7, 0.55], [350, 40, 9, 0.75], [338, 120, 5, 0.45], [14, 130, 6, 0.5],
-    [356, 248, 6, 0.45], [12, 270, 8, 0.65], [330, 18, 5, 0.55], [40, 82, 4, 0.45],
-    [300, 76, 5, 0.5], [60, 16, 5, 0.5], [352, 190, 4, 0.5], [20, 200, 5, 0.45],
-    [100, 292, 4, 0.4], [270, 292, 5, 0.45], [8, 80, 4, 0.4], [364, 90, 4, 0.45],
-    [150, 12, 3, 0.4], [225, 10, 3, 0.4], [28, 168, 3, 0.4], [346, 160, 3, 0.4],
-    [74, 120, 3, 0.35], [300, 150, 3, 0.35],
-  ]
-  for (const [x, y, r, o] of sparkles.slice(0, t.sparkles)) {
-    ctx.globalAlpha = o
-    starPath(ctx, x, y, r)
-    ctx.fillStyle = t.accent
+  if (lv >= 2) {
+    // soft halo (drawn as a gradient: canvas shadows are unreliable here)
+    const halo = ctx.createRadialGradient(cx, cy, 52, cx, cy, 82)
+    halo.addColorStop(0, t.accent + '88')
+    halo.addColorStop(1, t.accent + '00')
+    ctx.fillStyle = halo
+    ctx.beginPath()
+    ctx.arc(cx, cy, 82, 0, Math.PI * 2)
     ctx.fill()
   }
-  ctx.globalAlpha = 1
+  const rg = ctx.createLinearGradient(0, cy - 62, 0, cy + 62)
+  rg.addColorStop(0, t.light)
+  rg.addColorStop(1, t.accent2)
+  ctx.beginPath()
+  ctx.arc(cx, cy, 60, 0, Math.PI * 2)
+  ctx.fillStyle = rg
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(cx, cy, 50, 0, Math.PI * 2)
+  ctx.fillStyle = '#161b30'
+  ctx.fill()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = t.accent
+  ctx.stroke()
+  for (let k = 0; k < lv; k++) medalStar(cx - (lv - 1) * 9 + k * 18, cy - 26, 7)
+  const starsText = `${info.stars}`
+  ctx.font = '800 44px InterX'
+  const stw = ctx.measureText(starsText).width
+  text(starsText, cx - 8, cy + 22, '800 44px InterX', '#ffffff', 'center')
+  medalStar(cx - 8 + stw / 2 + 12, cy + 8, 9)
 
-  // Frame: thicker and glowing on higher tiers
-  if (t.frame > 0) {
-    const fg = ctx.createLinearGradient(0, 0, 372, 300)
-    fg.addColorStop(0, t.accent)
-    fg.addColorStop(0.5, t.accent2)
-    fg.addColorStop(1, t.accent)
-    ctx.save()
-    if (t.frame >= 5) {
-      ctx.shadowColor = t.accent
-      ctx.shadowBlur = 14
-    }
-    roundRect(ctx, t.frame / 2 + 1, t.frame / 2 + 1, 372 - t.frame - 2, 300 - t.frame - 2, 14)
-    ctx.lineWidth = t.frame
-    ctx.strokeStyle = fg
-    ctx.stroke()
-    ctx.restore()
-  }
-
-  ctx.textAlign = 'center'
-  // Crown on the top tier
-  const headerY = t.crown ? 56 : 40
-  const nameY = t.crown ? 90 : 80
-  if (t.crown) crownIcon(ctx, t, 186, 24, 40)
-
-  // Header
-  ctx.font = '700 14px InterB'
-  ctx.fillStyle = t.header
-  ;(ctx as any).letterSpacing = '4px'
-  ctx.fillText(t.title, 186, headerY)
-  ;(ctx as any).letterSpacing = '0px'
-
-  // Name (shrinks to fit)
+  // Title, name, tag
+  text(t.title, 196, 64, '800 12px InterX', t.accent, 'left', '2px')
   const name = drawableName(info.name)
   if (name) {
-    let size = 30
+    let size = 24
     ctx.font = `800 ${size}px InterX`
-    while (ctx.measureText(name).width > 320 && size > 16) {
+    while (ctx.measureText(name).width > 160 && size > 14) {
       size -= 2
       ctx.font = `800 ${size}px InterX`
     }
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText(name, 186, nameY)
+    text(name, 196, 92, ctx.font, '#ffffff', 'left')
   }
-
-  // Row of stars (one per Star paid, up to 5), bigger on the top tiers
-  const count = Math.max(1, Math.min(5, info.stars))
-  const starR = t.crown ? 31 : 30
-  const gap = 60
-  const startX = 186 - ((count - 1) * gap) / 2
-  const starY = t.crown ? 146 : 140
-  for (let i = 0; i < count; i++) {
-    themedStar(ctx, t, startX + i * gap, starY, starR)
-  }
-
-  // Two boxes
-  const boxes: { x: number; stroke: string }[] = [
-    { x: 24, stroke: t.accent },
-    { x: 194, stroke: t.accent2 },
-  ]
-  for (const b of boxes) {
-    roundRect(ctx, b.x, 182, 154, 94, 16)
-    ctx.fillStyle = 'rgba(255,255,255,0.08)'
-    ctx.fill()
-    ctx.lineWidth = 1.2
-    ctx.strokeStyle = b.stroke
-    ctx.stroke()
-  }
-  // Left: stars paid
-  ctx.font = '800 46px InterX'
-  ctx.fillStyle = t.accent
-  const starsText = `${info.stars}`
-  const sw = ctx.measureText(starsText).width
-  ctx.textAlign = 'left'
-  const leftStart = 101 - (sw + 14 + 38) / 2
-  ctx.fillText(starsText, leftStart, 230)
-  themedStar(ctx, t, leftStart + sw + 14 + 19, 216, 19)
-  // Right: entries now
-  const entText = `${info.entries}`
-  const ew = ctx.measureText(entText).width
-  const rightStart = 271 - (ew + 14 + 44) / 2
-  ctx.fillStyle = '#ffffff'
-  ctx.fillText(entText, rightStart, 230)
-  ticket(ctx, t, rightStart + ew + 14 + 22, 216, 44)
-
-  // Labels
-  ctx.textAlign = 'center'
-  ctx.font = '700 13px InterB'
-  ctx.fillStyle = t.boxText
-  ;(ctx as any).letterSpacing = '2px'
-  ctx.fillText('STARS PAID', 101, 259)
-  ctx.fillText('ENTRIES NOW', 271, 259)
-  ;(ctx as any).letterSpacing = '0px'
-
-  // Multiplier tag
+  text('bought a boost', 196, 112, '700 12px InterB', '#8a90a8', 'left')
   if (info.mult && info.mult > 1) {
     const label = `x${+info.mult.toFixed(2)} TODAY`
-    ctx.font = '800 13px InterX'
-    const tw = ctx.measureText(label).width + 22
-    roundRect(ctx, 372 - tw - 14, 12, tw, 26, 13)
+    ctx.font = '800 12px InterX'
+    const w = ctx.measureText(label).width + 18
+    roundRect(ctx, 196, 124, w, 22, 11)
     ctx.fillStyle = t.accent
     ctx.fill()
-    ctx.fillStyle = '#1b0f00'
-    ctx.fillText(label, 372 - tw / 2 - 14, 30)
+    text(label, 196 + w / 2, 140, '800 12px InterX', '#1b0f00', 'center')
   }
+
+  // Entries bar
+  roundRect(ctx, 24, 196, 324, 78, 18)
+  ctx.fillStyle = 'rgba(255,255,255,0.07)'
+  ctx.fill()
+  ctx.lineWidth = 1.3
+  ctx.strokeStyle = t.accent
+  ctx.stroke()
+  ticket(ctx, t, 64, 235, 44)
+  const entText = `${info.entries}`
+  text(entText, 100, 252, '800 46px InterX', '#ffffff', 'left')
+  ctx.font = '800 46px InterX'
+  const ew = ctx.measureText(entText).width
+  text('ENTRIES NOW', 108 + ew, 244, '800 14px InterX', t.accent, 'left', '2px')
+  text('in this giveaway', 108 + ew, 262, '700 12px InterB', '#8a90a8', 'left')
 
   return canvas.toBuffer('image/png')
 }
