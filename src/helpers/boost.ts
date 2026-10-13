@@ -335,16 +335,6 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const last = await PaymentModel.find({ status: 'applied', ...sinceMatch })
       .sort({ createdAt: -1 })
       .limit(20)
-    const titles = new Map<number, string>()
-    for (const pay of last) {
-      if (!pay.chatId || titles.has(pay.chatId)) continue
-      try {
-        const c: any = await ctx.telegram.getChat(pay.chatId)
-        titles.set(pay.chatId, c.title || `${pay.chatId}`)
-      } catch {
-        titles.set(pay.chatId, `${pay.chatId}`)
-      }
-    }
     const esc = (t: string) =>
       t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const lines = last.map((pay: any) => {
@@ -367,8 +357,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const who = `<a href="tg://user?id=${pay.userId}">${esc(
         pay.userName || `${pay.userId}`
       )}</a>`
-      const where = pay.chatId ? esc(titles.get(pay.chatId) || '') : '—'
-      return `${date} · ${who} · ${pay.stars}⭐ · ${where}`
+      return `${date} · ${who} · ${pay.stars}⭐`
     })
     // Funnel: unique people per step
     const funnel = await BoostEventModel.aggregate([
