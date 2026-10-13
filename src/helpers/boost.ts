@@ -46,12 +46,12 @@ async function loadMultiplier() {
 }
 
 /** Current boost multiplier, the same for every raffle */
-export function multiplierOf(_raffle?: { boostMultiplier?: number }) {
+export function multiplierOf(_raffle?: any) {
   return globalMultiplier
 }
 
 /** Entries given by each ⭐ in a raffle: BOOST_STEP × multiplier */
-export function stepOf(raffle: { boostMultiplier?: number }) {
+export function stepOf(raffle?: any) {
   return BOOST_STEP * multiplierOf(raffle)
 }
 
@@ -66,8 +66,8 @@ export function entryValueOf(raffle: { entryValue?: number }) {
 }
 
 /** Total entries with n boosts, e.g. "4 entries" */
-function multLabel(n: number, language = 'en', base = 1, step = BOOST_STEP) {
-  return entriesLabel(base + step * n, language)
+function multLabel(value: number, language = 'en', base = 1) {
+  return entriesLabel(base + BOOST_STEP * value, language)
 }
 
 /** Line shown on the raffle message when entries are worth more than 1 */
@@ -83,7 +83,7 @@ export function boostLabel(language = 'en', step = BOOST_STEP) {
 }
 
 /** "🔥 Boosts are worth x2 today!" (empty when the multiplier is 1) */
-export function multiplierNote(raffle: { boostMultiplier?: number }, language: string) {
+export function multiplierNote(raffle: any, language: string) {
   const mult = multiplierOf(raffle)
   if (mult === 1) return ''
   return loc('boost_multiplier', language).replace('$mult', `${+mult.toFixed(2)}`)
@@ -96,6 +96,20 @@ export function boostCounts(raffle: Raffle) {
     counts.set(id, Math.min(BOOST_MAX, (counts.get(id) || 0) + 1))
   }
   return counts
+}
+
+/**
+ * Boost value per user: each boost counts as the multiplier in force when it was
+ * bought (x1 for boosts saved before multipliers existed)
+ */
+export function boostValues(raffle: Raffle) {
+  const values = new Map<number, number>()
+  const ids = raffle.boostIds || []
+  const mults = raffle.boostMults || []
+  ids.forEach((id, i) => {
+    values.set(id, (values.get(id) || 0) + (mults[i] >= 1 ? mults[i] : 1))
+  })
+  return values
 }
 
 /** Weight of a participant: entry value + step * boosts */
@@ -158,10 +172,11 @@ async function validateBoost(raffleId: string, userId: number, amount = 1) {
   })
   if (!isIn) return { error: 'boost_join_first', language, raffle }
   const used = boostCounts(raffle).get(userId) || 0
+  const value = boostValues(raffle).get(userId) || 0
   if (used + amount > BOOST_MAX) {
-    return { error: 'boost_max', language, raffle, used }
+    return { error: 'boost_max', language, raffle, used, value }
   }
-  return { raffle, language, used }
+  return { raffle, language, used, value }
 }
 
 function errorText(key: string, language = 'en') {
@@ -208,10 +223,7 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
     }${loc('boost_choose', res.language)
       .replace('$free', entriesLabel(entryValueOf(res.raffle), res.language))
       .replace('$step', `+${entriesLabel(stepOf(res.raffle), res.language)}`)
-      .replace(
-        '$mult',
-        multLabel(res.used, res.language, entryValueOf(res.raffle), stepOf(res.raffle))
-      )
+      .replace('$mult', multLabel(res.value, res.language, entryValueOf(res.raffle)))
       .replace('$used', `${res.used}`)
       .replace('$max', `${BOOST_MAX}`)}`,
     { reply_markup: { inline_keyboard: keyboard } }
@@ -240,7 +252,7 @@ async function sendBoostInvoice(
       .replace('$pct', pctLabel(n, language, stepOf(res.raffle)))
       .replace(
         '$mult',
-        multLabel(res.used + n, language, entryValueOf(res.raffle), stepOf(res.raffle))
+        multLabel(res.value + n * multiplierOf(), language, entryValueOf(res.raffle))
       )
       .replace('$after', `${res.used + n}`)
       .replace('$max', `${BOOST_MAX}`),
@@ -617,7 +629,12 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
     const upd: any = await RaffleModel.updateOne(
       { _id: res.raffle._id, winners: { $exists: false } },
-      { $push: { boostIds: { $each: Array(n).fill(userId) } } }
+      {
+        $push: {
+          boostIds: { $each: Array(n).fill(userId) },
+          boostMults: { $each: Array(n).fill(multiplierOf()) },
+        },
+      }
     )
     if (!upd || !upd.nModified) {
       const ok = await refund(ctx, userId, chargeId)
@@ -629,6 +646,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       )
     }
     const used = res.used + n
+    const value = res.value + n * multiplierOf()
     try {
       const fresh = await RaffleModel.findById(res.raffle._id).select(
         '-participantsIds'
@@ -650,14 +668,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       chatId: res.raffle.chatId,
       messageId: res.raffle.messageId,
       step: stepOf(res.raffle),
-      mult: multLabel(used, 'es', entryValueOf(res.raffle), stepOf(res.raffle)),
+      mult: multLabel(value, 'es', entryValueOf(res.raffle)),
     })
     return ctx.reply(
       loc('boost_applied', res.language)
-        .replace(
-          '$mult',
-          multLabel(used, res.language, entryValueOf(res.raffle), stepOf(res.raffle))
-        )
+        .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
         .replace('$used', `${used}`)
         .replace('$max', `${BOOST_MAX}`)
     )

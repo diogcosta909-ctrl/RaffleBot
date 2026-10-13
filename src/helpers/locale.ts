@@ -377,8 +377,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🔥 ¡Hoy los boosts valen x$mult!',
   },
   boost_multiplier_set: {
-    en: '✅ Boost multiplier set to <b>x$mult</b> for all giveaways, including those already running. Use /setboostmultiplier 1 to go back to normal.',
-    es: '✅ Multiplicador de boost fijado en <b>x$mult</b> para todos los sorteos, también los que ya están en curso. Usa /setboostmultiplier 1 para volver a lo normal.',
+    en: '✅ Boost multiplier set to <b>x$mult</b> for all giveaways, including those already running. Boosts already bought keep their value. Use /setboostmultiplier 1 to go back to normal.',
+    es: '✅ Multiplicador de boost fijado en <b>x$mult</b> para todos los sorteos, también los que ya están en curso. Los boosts ya comprados mantienen su valor. Usa /setboostmultiplier 1 para volver a lo normal.',
   },
   boost_multiplier_off: {
     en: '✅ Boost multiplier back to normal (x1) for all giveaways.',

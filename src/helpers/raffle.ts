@@ -17,7 +17,7 @@ import {
   BOOST_STEP,
   entriesLabel,
   entryValueOf,
-  stepOf,
+  boostValues,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { Chat, findChat } from '../models/chat'
@@ -230,6 +230,8 @@ export async function refreshRaffleMessage(
         $project: {
           participantsIds: { $size: '$participantsIds' },
           boosts: { $size: { $ifNull: ['$boostIds', []] } },
+          multCount: { $size: { $ifNull: ['$boostMults', []] } },
+          multSum: { $sum: { $ifNull: ['$boostMults', []] } },
         },
       },
     ])
@@ -244,7 +246,8 @@ export async function refreshRaffleMessage(
   // Entries = entry value per participant + extra entries bought with Boost
   const value = entryValueOf(raffle)
   // Shown as whole numbers; the draw itself keeps the exact weights
-  const extra = Math.round(boosts * stepOf(raffle))
+  // Each boost counts as the multiplier it was bought with (x1 if not saved)
+  const extra = Math.round((boosts - counts.multCount + counts.multSum) * BOOST_STEP)
   // $numberOfParticipants = free entries (participants × entry value)
   const entries = Math.round(participants * value)
   const lines: string[] = []
@@ -403,7 +406,8 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // Weights: 1 for everybody, +BOOST_STEP per Stars boost bought
   const counts = raffle.boostEnabled ? boostCounts(raffle) : new Map<number, number>()
   const base = entryValueOf(raffle)
-  const weights = ids.map((id) => weightFor(counts, id, base, stepOf(raffle)))
+  const values = raffle.boostEnabled ? boostValues(raffle) : new Map<number, number>()
+  const weights = ids.map((id) => weightFor(values, id, base))
   let winners: {
     name: string
     winner: ChatMember
@@ -505,7 +509,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         n > 0
           ? loc('winner_boosted', chat.language)
               .replace('$stars', `${n * BOOST_PRICE}`)
-              .replace('$mult', entriesLabel(weightFor(counts, winner.user.id, base, stepOf(raffle)), chat.language))
+              .replace('$mult', entriesLabel(weightFor(values, winner.user.id, base), chat.language))
           : loc('winner_free', chat.language)
       }`
     }
