@@ -372,6 +372,22 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '🎟 $total entries',
     es: '🎟 $total entradas',
   },
+  boost_header: {
+    en: '🚀 Boost your odds:',
+    es: '🚀 Mejora tus opciones:',
+  },
+  boost_rate_one: {
+    en: '$price⭐ = +$n extra entry',
+    es: '$price⭐ = +$n entrada extra',
+  },
+  boost_rate_many: {
+    en: '$price⭐ = +$n extra entries',
+    es: '$price⭐ = +$n entradas extra',
+  },
+  boost_mult_tag: {
+    en: '🔥 x$mult today!',
+    es: '🔥 ¡x$mult hoy!',
+  },
   boost_multiplier: {
     en: '🔥 Boosts are worth x$mult today!',
     es: '🔥 ¡Hoy los boosts valen x$mult!',

@@ -148,6 +148,27 @@ export function boostNote(raffle: Raffle, language: string) {
     .replace('$max', `${maxBoosts()}`)}${multNote ? `\n${multNote}` : ''}`
 }
 
+/**
+ * "Boost your odds" block of the raffle message (layout 2):
+ * header, rate per ⭐ (adapts to the multiplier) and boosted entries so far.
+ * extra = boosted entries bought so far (0 → "No boosts yet")
+ */
+export function boostBlock(language: string, extra: number) {
+  const n = Math.round(stepOf())
+  const rate = loc(n === 1 ? 'boost_rate_one' : 'boost_rate_many', language)
+    .replace('$price', `${BOOST_PRICE}`)
+    .replace('$n', `${n}`)
+  const tag =
+    multiplierOf() > 1
+      ? ` ${loc('boost_mult_tag', language).replace('$mult', `${+multiplierOf().toFixed(2)}`)}`
+      : ''
+  const count =
+    extra > 0
+      ? loc('boost_count', language).replace('$n', `${extra}`)
+      : loc('boost_first', language)
+  return `${loc('boost_header', language)}\n${rate}${tag}\n${count}`
+}
+
 /** Boost button row for the raffle message */
 export function boostButton(raffle: Raffle & { id?: string }, language: string) {
   return [

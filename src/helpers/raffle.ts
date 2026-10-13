@@ -18,6 +18,7 @@ import {
   entriesLabel,
   entryValueOf,
   boostValues,
+  boostBlock,
   multiplierNote,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
@@ -37,6 +38,8 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   // Snapshot boost setting and entry value for this raffle
   raffle.boostEnabled = !!chat.boost
   raffle.entryValue = chat.entryValue > 0 ? chat.entryValue : 1
+  // Raffles created from now on use the "Boost your odds" layout
+  raffle.boostLayout = 2
   await raffle.save()
   // Save raffle message if required
   if (chat.raffleMessage) {
@@ -56,17 +59,15 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   // Send message
   let sent: Message
   if (raffle.raffleMessage) {
-    const raffleMessage = raffle.raffleMessage
+    // Work on a copy so the saved template keeps its placeholders
+    const raffleMessage: any = JSON.parse(JSON.stringify(raffle.raffleMessage))
+    const startBlock = raffle.boostEnabled ? `\n\n${boostBlock(chat.language, 0)}` : ''
     if (raffleMessage.text) {
-      raffleMessage.text = raffleMessage.text.replace(
-        '$numberOfParticipants',
-        '0'
-      )
+      raffleMessage.text =
+        raffleMessage.text.replace('$numberOfParticipants', '0') + startBlock
     } else {
-      raffleMessage.caption = raffleMessage.caption.replace(
-        '$numberOfParticipants',
-        '0'
-      )
+      raffleMessage.caption =
+        raffleMessage.caption.replace('$numberOfParticipants', '0') + startBlock
     }
     sent = await ctx.telegram.sendCopy(ctx.chat.id, raffleMessage, {
       reply_markup: getButtons(raffle, chat.language),
@@ -78,7 +79,11 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
       `${loc(
         chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
         chat.language
-      )}${boostNote(raffle, chat.language)}`,
+      )}${
+        raffle.boostEnabled
+          ? `\n\n${boostBlock(chat.language, 0)}`
+          : ''
+      }`,
       options
     )
   }
@@ -264,7 +269,21 @@ export async function refreshRaffleMessage(
   // Custom raffle messages get the multiplier line too (the default one has it in boostNote)
   const multNote = raffle.boostEnabled ? multiplierNote(raffle, chat.language) : ''
   let text: string
-  if (raffle.raffleMessage) {
+  if (raffle.boostEnabled && raffle.boostLayout === 2) {
+    // New layout: text + "Boost your odds" block
+    const block = boostBlock(chat.language, extra)
+    if (raffle.raffleMessage) {
+      const raffleMessage = raffle.raffleMessage
+      text = `${(raffleMessage.text || raffleMessage.caption)
+        .replace('$numberOfParticipants', `${entries}`)
+        .replace('$numberOfBoosts', `${boosts}`)}\n\n${block}`
+    } else {
+      text = `${loc(
+        chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
+        chat.language
+      )}\n\n${loc('participants_number', chat.language)}: ${entries}\n\n${block}`
+    }
+  } else if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
     text = `${(raffleMessage.text || raffleMessage.caption)
       .replace('$numberOfParticipants', `${entries}`)
