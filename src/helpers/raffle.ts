@@ -468,6 +468,11 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // Save winners
   raffle.winners = winners.map((w) => w.winner.user.id).join(',')
   await (<any>raffle).save()
+  // The winners are saved, so the participants and boosts are no longer needed
+  await RaffleModel.updateOne(
+    { _id: (<any>raffle)._id },
+    { $set: { participantsIds: [], boostIds: [] } }
+  )
   // Boost transparency for the announcement
   const boostedMark = (id: number) =>
     raffle.boostEnabled && (counts.get(id) || 0) > 0 ? ' 🚀' : ''

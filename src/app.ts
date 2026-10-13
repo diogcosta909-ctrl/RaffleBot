@@ -22,6 +22,7 @@ import { setupId } from './commands/id'
 import { setupDebug } from './commands/debug'
 import { setupBoost } from './helpers/boost'
 import { setupTerms } from './helpers/terms'
+import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
 const telegraf = require('telegraf')
@@ -43,6 +44,7 @@ setupListenForForwards(bot)
 // Setup Stars boost (before /start so boost deep links are handled first)
 setupBoost(bot)
 setupTerms(bot)
+setupCleanup()
 
 // Setup commands
 setupStartAndHelp(bot)
