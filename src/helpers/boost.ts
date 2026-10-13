@@ -207,7 +207,14 @@ const escHtml = (t: string) =>
 /** Private notification to the bot owner (ADMIN) for every paid boost */
 async function notifyOwner(
   ctx: ContextMessageUpdate,
-  info: { userId: number; stars: number; n: number; chatId: number; mult: string }
+  info: {
+    userId: number
+    stars: number
+    n: number
+    chatId: number
+    mult: string
+    messageId?: number
+  }
 ) {
   const admin = parseInt(process.env.ADMIN, 10)
   if (!admin) return
@@ -217,9 +224,18 @@ async function notifyOwner(
       ? `@${u.username}`
       : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`
     let where = `${info.chatId}`
+    let link = ''
     try {
       const c: any = await ctx.telegram.getChat(info.chatId)
       where = c.title || where
+      if (info.messageId) {
+        const internal = `${info.chatId}`.replace(/^-100/, '')
+        link = c.username
+          ? `https://t.me/${c.username}/${info.messageId}`
+          : `${info.chatId}`.startsWith('-100')
+          ? `https://t.me/c/${internal}/${info.messageId}`
+          : ''
+      }
     } catch {
       // keep id
     }
@@ -229,7 +245,8 @@ async function notifyOwner(
         `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
         `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'es')}\n` +
         `📢 ${escHtml(where)}\n` +
-        `🎯 Ahora tiene: ${info.mult}`,
+        `🎯 Ahora tiene: ${info.mult}` +
+        (link ? `\n\n🔗 <a href="${link}">Giveaway</a>` : ''),
       { parse_mode: 'HTML', disable_web_page_preview: true }
     )
   } catch (err) {
@@ -332,7 +349,10 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const lines = last.map((pay: any) => {
       const date = pay.createdAt
-        ? new Date(pay.createdAt).toISOString().slice(0, 16).replace('T', ' ')
+        ? (() => {
+            const iso = new Date(pay.createdAt).toISOString()
+            return `${iso.slice(8, 10)}/${iso.slice(5, 7)} - ${iso.slice(11, 16)}`
+          })()
         : ''
       const who = `<a href="tg://user?id=${pay.userId}">${esc(
         pay.userName || `${pay.userId}`
@@ -358,33 +378,22 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       return { people: users.size, total }
     }
     const clicks = step('click')
-    const clicksBlocked = step('click', false)
     const menus = step('menu')
     const invoices = step('invoice')
     const payers = (await PaymentModel.distinct('userId', { status: 'applied', ...sinceMatch })).length
-    const termsQuery: any = { termsAccepted: true }
-    if (since) termsQuery.termsAcceptedAt = { $gte: since }
-    const termsCount = await ChatModel.countDocuments(termsQuery)
     const termsTotal = await ChatModel.countDocuments({ termsAccepted: true })
     const pct = (a: number, b: number) =>
       b ? `${Math.round((a / b) * 1000) / 10}%` : '—'
     const funnelText =
-      `<b>Embudo Boost</b> (personas únicas)\n` +
-      `📜 Aceptaron los términos: <b>${termsCount}</b>${
-        since ? ` (total histórico: ${termsTotal})` : ''
-      }\n` +
+      `<b>Embudo Boost</b>\n` +
+      `📜 Aceptaron los términos: <b>${termsTotal}</b>\n` +
       `👆 Clic en Boost: <b>${clicks.people}</b> (${clicks.total} clics)\n` +
-      `   ↳ rechazados (sin participar, sorteo cerrado o máximo): ${clicksBlocked.people}\n` +
       `📋 Vieron las opciones: <b>${menus.people}</b>\n` +
       `🧾 Eligieron un pack: <b>${invoices.people}</b>\n` +
       `✅ Pagaron: <b>${payers}</b>\n` +
       `📈 Conversión clic → pago: <b>${pct(payers, clicks.people)}</b>\n\n`
     const text =
-      `⭐ <b>Stars</b>${
-        since
-          ? ` · desde ${since.toISOString().slice(0, 16).replace('T', ' ')} UTC`
-          : ''
-      }\n` +
+      `⭐ <b>Stars</b>\n\n` +
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
       `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n\n` +
       funnelText +
@@ -563,6 +572,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       stars: p.total_amount,
       n,
       chatId: res.raffle.chatId,
+      messageId: res.raffle.messageId,
       mult: multLabel(used, 'es', entryValueOf(res.raffle)),
     })
     return ctx.reply(
