@@ -350,8 +350,18 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const lines = last.map((pay: any) => {
       const date = pay.createdAt
         ? (() => {
-            const iso = new Date(pay.createdAt).toISOString()
-            return `${iso.slice(8, 10)}/${iso.slice(5, 7)} - ${iso.slice(11, 16)}`
+            const parts: any = {}
+            new Intl.DateTimeFormat('en-GB', {
+              timeZone: 'Europe/Paris',
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hourCycle: 'h23',
+            } as any)
+              .formatToParts(new Date(pay.createdAt))
+              .forEach((x) => (parts[x.type] = x.value))
+            return `${parts.day}/${parts.month} - ${parts.hour}:${parts.minute}`
           })()
         : ''
       const who = `<a href="tg://user?id=${pay.userId}">${esc(
@@ -397,7 +407,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
       `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n\n` +
       funnelText +
-      `<b>Últimos pagos</b> (UTC)\n` +
+      `<b>Últimos pagos</b>\n` +
       (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
     return ctx.replyWithHTML(text, { disable_web_page_preview: true })
   })
