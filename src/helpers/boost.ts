@@ -50,6 +50,11 @@ export function multiplierOf(_raffle?: any) {
   return globalMultiplier
 }
 
+/** Max boosts (⭐) per person and raffle: BOOST_MAX × multiplier (x2 → 20) */
+export function maxBoosts() {
+  return Math.round(BOOST_MAX * globalMultiplier)
+}
+
 /** Entries given by each ⭐ in a raffle: BOOST_STEP × multiplier */
 export function stepOf(raffle?: any) {
   return BOOST_STEP * multiplierOf(raffle)
@@ -93,7 +98,7 @@ export function multiplierNote(raffle: any, language: string) {
 export function boostCounts(raffle: Raffle) {
   const counts = new Map<number, number>()
   for (const id of raffle.boostIds || []) {
-    counts.set(id, Math.min(BOOST_MAX, (counts.get(id) || 0) + 1))
+    counts.set(id, (counts.get(id) || 0) + 1)
   }
   return counts
 }
@@ -140,7 +145,7 @@ export function boostNote(raffle: Raffle, language: string) {
   return `\n\n${loc('boost_note', language)
     .replace('$price', `${BOOST_PRICE}`)
     .replace('$mult', boostLabel(language, stepOf(raffle)))
-    .replace('$max', `${BOOST_MAX}`)}${multNote ? `\n${multNote}` : ''}`
+    .replace('$max', `${maxBoosts()}`)}${multNote ? `\n${multNote}` : ''}`
 }
 
 /** Boost button row for the raffle message */
@@ -173,14 +178,14 @@ async function validateBoost(raffleId: string, userId: number, amount = 1) {
   if (!isIn) return { error: 'boost_join_first', language, raffle }
   const used = boostCounts(raffle).get(userId) || 0
   const value = boostValues(raffle).get(userId) || 0
-  if (used + amount > BOOST_MAX) {
+  if (used + amount > maxBoosts()) {
     return { error: 'boost_max', language, raffle, used, value }
   }
   return { raffle, language, used, value }
 }
 
 function errorText(key: string, language = 'en') {
-  return loc(key, language).replace('$max', `${BOOST_MAX}`)
+  return loc(key, language).replace('$max', `${maxBoosts()}`)
 }
 
 /** Private chat: show the boost packs the user can still buy */
@@ -209,7 +214,7 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
     )
   }
   await trackBoost({ type: 'menu', userId: ctx.from.id, raffleId })
-  const left = BOOST_MAX - res.used
+  const left = maxBoosts() - res.used
   const options = BOOST_OPTIONS.filter((n) => n <= left)
   const keyboard = options.map((n) => [
     {
@@ -225,7 +230,7 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
       .replace('$step', `+${entriesLabel(stepOf(res.raffle), res.language)}`)
       .replace('$mult', multLabel(res.value, res.language, entryValueOf(res.raffle)))
       .replace('$used', `${res.used}`)
-      .replace('$max', `${BOOST_MAX}`)}`,
+      .replace('$max', `${maxBoosts()}`)}`,
     { reply_markup: { inline_keyboard: keyboard } }
   )
 }
@@ -255,7 +260,7 @@ async function sendBoostInvoice(
         multLabel(res.value + n * multiplierOf(), language, entryValueOf(res.raffle))
       )
       .replace('$after', `${res.used + n}`)
-      .replace('$max', `${BOOST_MAX}`),
+      .replace('$max', `${maxBoosts()}`),
     payload: `${PAYLOAD_PREFIX}${raffleId}:${n}`,
     provider_token: '',
     currency: 'XTR',
@@ -674,7 +679,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       loc('boost_applied', res.language)
         .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
         .replace('$used', `${used}`)
-        .replace('$max', `${BOOST_MAX}`)
+        .replace('$max', `${maxBoosts()}`)
     )
   })
 }
