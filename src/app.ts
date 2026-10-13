@@ -22,6 +22,7 @@ import { setupId } from './commands/id'
 import { setupDebug } from './commands/debug'
 import { setupBoost } from './helpers/boost'
 import { setupTerms } from './helpers/terms'
+import { setupReactionDebug } from './helpers/reactionDebug'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
 const telegraf = require('telegraf')
@@ -31,7 +32,22 @@ const bot: Telegraf<ContextMessageUpdate> = new telegraf(process.env.TOKEN, {
   username: process.env.USERNAME,
   channelMode: true,
 })
-bot.startPolling()
+bot.startPolling(30, 100, [
+  'message',
+  'edited_message',
+  'channel_post',
+  'edited_channel_post',
+  'inline_query',
+  'chosen_inline_result',
+  'callback_query',
+  'shipping_query',
+  'pre_checkout_query',
+  'my_chat_member',
+  'chat_member',
+  'message_reaction',
+  'message_reaction_count',
+])
+setupReactionDebug(bot)
 console.log('Bot is up and running')
 
 // Setup callback
