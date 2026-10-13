@@ -18,6 +18,7 @@ import {
   entriesLabel,
   entryValueOf,
   boostValues,
+  multiplierNote,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { Chat, findChat } from '../models/chat'
@@ -260,12 +261,16 @@ export async function refreshRaffleMessage(
     lines.push(loc('boost_first', chat.language))
   }
   const boostLine = lines.length ? `\n${lines.join('\n')}` : ''
+  // Custom raffle messages get the multiplier line too (the default one has it in boostNote)
+  const multNote = raffle.boostEnabled ? multiplierNote(raffle, chat.language) : ''
   let text: string
   if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
     text = `${(raffleMessage.text || raffleMessage.caption)
       .replace('$numberOfParticipants', `${entries}`)
-      .replace('$numberOfBoosts', `${boosts}`)}${boostLine}`
+      .replace('$numberOfBoosts', `${boosts}`)}${
+      multNote ? `\n${multNote}` : ''
+    }${boostLine}`
   } else {
     text = `${loc(
       chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
