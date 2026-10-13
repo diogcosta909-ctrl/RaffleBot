@@ -358,19 +358,38 @@ async function notifyOwner(
           ? escHtml(name)
           : `<a href="tg://user?id=${info.userId}">${escHtml(name)}</a>`
         const mult = multiplierOf()
-        await ctx.telegram.sendMessage(
-          feed,
+        const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-            `⭐ ${info.stars} Stars · <b>${pctLabel(info.n, 'en', step)}</b>` +
-            (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
-            `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
-            (link ? `\n🔗 <a href="${link}">Giveaway</a>` : ''),
-          {
-            parse_mode: 'HTML',
-            disable_web_page_preview: true,
-            disable_notification: true,
-          } as any
-        )
+          `⭐ ${info.stars} Stars · <b>${pctLabel(info.n, 'en', step)}</b>` +
+          (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
+          `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
+          (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
+        const extra: any = {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          disable_notification: true,
+        }
+        let sent = false
+        try {
+          // Card image with the Stars paid and the entries now (needs @napi-rs/canvas)
+          const image = await require('./boostImage').renderBoostImage({
+            name,
+            stars: info.stars,
+            entries: Math.round(info.total),
+            mult,
+          })
+          await ctx.telegram.sendPhoto(
+            feed,
+            { source: image },
+            { caption: text, parse_mode: 'HTML', disable_notification: true } as any
+          )
+          sent = true
+        } catch (err) {
+          console.error('Boost feed image failed, sending text', err)
+        }
+        if (!sent) {
+          await ctx.telegram.sendMessage(feed, text, extra)
+        }
       } catch (err) {
         console.error('Boost feed message failed', err)
       }
