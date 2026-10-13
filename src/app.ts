@@ -46,7 +46,7 @@ bot.startPolling(30, 100, [
   'chat_member',
   'message_reaction',
   'message_reaction_count',
-])
+] as any)
 setupReactionDebug(bot)
 console.log('Bot is up and running')
 
