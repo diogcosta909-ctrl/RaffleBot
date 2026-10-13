@@ -111,8 +111,12 @@ export function boostValues(raffle: Raffle) {
   const values = new Map<number, number>()
   const ids = raffle.boostIds || []
   const mults = raffle.boostMults || []
+  // boostMults is always appended together with boostIds, so it lines up with the
+  // END of boostIds; older boosts (bought before multipliers existed) have no entry
+  const offset = Math.max(0, ids.length - mults.length)
   ids.forEach((id, i) => {
-    values.set(id, (values.get(id) || 0) + (mults[i] >= 1 ? mults[i] : 1))
+    const m = i >= offset ? mults[i - offset] : 1
+    values.set(id, (values.get(id) || 0) + (m >= 1 ? m : 1))
   })
   return values
 }
