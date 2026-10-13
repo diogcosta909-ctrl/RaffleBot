@@ -20,6 +20,9 @@ export class Raffle extends Typegoose {
   // Snapshot of the chat's entry value when the raffle started
   @prop({ default: 1 })
   entryValue?: number
+  // Snapshot of the chat's boost multiplier when the raffle started
+  @prop({ default: 1 })
+  boostMultiplier?: number
   // One entry per boost bought (a user id repeated N times = N boosts)
   @arrayProp({ default: [], items: Number })
   boostIds?: number[]

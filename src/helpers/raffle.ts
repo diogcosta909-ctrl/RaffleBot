@@ -17,6 +17,7 @@ import {
   BOOST_STEP,
   entriesLabel,
   entryValueOf,
+  stepOf,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { Chat, findChat } from '../models/chat'
@@ -35,6 +36,7 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   // Snapshot boost setting and entry value for this raffle
   raffle.boostEnabled = !!chat.boost
   raffle.entryValue = chat.entryValue > 0 ? chat.entryValue : 1
+  raffle.boostMultiplier = chat.boostMultiplier >= 1 ? chat.boostMultiplier : 1
   await raffle.save()
   // Save raffle message if required
   if (chat.raffleMessage) {
@@ -243,7 +245,7 @@ export async function refreshRaffleMessage(
   // Entries = entry value per participant + extra entries bought with Boost
   const value = entryValueOf(raffle)
   // Shown as whole numbers; the draw itself keeps the exact weights
-  const extra = Math.round(boosts * BOOST_STEP)
+  const extra = Math.round(boosts * stepOf(raffle))
   // $numberOfParticipants = free entries (participants × entry value)
   const entries = Math.round(participants * value)
   const lines: string[] = []
@@ -402,7 +404,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // Weights: 1 for everybody, +BOOST_STEP per Stars boost bought
   const counts = raffle.boostEnabled ? boostCounts(raffle) : new Map<number, number>()
   const base = entryValueOf(raffle)
-  const weights = ids.map((id) => weightFor(counts, id, base))
+  const weights = ids.map((id) => weightFor(counts, id, base, stepOf(raffle)))
   let winners: {
     name: string
     winner: ChatMember
@@ -504,7 +506,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         n > 0
           ? loc('winner_boosted', chat.language)
               .replace('$stars', `${n * BOOST_PRICE}`)
-              .replace('$mult', entriesLabel(weightFor(counts, winner.user.id, base), chat.language))
+              .replace('$mult', entriesLabel(weightFor(counts, winner.user.id, base, stepOf(raffle)), chat.language))
           : loc('winner_free', chat.language)
       }`
     }

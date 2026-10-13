@@ -13,9 +13,9 @@ export function loc(text: string, language: string) {
 export const localizations: { [index: string]: { [index: string]: string } } = {
   public_help_start: {
     en:
-      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n/setentryvalue — value of each entry for special days (e.g. `/setentryvalue 1.5`)\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.\n\n/terms · /support · /paysupport",
+      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a raffle.\n2. Reply with any message to the raffle message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default raffle message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original raffle message instead of editing it\n/setentryvalue — value of each entry for special days (e.g. `/setentryvalue 1.5`)\n/setboostmultiplier — make Boosts worth x2 or x3 on special days (e.g. `/setboostmultiplier 2`)\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.\n\n/terms · /support · /paysupport",
     es:
-      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n/setentryvalue — valor de cada entrada para días especiales (ej. `/setentryvalue 1.5`)\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.\n\n/terms · /support · /paysupport",
+      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n/setentryvalue — valor de cada entrada para días especiales (ej. `/setentryvalue 1.5`)\n/setboostmultiplier — boosts x2 o x3 en días especiales (ej. `/setboostmultiplier 2`)\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.\n\n/terms · /support · /paysupport",
   },
   no_work_private: {
     ru: 'Простите, но эта команда не работает в личке с ботом.',
@@ -371,6 +371,22 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
   entries_total: {
     en: '🎟 $total entries',
     es: '🎟 $total entradas',
+  },
+  boost_multiplier: {
+    en: '🔥 Boosts are worth x$mult today!',
+    es: '🔥 ¡Hoy los boosts valen x$mult!',
+  },
+  boost_multiplier_set: {
+    en: '✅ Boost multiplier set to <b>x$mult</b> for new giveaways. Use /setboostmultiplier 1 to go back to normal.',
+    es: '✅ Multiplicador de boost fijado en <b>x$mult</b> para los nuevos sorteos. Usa /setboostmultiplier 1 para volver a lo normal.',
+  },
+  boost_multiplier_off: {
+    en: '✅ Boost multiplier back to normal (x1) for new giveaways.',
+    es: '✅ Multiplicador de boost de nuevo normal (x1) para los nuevos sorteos.',
+  },
+  boost_multiplier_format: {
+    en: 'Current boost multiplier: x$mult. Use /setboostmultiplier followed by a number from 1 to 5, e.g. /setboostmultiplier 2',
+    es: 'Multiplicador de boost actual: x$mult. Usa /setboostmultiplier seguido de un número del 1 al 5, ej. /setboostmultiplier 2',
   },
   entry_value_set: {
     en: '✅ Entry value set to $value for new raffles. Use /setentryvalue 1 to go back to normal.',

@@ -29,9 +29,19 @@ export function entriesLabel(k: number, language = 'en') {
   return `${value} ${loc(value === 1 ? 'entry_one' : 'entry_many', language)}`
 }
 
+/** Boost multiplier of a raffle (1 normally, 2 or 3 on special days) */
+export function multiplierOf(raffle: { boostMultiplier?: number }) {
+  return raffle && raffle.boostMultiplier >= 1 ? raffle.boostMultiplier : 1
+}
+
+/** Entries given by each ⭐ in a raffle: BOOST_STEP × multiplier */
+export function stepOf(raffle: { boostMultiplier?: number }) {
+  return BOOST_STEP * multiplierOf(raffle)
+}
+
 /** "+3 entries" for a pack of n boosts */
-function pctLabel(n: number, language = 'en') {
-  return `+${entriesLabel(BOOST_STEP * n, language)}`
+function pctLabel(n: number, language = 'en', step = BOOST_STEP) {
+  return `+${entriesLabel(step * n, language)}`
 }
 
 /** Value of one entry in a raffle (1 normally, e.g. 1.5 on special days) */
@@ -40,8 +50,8 @@ export function entryValueOf(raffle: { entryValue?: number }) {
 }
 
 /** Total entries with n boosts, e.g. "4 entries" */
-function multLabel(n: number, language = 'en', base = 1) {
-  return entriesLabel(base + BOOST_STEP * n, language)
+function multLabel(n: number, language = 'en', base = 1, step = BOOST_STEP) {
+  return entriesLabel(base + step * n, language)
 }
 
 /** Line shown on the raffle message when entries are worth more than 1 */
@@ -52,8 +62,15 @@ export function entryNote(raffle: { entryValue?: number }, language: string) {
 }
 
 /** Label for one boost, e.g. "+1 entry" */
-export function boostLabel(language = 'en') {
-  return pctLabel(1, language)
+export function boostLabel(language = 'en', step = BOOST_STEP) {
+  return pctLabel(1, language, step)
+}
+
+/** "🔥 Boosts are worth x2 today!" (empty when the multiplier is 1) */
+export function multiplierNote(raffle: { boostMultiplier?: number }, language: string) {
+  const mult = multiplierOf(raffle)
+  if (mult === 1) return ''
+  return loc('boost_multiplier', language).replace('$mult', `${+mult.toFixed(2)}`)
 }
 
 /** Count how many boosts each user bought in a raffle */
@@ -66,8 +83,13 @@ export function boostCounts(raffle: Raffle) {
 }
 
 /** Weight of a participant: entry value + step * boosts */
-export function weightFor(counts: Map<number, number>, id: number, base = 1) {
-  return base + BOOST_STEP * (counts.get(id) || 0)
+export function weightFor(
+  counts: Map<number, number>,
+  id: number,
+  base = 1,
+  step = BOOST_STEP
+) {
+  return base + step * (counts.get(id) || 0)
 }
 
 /** Weighted random index over the given weights */
@@ -84,10 +106,11 @@ export function weightedIndex(weights: number[]) {
 /** Line added to the default raffle message so everybody knows boosts exist */
 export function boostNote(raffle: Raffle, language: string) {
   if (!raffle.boostEnabled) return ''
+  const multNote = multiplierNote(raffle, language)
   return `\n\n${loc('boost_note', language)
     .replace('$price', `${BOOST_PRICE}`)
-    .replace('$mult', boostLabel(language))
-    .replace('$max', `${BOOST_MAX}`)}`
+    .replace('$mult', boostLabel(language, stepOf(raffle)))
+    .replace('$max', `${BOOST_MAX}`)}${multNote ? `\n${multNote}` : ''}`
 }
 
 /** Boost button row for the raffle message */
@@ -159,17 +182,22 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   const options = BOOST_OPTIONS.filter((n) => n <= left)
   const keyboard = options.map((n) => [
     {
-      text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language)}`,
+      text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
       callback_data: `b~${raffleId}~${n}`,
     },
   ])
   return ctx.reply(
-    loc('boost_choose', res.language)
+    `${multiplierNote(res.raffle, res.language)}${
+      multiplierNote(res.raffle, res.language) ? '\n' : ''
+    }${loc('boost_choose', res.language)
       .replace('$free', entriesLabel(entryValueOf(res.raffle), res.language))
-      .replace('$step', `+${entriesLabel(BOOST_STEP, res.language)}`)
-      .replace('$mult', multLabel(res.used, res.language, entryValueOf(res.raffle)))
+      .replace('$step', `+${entriesLabel(stepOf(res.raffle), res.language)}`)
+      .replace(
+        '$mult',
+        multLabel(res.used, res.language, entryValueOf(res.raffle), stepOf(res.raffle))
+      )
       .replace('$used', `${res.used}`)
-      .replace('$max', `${BOOST_MAX}`),
+      .replace('$max', `${BOOST_MAX}`)}`,
     { reply_markup: { inline_keyboard: keyboard } }
   )
 }
@@ -188,16 +216,22 @@ async function sendBoostInvoice(
   await trackBoost({ type: 'invoice', userId: ctx.from.id, raffleId, boosts: n })
   await (ctx.telegram as any).callApi('sendInvoice', {
     chat_id: ctx.chat.id,
-    title: loc('boost_invoice_title', language).replace('$pct', pctLabel(n, language)),
+    title: loc('boost_invoice_title', language).replace(
+      '$pct',
+      pctLabel(n, language, stepOf(res.raffle))
+    ),
     description: loc('boost_invoice_description', language)
-      .replace('$pct', pctLabel(n, language))
-      .replace('$mult', multLabel(res.used + n, language, entryValueOf(res.raffle)))
+      .replace('$pct', pctLabel(n, language, stepOf(res.raffle)))
+      .replace(
+        '$mult',
+        multLabel(res.used + n, language, entryValueOf(res.raffle), stepOf(res.raffle))
+      )
       .replace('$after', `${res.used + n}`)
       .replace('$max', `${BOOST_MAX}`),
     payload: `${PAYLOAD_PREFIX}${raffleId}:${n}`,
     provider_token: '',
     currency: 'XTR',
-    prices: [{ label: `Boost ${pctLabel(n, language)}`, amount: n * BOOST_PRICE }],
+    prices: [{ label: `Boost ${pctLabel(n, language, stepOf(res.raffle))}`, amount: n * BOOST_PRICE }],
   })
 }
 
@@ -214,6 +248,7 @@ async function notifyOwner(
     chatId: number
     mult: string
     messageId?: number
+    step?: number
   }
 ) {
   const admin = parseInt(process.env.ADMIN, 10)
@@ -243,7 +278,7 @@ async function notifyOwner(
       admin,
       `🚀 <b>Nuevo boost</b>\n` +
         `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
-        `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'es')}\n` +
+        `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'es', info.step || BOOST_STEP)}\n` +
         `📢 ${escHtml(where)}\n` +
         `🎯 Ahora tiene: ${info.mult}` +
         (link ? `\n\n🔗 <a href="${link}">Giveaway</a>` : ''),
@@ -316,6 +351,34 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     return ctx.reply(
       loc('entry_value_set', chat.language).replace('$value', `${chat.entryValue}`),
       { disable_notification: true }
+    )
+  })
+
+  // Admins: boost multiplier for new raffles (x1 normal, x2 or x3 on special days)
+  bot.command('setboostmultiplier', async (ctx) => {
+    const chatId = await getChatIdForConfig(ctx)
+    if (!chatId) return
+    const chat = await findChat(chatId)
+    const text = ((ctx.message || ctx.channelPost) as any).text || ''
+    const arg = text.split(/\s+/)[1]
+    const value = arg ? parseFloat(arg.replace(',', '.')) : NaN
+    if (isNaN(value) || value < 1 || value > 5) {
+      return ctx.reply(
+        loc('boost_multiplier_format', chat.language).replace(
+          '$mult',
+          `${+(chat.boostMultiplier || 1).toFixed(2)}`
+        ),
+        { disable_notification: true }
+      )
+    }
+    chat.boostMultiplier = +value.toFixed(2)
+    await chat.save()
+    return ctx.reply(
+      loc(
+        chat.boostMultiplier === 1 ? 'boost_multiplier_off' : 'boost_multiplier_set',
+        chat.language
+      ).replace('$mult', `${chat.boostMultiplier}`),
+      { disable_notification: true, parse_mode: 'HTML' } as any
     )
   })
 
@@ -572,11 +635,15 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       n,
       chatId: res.raffle.chatId,
       messageId: res.raffle.messageId,
-      mult: multLabel(used, 'es', entryValueOf(res.raffle)),
+      step: stepOf(res.raffle),
+      mult: multLabel(used, 'es', entryValueOf(res.raffle), stepOf(res.raffle)),
     })
     return ctx.reply(
       loc('boost_applied', res.language)
-        .replace('$mult', multLabel(used, res.language, entryValueOf(res.raffle)))
+        .replace(
+          '$mult',
+          multLabel(used, res.language, entryValueOf(res.raffle), stepOf(res.raffle))
+        )
         .replace('$used', `${used}`)
         .replace('$max', `${BOOST_MAX}`)
     )

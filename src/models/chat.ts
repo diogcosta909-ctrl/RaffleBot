@@ -26,6 +26,9 @@ export class Chat extends Typegoose {
   // Value of each entry (1 normally, 1.5 or 2 on special days)
   @prop({ default: 1 })
   entryValue?: number
+  // Boost multiplier (1 normally, 2 or 3 on special days)
+  @prop({ default: 1 })
+  boostMultiplier?: number
 
   @prop()
   raffleMessage?: Message
