@@ -36,7 +36,6 @@ export async function startRaffle(ctx: ContextMessageUpdate) {
   // Snapshot boost setting and entry value for this raffle
   raffle.boostEnabled = !!chat.boost
   raffle.entryValue = chat.entryValue > 0 ? chat.entryValue : 1
-  raffle.boostMultiplier = chat.boostMultiplier >= 1 ? chat.boostMultiplier : 1
   await raffle.save()
   // Save raffle message if required
   if (chat.raffleMessage) {

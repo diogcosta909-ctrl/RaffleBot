@@ -29,9 +29,25 @@ export function entriesLabel(k: number, language = 'en') {
   return `${value} ${loc(value === 1 ? 'entry_one' : 'entry_many', language)}`
 }
 
-/** Boost multiplier of a raffle (1 normally, 2 or 3 on special days) */
-export function multiplierOf(raffle: { boostMultiplier?: number }) {
-  return raffle && raffle.boostMultiplier >= 1 ? raffle.boostMultiplier : 1
+// Global boost multiplier (1 normally, 2 or 3 on special days). Applies to every
+// chat and to raffles already running; kept in memory, saved on the owner's chat
+let globalMultiplier = 1
+
+/** Loads the saved global multiplier (called at startup) */
+async function loadMultiplier() {
+  try {
+    const admin = parseInt(process.env.ADMIN, 10)
+    if (!admin) return
+    const chat = await findChat(admin)
+    globalMultiplier = chat.boostMultiplier >= 1 ? chat.boostMultiplier : 1
+  } catch (err) {
+    console.error('Boost multiplier not loaded', err)
+  }
+}
+
+/** Current boost multiplier, the same for every raffle */
+export function multiplierOf(_raffle?: { boostMultiplier?: number }) {
+  return globalMultiplier
 }
 
 /** Entries given by each ⭐ in a raffle: BOOST_STEP × multiplier */
@@ -314,6 +330,7 @@ async function refund(ctx: ContextMessageUpdate, userId: number, chargeId: strin
  * @param bot Bot to setup
  */
 export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
+  loadMultiplier()
   // Admin toggles boost for the chat (works in chat or via /configRaffle)
   bot.command('boost', async (ctx) => {
     const chatId = await getChatIdForConfig(ctx)
@@ -354,31 +371,28 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     )
   })
 
-  // Admins: boost multiplier for new raffles (x1 normal, x2 or x3 on special days)
+  // Bot owner: global boost multiplier (x1 normal, x2 or x3 on special days)
   bot.command('setboostmultiplier', async (ctx) => {
-    const chatId = await getChatIdForConfig(ctx)
-    if (!chatId) return
-    const chat = await findChat(chatId)
-    const text = ((ctx.message || ctx.channelPost) as any).text || ''
+    if (ctx.chat.type !== 'private') return
+    const admin = parseInt(process.env.ADMIN, 10)
+    if (ctx.from.id !== admin) return
+    const chat = await findChat(admin)
+    const text = (ctx.message as any).text || ''
     const arg = text.split(/\s+/)[1]
     const value = arg ? parseFloat(arg.replace(',', '.')) : NaN
     if (isNaN(value) || value < 1 || value > 5) {
       return ctx.reply(
-        loc('boost_multiplier_format', chat.language).replace(
-          '$mult',
-          `${+(chat.boostMultiplier || 1).toFixed(2)}`
-        ),
-        { disable_notification: true }
+        loc('boost_multiplier_format', chat.language).replace('$mult', `${globalMultiplier}`)
       )
     }
-    chat.boostMultiplier = +value.toFixed(2)
+    globalMultiplier = +value.toFixed(2)
+    chat.boostMultiplier = globalMultiplier
     await chat.save()
-    return ctx.reply(
+    return ctx.replyWithHTML(
       loc(
-        chat.boostMultiplier === 1 ? 'boost_multiplier_off' : 'boost_multiplier_set',
+        globalMultiplier === 1 ? 'boost_multiplier_off' : 'boost_multiplier_set',
         chat.language
-      ).replace('$mult', `${chat.boostMultiplier}`),
-      { disable_notification: true, parse_mode: 'HTML' } as any
+      ).replace('$mult', `${globalMultiplier}`)
     )
   })
 
