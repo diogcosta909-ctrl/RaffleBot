@@ -377,6 +377,7 @@ async function notifyOwner(
             stars: info.stars,
             entries: Math.round(info.total),
             mult,
+            boosts: info.n,
           })
           await ctx.telegram.sendPhoto(
             feed,
