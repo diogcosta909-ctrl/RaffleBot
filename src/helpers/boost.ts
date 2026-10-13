@@ -360,11 +360,10 @@ async function notifyOwner(
         const mult = multiplierOf()
         await ctx.telegram.sendMessage(
           feed,
-          `🚀 ${who} bought a Boost\n` +
-            `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'en', step)}` +
-            (mult > 1 ? ` 🔥 x${+mult.toFixed(2)} today!` : '') +
-            `\n🎟 Now has ${entriesLabel(info.total, 'en')}\n` +
-            `📢 ${escHtml(where)}` +
+          `🚀 <b>${who} bought a Boost</b>\n` +
+            `⭐ ${info.stars} Stars · <b>${pctLabel(info.n, 'en', step)}</b>` +
+            (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
+            `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
             (link ? `\n🔗 <a href="${link}">Giveaway</a>` : ''),
           {
             parse_mode: 'HTML',
