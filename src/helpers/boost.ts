@@ -305,12 +305,14 @@ async function notifyOwner(
     n: number
     chatId: number
     mult: string
+    total: number
     messageId?: number
     step?: number
   }
 ) {
   const admin = parseInt(process.env.ADMIN, 10)
-  if (!admin) return
+  const feed = (process.env.BOOST_FEED_CHAT || '').trim()
+  if (!admin && !feed) return
   try {
     const u = ctx.from
     const name = u.username
@@ -332,18 +334,50 @@ async function notifyOwner(
     } catch {
       // keep id
     }
-    await ctx.telegram.sendMessage(
-      admin,
-      `🚀 <b>Nuevo boost</b>\n` +
-        `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
-        `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'es', info.step || BOOST_STEP)}\n` +
-        `📢 ${escHtml(where)}\n` +
-        `🎯 Ahora tiene: ${info.mult}` +
-        (link ? `\n\n🔗 <a href="${link}">Giveaway</a>` : ''),
-      { parse_mode: 'HTML', disable_web_page_preview: true }
-    )
+    const step = info.step || BOOST_STEP
+    if (admin) {
+      try {
+        await ctx.telegram.sendMessage(
+          admin,
+          `🚀 <b>Nuevo boost</b>\n` +
+            `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
+            `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'es', step)}\n` +
+            `📢 ${escHtml(where)}\n` +
+            `🎯 Ahora tiene: ${info.mult}` +
+            (link ? `\n🔗 <a href="${link}">Giveaway</a>` : ''),
+          { parse_mode: 'HTML', disable_web_page_preview: true }
+        )
+      } catch (err) {
+        console.error('Owner notification failed', err)
+      }
+    }
+    // Public feed for participants (BOOST_FEED_CHAT = channel or group id), in English
+    if (feed) {
+      try {
+        const who = u.username
+          ? escHtml(name)
+          : `<a href="tg://user?id=${info.userId}">${escHtml(name)}</a>`
+        const mult = multiplierOf()
+        await ctx.telegram.sendMessage(
+          feed,
+          `🚀 ${who} Bought a Boost\n` +
+            `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'en', step)}` +
+            (mult > 1 ? ` 🔥 x${+mult.toFixed(2)} today!` : '') +
+            `\n🎟 Now has ${entriesLabel(info.total, 'en')}\n` +
+            `📢 ${escHtml(where)}` +
+            (link ? `\n🔗 <a href="${link}">Giveaway</a>` : ''),
+          {
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+            disable_notification: true,
+          } as any
+        )
+      } catch (err) {
+        console.error('Boost feed message failed', err)
+      }
+    }
   } catch (err) {
-    console.error('Owner notification failed', err)
+    console.error('Boost notification failed', err)
   }
 }
 
@@ -699,6 +733,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       messageId: res.raffle.messageId,
       step: stepOf(res.raffle),
       mult: multLabel(value, 'es', entryValueOf(res.raffle)),
+      total: entryValueOf(res.raffle) + BOOST_STEP * value,
     })
     return ctx.reply(
       loc('boost_applied', res.language)
