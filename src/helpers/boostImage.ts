@@ -250,6 +250,7 @@ export async function renderBoostImage(info: {
   boosts?: number
   winner?: boolean
 }): Promise<Buffer> {
+  if (info.winner) return renderWinImage(info)
   const { createCanvas } = loadCanvas()
   const S = 2 // render at 2x for sharpness
   const canvas = createCanvas(372 * S, 300 * S)
@@ -361,6 +362,203 @@ export async function renderBoostImage(info: {
     ctx.fill()
     text(label, 356 - w / 2, 28, '800 12px InterX', '#1b0f00', 'center')
   }
+
+  return canvas.toBuffer('image/png')
+}
+
+/** Small deterministic random generator so the confetti looks the same every time */
+function seeded(seed: number) {
+  let v = seed
+  return () => {
+    v = (v * 16807) % 2147483647
+    return v / 2147483647
+  }
+}
+
+function drawTrophy(ctx: any, cx: number, top: number, h: number) {
+  const w = h * 0.72
+  const gg = ctx.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0)
+  gg.addColorStop(0, '#c98a10')
+  gg.addColorStop(0.35, '#ffe27a')
+  gg.addColorStop(0.6, '#ffc933')
+  gg.addColorStop(1, '#b87a0c')
+  const bw = w * 0.62
+  const bh = h * 0.5
+  // handles
+  ctx.lineWidth = h * 0.06
+  ctx.strokeStyle = '#e0a21c'
+  ctx.beginPath()
+  ctx.arc(cx - bw / 2, top + bh * 0.38, bh * 0.3, Math.PI * 0.5, Math.PI * 1.5)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(cx + bw / 2, top + bh * 0.38, bh * 0.3, -Math.PI * 0.5, Math.PI * 0.5)
+  ctx.stroke()
+  // bowl
+  ctx.beginPath()
+  ctx.moveTo(cx - bw / 2, top)
+  ctx.lineTo(cx + bw / 2, top)
+  ctx.quadraticCurveTo(cx + bw / 2, top + bh * 0.95, cx, top + bh)
+  ctx.quadraticCurveTo(cx - bw / 2, top + bh * 0.95, cx - bw / 2, top)
+  ctx.closePath()
+  ctx.fillStyle = gg
+  ctx.fill()
+  ctx.lineWidth = 1.5
+  ctx.strokeStyle = '#fff3b8'
+  ctx.stroke()
+  // star on the bowl
+  const sg = ctx.createLinearGradient(0, top + bh * 0.2, 0, top + bh * 0.6)
+  sg.addColorStop(0, '#fff8d6')
+  sg.addColorStop(1, '#e6a100')
+  starPath(ctx, cx, top + bh * 0.4, bh * 0.2)
+  ctx.fillStyle = sg
+  ctx.fill()
+  // stem and base
+  ctx.fillStyle = gg
+  ctx.fillRect(cx - h * 0.05, top + bh, h * 0.1, h * 0.2)
+  roundRect(ctx, cx - w * 0.3, top + bh + h * 0.2, w * 0.6, h * 0.1, h * 0.03)
+  ctx.fill()
+  roundRect(ctx, cx - w * 0.4, top + bh + h * 0.3, w * 0.8, h * 0.12, h * 0.03)
+  ctx.fillStyle = '#8a5a08'
+  ctx.fill()
+  ctx.strokeStyle = '#ffe27a'
+  ctx.lineWidth = 1
+  ctx.stroke()
+}
+
+/** Winner card: trophy, WINNER ribbon, one star per Star paid, entries and pack */
+async function renderWinImage(info: {
+  name: string
+  stars: number
+  entries: number
+  boosts?: number
+}): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const S = 2
+  const canvas = createCanvas(372 * S, 300 * S)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(S, S)
+  const t = TIERS[tierFor(info.boosts || info.stars)]
+  const text = (s: string, x: number, y: number, font: string, color: string, ls = '0px') => {
+    ctx.font = font
+    ctx.fillStyle = color
+    ctx.textAlign = 'center'
+    ;(ctx as any).letterSpacing = ls
+    ctx.fillText(s, x, y)
+    ;(ctx as any).letterSpacing = '0px'
+  }
+
+  // Background: golden rays and glow
+  const bg = ctx.createRadialGradient(186, 100, 10, 186, 100, 250)
+  bg.addColorStop(0, '#6b4a0c')
+  bg.addColorStop(1, '#120a02')
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, 372, 300)
+  for (let k = 0; k < 28; k++) {
+    const a = (k / 28) * Math.PI * 2
+    ctx.beginPath()
+    ctx.moveTo(186, 100)
+    ctx.lineTo(186 + Math.cos(a - 0.035) * 320, 100 + Math.sin(a - 0.035) * 320)
+    ctx.lineTo(186 + Math.cos(a + 0.035) * 320, 100 + Math.sin(a + 0.035) * 320)
+    ctx.fillStyle = 'rgba(255,220,120,0.07)'
+    ctx.fill()
+  }
+  const halo = ctx.createRadialGradient(186, 90, 0, 186, 90, 110)
+  halo.addColorStop(0, '#ffd54a66')
+  halo.addColorStop(1, '#ffd54a00')
+  ctx.fillStyle = halo
+  ctx.beginPath()
+  ctx.arc(186, 90, 110, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Confetti
+  const rnd = seeded(5)
+  const colors = ['#ffd54a', '#ffffff', '#ffb300', t.accent, '#ff6ec7']
+  for (let k = 0; k < 60; k++) {
+    ctx.save()
+    ctx.translate(rnd() * 372, rnd() * 250)
+    ctx.rotate(rnd() * 6)
+    ctx.globalAlpha = 0.8
+    ctx.fillStyle = colors[k % 5]
+    ctx.fillRect(-4, -2, 8, 4)
+    ctx.restore()
+  }
+  ctx.globalAlpha = 1
+
+  drawTrophy(ctx, 186, 10, 98)
+
+  // One star per Star paid (colour of the pack)
+  const n = Math.max(1, Math.min(5, info.stars))
+  for (let k = 0; k < n; k++) {
+    const x = 186 + (k - (n - 1) / 2) * 34
+    const y = 128
+    const g = ctx.createLinearGradient(0, y - 13, 0, y + 13)
+    g.addColorStop(0, t.light)
+    g.addColorStop(1, t.accent2)
+    starPath(ctx, x, y, 13)
+    ctx.fillStyle = g
+    ctx.fill()
+    ctx.lineWidth = 1.2
+    ctx.strokeStyle = '#ffffff'
+    ctx.stroke()
+  }
+
+  // Ribbon
+  ctx.fillStyle = '#b8860b'
+  ctx.beginPath()
+  ctx.moveTo(34, 156)
+  ctx.lineTo(70, 156)
+  ctx.lineTo(70, 188)
+  ctx.lineTo(34, 188)
+  ctx.lineTo(46, 172)
+  ctx.closePath()
+  ctx.fill()
+  ctx.beginPath()
+  ctx.moveTo(338, 156)
+  ctx.lineTo(302, 156)
+  ctx.lineTo(302, 188)
+  ctx.lineTo(338, 188)
+  ctx.lineTo(326, 172)
+  ctx.closePath()
+  ctx.fill()
+  const rb = ctx.createLinearGradient(0, 148, 0, 182)
+  rb.addColorStop(0, '#fff0a8')
+  rb.addColorStop(1, '#f0a800')
+  roundRect(ctx, 56, 148, 260, 34, 6)
+  ctx.fillStyle = rb
+  ctx.fill()
+  text('WINNER', 186, 172, '800 20px InterX', '#4a2c00', '8px')
+
+  // Name
+  const name = drawableName(info.name)
+  if (name) {
+    let size = 28
+    ctx.font = `800 ${size}px InterX`
+    while (ctx.measureText(name).width > 320 && size > 14) {
+      size -= 2
+      ctx.font = `800 ${size}px InterX`
+    }
+    text(name, 186, 214, ctx.font, '#ffffff')
+  }
+
+  // Entries and pack
+  roundRect(ctx, 36, 230, 150, 40, 20)
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'
+  ctx.fill()
+  ctx.lineWidth = 1
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+  ctx.stroke()
+  text(`${info.entries} ENTRIES`, 111, 255, '800 15px InterX', '#ffffff', '1px')
+  roundRect(ctx, 198, 230, 138, 40, 20)
+  ctx.fillStyle = t.accent
+  ctx.fill()
+  text(
+    `${info.stars} ${info.stars > 1 ? 'STARS' : 'STAR'} BOOST`,
+    267,
+    255,
+    '800 14px InterX',
+    '#1b0f00',
+    '1px'
+  )
 
   return canvas.toBuffer('image/png')
 }
