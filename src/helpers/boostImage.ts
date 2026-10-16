@@ -147,6 +147,14 @@ const TIERS: Record<number, Tier> = {
     frame: 3, rays: true, sparkles: 12, crown: false, light: '#fff3b8', dark: '#4a3000',
   },
   4: {
+    title: 'ULTRA BOOST',
+    bgInner: '#2a1a66', bgOuter: '#0a0620',
+    header: '#d8c8ff',
+    starTop: '#efe6ff', starBottom: '#9a78f0', starStroke: '#ffffff',
+    accent: '#a98bff', accent2: '#6c4bd8', boxText: '#e6dcff',
+    frame: 4, rays: true, sparkles: 16, crown: false, light: '#e6dcff', dark: '#241552',
+  },
+  5: {
     title: 'LEGENDARY BOOST',
     bgInner: '#7a1fa8', bgOuter: '#14031f',
     header: '#ffe9a8',
@@ -157,7 +165,7 @@ const TIERS: Record<number, Tier> = {
 }
 
 function tierFor(boosts: number) {
-  return boosts >= 10 ? 4 : boosts >= 5 ? 3 : boosts >= 3 ? 2 : 1
+  return Math.min(5, Math.max(1, Math.round(boosts) || 1))
 }
 
 function themedStar(ctx: any, t: Tier, cx: number, cy: number, r: number) {
@@ -203,7 +211,7 @@ function crownIcon(ctx: any, t: Tier, cx: number, cy: number, w: number) {
 
 /** Star positions: 1 star, then pyramids (1+2, 2+3, 1+2+3+4) so the count is always exact */
 function pyramid(n: number, cx: number, cy: number, maxW: number, maxH: number) {
-  const known: Record<number, number[]> = { 1: [1], 3: [1, 2], 5: [2, 3], 10: [1, 2, 3, 4] }
+  const known: Record<number, number[]> = { 1: [1], 2: [2], 3: [1, 2], 4: [2, 2], 5: [2, 3], 10: [1, 2, 3, 4] }
   let rows = known[n]
   if (!rows) {
     rows = []
