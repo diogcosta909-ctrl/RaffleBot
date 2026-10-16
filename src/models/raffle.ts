@@ -26,6 +26,9 @@ export class Raffle extends Typegoose {
   // Multiplier in force when each boost in boostIds was bought (same order)
   @arrayProp({ default: [], items: Number })
   boostMults?: number[]
+  // One entry per boost paid in USDT (user id repeated N times), subset of boostIds
+  @arrayProp({ default: [], items: Number })
+  cryptoIds?: number[]
   // Raffle message layout: 2 = "Boost your odds" block (raffles created from now on)
   @prop({ default: 1 })
   boostLayout?: number

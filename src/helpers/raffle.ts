@@ -501,7 +501,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // The winners are saved, so the participants and boosts are no longer needed
   await RaffleModel.updateOne(
     { _id: (<any>raffle)._id },
-    { $set: { participantsIds: [], boostIds: [] } }
+    { $set: { participantsIds: [], boostIds: [], cryptoIds: [] } }
   )
   // Tell the public boost feed when the (first) winner had bought a Boost
   if (raffle.boostEnabled && winners.length > 0) {
@@ -520,6 +520,8 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           stars: n * BOOST_PRICE,
           boosts: n,
           entries: Math.round(weightFor(values, w.id, base)),
+          crypto:
+            ((raffle as any).cryptoIds || []).filter((id: number) => id === w.id).length * 2 > n,
         }
       ).catch(() => undefined)
     }

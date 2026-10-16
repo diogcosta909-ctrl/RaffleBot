@@ -260,7 +260,7 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
     ]
     if (cryptoEnabled()) {
       row.push({
-        text: `💎 ${cryptoPriceLabel(n)} USDT`,
+        text: `🟢 ${cryptoPriceLabel(n)} USDT`,
         callback_data: `c~${raffleId}~${n}`,
       })
     }
@@ -320,7 +320,7 @@ export async function notifyBoostWin(
   telegram: any,
   raffle: { chatId: number; messageId?: number },
   winner: { id: number; username?: string; name: string },
-  info: { stars: number; entries: number; boosts?: number; mult?: number }
+  info: { stars: number; entries: number; boosts?: number; mult?: number; crypto?: boolean }
 ) {
   const feed = (process.env.BOOST_FEED_CHAT || '').trim()
   if (!feed) return
@@ -344,7 +344,7 @@ export async function notifyBoostWin(
       : `<a href="tg://user?id=${winner.id}">${escHtml(winner.name)}</a>`
     const text =
       `🏆 <b>${who} won a giveaway with a Boost!</b>\n` +
-      `⭐ ${info.stars} Stars · <b>${entriesLabel(info.entries, 'en')}</b>` +
+      `${info.crypto ? '🟢 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
       (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
     let sent = false
     try {
@@ -354,6 +354,7 @@ export async function notifyBoostWin(
         entries: info.entries,
         boosts: info.boosts,
         winner: true,
+        crypto: !!info.crypto,
       })
       await telegram.sendPhoto(
         feed,
@@ -423,7 +424,7 @@ async function notifyOwner(
           `🚀 <b>Nuevo boost</b>\n` +
             `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
             `${
-              info.crypto ? `💎 ${info.crypto} USDT (BSC)` : `⭐ ${info.stars} Stars`
+              info.crypto ? `🟢 ${info.crypto} USDT (BSC)` : `⭐ ${info.stars} Stars`
             } · ${pctLabel(info.n, 'es', step)}\n` +
             `📢 ${escHtml(where)}\n` +
             `🎯 Ahora tiene: ${info.mult}` +
@@ -443,7 +444,7 @@ async function notifyOwner(
         const mult = multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-          `${info.crypto ? '💎 Crypto' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
+          `${info.crypto ? '🟢 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
@@ -461,6 +462,8 @@ async function notifyOwner(
             entries: Math.round(info.total),
             mult,
             boosts: info.n,
+            crypto: !!info.crypto,
+            usdt: info.crypto,
           })
           await ctx.telegram.sendPhoto(
             feed,
@@ -530,7 +533,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
         await telegram.sendMessage(
           admin,
           `⚠️ Pago crypto NO aplicado (${key})\n` +
-            `👤 ${userId}\n💎 ${amount} USDT\n🔗 https://bscscan.com/tx/${txHash}\n` +
+            `👤 ${userId}\n🟢 ${amount} USDT\n🔗 https://bscscan.com/tx/${txHash}\n` +
             `Hay que devolverlo a mano.`,
           { disable_web_page_preview: true }
         )
@@ -546,6 +549,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       $push: {
         boostIds: { $each: Array(n).fill(userId) },
         boostMults: { $each: Array(n).fill(multiplierOf()) },
+        cryptoIds: { $each: Array(n).fill(userId) },
       },
     }
   )
@@ -752,7 +756,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
       `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n` +
       (cryptoEnabled()
-        ? `💎 Crypto: <b>${formatUnits(cryptoTotal.units)} USDT</b> (${cryptoTotal.count} pagos)\n`
+        ? `🟢 Crypto: <b>${formatUnits(cryptoTotal.units)} USDT</b> (${cryptoTotal.count} pagos)\n`
         : '') +
       `\n` +
       funnelText +
@@ -874,14 +878,20 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         raffleId,
         boosts: n,
       })
-      return ctx.replyWithHTML(
-        loc('crypto_invoice', res.language)
-          .replace('$pct', pctLabel(n, res.language, stepOf(res.raffle)))
-          .replace('$amount', formatUnits(order.amountUnits))
-          .replace('$address', CRYPTO_WALLET)
-          .replace('$min', `${CRYPTO_EXPIRY_MIN}`),
-        { disable_web_page_preview: true }
-      )
+      const pct = pctLabel(n, res.language, stepOf(res.raffle))
+      const amount = formatUnits(order.amountUnits)
+      const caption = loc('crypto_invoice', res.language)
+        .replace('$pct', pct)
+        .replace('$amount', amount)
+        .replace('$address', CRYPTO_WALLET)
+        .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
+      try {
+        const image = await require('./boostImage').renderUsdtImage({ amount, pct })
+        return await ctx.replyWithPhoto({ source: image }, { caption, parse_mode: 'HTML' } as any)
+      } catch (err) {
+        console.error('USDT image failed, sending text', err)
+      }
+      return ctx.replyWithHTML(caption, { disable_web_page_preview: true })
     } catch (err) {
       console.error(err)
     }

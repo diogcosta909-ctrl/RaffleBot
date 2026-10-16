@@ -249,8 +249,11 @@ export async function renderBoostImage(info: {
   mult?: number
   boosts?: number
   winner?: boolean
+  crypto?: boolean
+  usdt?: string
 }): Promise<Buffer> {
   if (info.winner) return renderWinImage(info)
+  if (info.crypto) return renderCryptoImage(info)
   const { createCanvas } = loadCanvas()
   const S = 2 // render at 2x for sharpness
   const canvas = createCanvas(372 * S, 300 * S)
@@ -431,8 +434,11 @@ async function renderWinImage(info: {
   stars: number
   entries: number
   boosts?: number
+  crypto?: boolean
 }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
+  const cr = !!info.crypto
+  const logo = cr ? await usdtLogo() : null
   const S = 2
   const canvas = createCanvas(372 * S, 300 * S)
   const ctx = canvas.getContext('2d')
@@ -449,8 +455,8 @@ async function renderWinImage(info: {
 
   // Background: golden rays and glow
   const bg = ctx.createRadialGradient(186, 100, 10, 186, 100, 250)
-  bg.addColorStop(0, '#6b4a0c')
-  bg.addColorStop(1, '#120a02')
+  bg.addColorStop(0, cr ? '#0f4a38' : '#6b4a0c')
+  bg.addColorStop(1, cr ? '#05100c' : '#120a02')
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, 372, 300)
   for (let k = 0; k < 28; k++) {
@@ -459,12 +465,12 @@ async function renderWinImage(info: {
     ctx.moveTo(186, 100)
     ctx.lineTo(186 + Math.cos(a - 0.035) * 320, 100 + Math.sin(a - 0.035) * 320)
     ctx.lineTo(186 + Math.cos(a + 0.035) * 320, 100 + Math.sin(a + 0.035) * 320)
-    ctx.fillStyle = 'rgba(255,220,120,0.07)'
+    ctx.fillStyle = cr ? 'rgba(127,224,191,0.07)' : 'rgba(255,220,120,0.07)'
     ctx.fill()
   }
   const halo = ctx.createRadialGradient(186, 90, 0, 186, 90, 110)
-  halo.addColorStop(0, '#ffd54a66')
-  halo.addColorStop(1, '#ffd54a00')
+  halo.addColorStop(0, cr ? '#26a17b66' : '#ffd54a66')
+  halo.addColorStop(1, cr ? '#26a17b00' : '#ffd54a00')
   ctx.fillStyle = halo
   ctx.beginPath()
   ctx.arc(186, 90, 110, 0, Math.PI * 2)
@@ -472,7 +478,7 @@ async function renderWinImage(info: {
 
   // Confetti
   const rnd = seeded(5)
-  const colors = ['#ffd54a', '#ffffff', '#ffb300', t.accent, '#ff6ec7']
+  const colors = cr ? ['#26a17b', '#ffffff', '#7fe0bf', '#ffd54a', '#1d7f61'] : ['#ffd54a', '#ffffff', '#ffb300', t.accent, '#ff6ec7']
   for (let k = 0; k < 60; k++) {
     ctx.save()
     ctx.translate(rnd() * 372, rnd() * 250)
@@ -491,6 +497,15 @@ async function renderWinImage(info: {
   for (let k = 0; k < n; k++) {
     const x = 186 + (k - (n - 1) / 2) * 34
     const y = 128
+    if (cr) {
+      ctx.drawImage(logo, x - 14, y - 14, 28, 28)
+      ctx.lineWidth = 1.2
+      ctx.strokeStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.arc(x, y, 14, 0, Math.PI * 2)
+      ctx.stroke()
+      continue
+    }
     const g = ctx.createLinearGradient(0, y - 13, 0, y + 13)
     g.addColorStop(0, t.light)
     g.addColorStop(1, t.accent2)
@@ -503,7 +518,7 @@ async function renderWinImage(info: {
   }
 
   // Ribbon
-  ctx.fillStyle = '#b8860b'
+  ctx.fillStyle = cr ? '#1d7f61' : '#b8860b'
   ctx.beginPath()
   ctx.moveTo(34, 156)
   ctx.lineTo(70, 156)
@@ -521,12 +536,12 @@ async function renderWinImage(info: {
   ctx.closePath()
   ctx.fill()
   const rb = ctx.createLinearGradient(0, 148, 0, 182)
-  rb.addColorStop(0, '#fff0a8')
-  rb.addColorStop(1, '#f0a800')
+  rb.addColorStop(0, cr ? '#b6f5df' : '#fff0a8')
+  rb.addColorStop(1, cr ? '#26a17b' : '#f0a800')
   roundRect(ctx, 56, 148, 260, 34, 6)
   ctx.fillStyle = rb
   ctx.fill()
-  text('WINNER', 186, 172, '800 20px InterX', '#4a2c00', '8px')
+  text('WINNER', 186, 172, '800 20px InterX', cr ? '#04251b' : '#4a2c00', '8px')
 
   // Name
   const name = drawableName(info.name)
@@ -549,16 +564,148 @@ async function renderWinImage(info: {
   ctx.stroke()
   text(`${info.entries} ENTRIES`, 111, 255, '800 15px InterX', '#ffffff', '1px')
   roundRect(ctx, 198, 230, 138, 40, 20)
-  ctx.fillStyle = t.accent
+  ctx.fillStyle = cr ? '#26a17b' : t.accent
   ctx.fill()
   text(
-    `${info.stars} ${info.stars > 1 ? 'STARS' : 'STAR'} BOOST`,
+    cr ? 'USDT BOOST' : `${info.stars} ${info.stars > 1 ? 'STARS' : 'STAR'} BOOST`,
     267,
     255,
     '800 14px InterX',
-    '#1b0f00',
+    cr ? '#04130e' : '#1b0f00',
     '1px'
   )
 
+  return canvas.toBuffer('image/png')
+}
+
+/** USDT logo supplied by the owner (assets/usdt.png) */
+async function usdtLogo() {
+  const { loadImage } = loadCanvas()
+  return loadImage(path.join(__dirname, '..', '..', 'assets', 'usdt.png'))
+}
+
+/** Banner for the crypto payment instructions: logo, amount and network */
+export async function renderUsdtImage(info: { amount: string; pct: string }): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const logo = await usdtLogo()
+  const S = 2
+  const W = 372
+  const H = 190
+  const canvas = createCanvas(W * S, H * S)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(S, S)
+  const bg = ctx.createLinearGradient(0, 0, W, H)
+  bg.addColorStop(0, '#0f2a24')
+  bg.addColorStop(1, '#07120f')
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, W, H)
+  const halo = ctx.createRadialGradient(W / 2, 62, 4, W / 2, 62, 120)
+  halo.addColorStop(0, 'rgba(38,161,123,0.55)')
+  halo.addColorStop(1, 'rgba(38,161,123,0)')
+  ctx.fillStyle = halo
+  ctx.fillRect(0, 0, W, H)
+  ctx.drawImage(logo, W / 2 - 34, 22, 68, 68)
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '28px InterX'
+  ctx.fillText(`${info.amount} USDT`, W / 2, 130)
+  ctx.fillStyle = '#7fe0bf'
+  ctx.font = '12px InterB'
+  ctx.fillText(`${info.pct.toUpperCase()}  ·  BNB SMART CHAIN (BEP20)`, W / 2, 158)
+  return canvas.toBuffer('image/png')
+}
+
+/** Feed card for purchases paid in USDT: green Tether look, one coin (logo) per pack unit */
+async function renderCryptoImage(info: { name: string; entries: number; mult?: number; boosts?: number; stars: number; usdt?: string }) {
+  const { createCanvas } = loadCanvas()
+  const logo = await usdtLogo()
+  const S = 2
+  const canvas = createCanvas(372 * S, 300 * S)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(S, S)
+  const G = '#26a17b'
+  const L = '#7fe0bf'
+  const n = Math.max(1, Math.round(info.boosts || info.stars || 1))
+  const t = TIERS[tierFor(n)]
+  const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
+    ctx.font = font
+    ctx.fillStyle = color
+    ctx.textAlign = align
+    ;(ctx as any).letterSpacing = ls
+    ctx.fillText(s, x, y)
+    ;(ctx as any).letterSpacing = '0px'
+  }
+  ctx.fillStyle = '#05100c'
+  ctx.fillRect(0, 0, 372, 300)
+  const bg = ctx.createRadialGradient(186, 112, 10, 186, 112, 230)
+  bg.addColorStop(0, '#0f3a2e')
+  bg.addColorStop(1, '#05100c')
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, 372, 300)
+  // Circuit-like diagonal lines instead of rays
+  ctx.strokeStyle = 'rgba(38,161,123,0.10)'
+  ctx.lineWidth = 1
+  for (let k = -300; k < 400; k += 22) {
+    ctx.beginPath()
+    ctx.moveTo(k, 0)
+    ctx.lineTo(k + 300, 300)
+    ctx.stroke()
+  }
+  const h = ctx.createRadialGradient(186, 118, 0, 186, 118, 120)
+  h.addColorStop(0, 'rgba(38,161,123,0.38)')
+  h.addColorStop(1, 'rgba(38,161,123,0)')
+  ctx.fillStyle = h
+  ctx.fillRect(0, 0, 372, 300)
+
+  const name = drawableName(info.name)
+  if (name) {
+    let size = 22
+    ctx.font = `800 ${size}px InterX`
+    while (ctx.measureText(name).width > 300 && size > 14) {
+      size -= 2
+      ctx.font = `800 ${size}px InterX`
+    }
+    text(name, 186, 36, ctx.font, '#ffffff', 'center')
+  }
+  text(`bought a ${t.title.toLowerCase()} with USDT`, 186, 54, '700 12px InterB', L, 'center', '1px')
+
+  for (const [x, y, r] of pyramid(n, 186, 126, 260, 108)) {
+    ctx.drawImage(logo, x - r, y - r, r * 2, r * 2)
+    ctx.lineWidth = Math.max(1.2, r * 0.07)
+    ctx.strokeStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  ctx.fillStyle = G
+  ctx.globalAlpha = 0.4
+  ctx.fillRect(36, 188, 300, 1)
+  ctx.globalAlpha = 1
+  roundRect(ctx, 36, 200, 300, 76, 16)
+  const bx = ctx.createLinearGradient(0, 200, 0, 276)
+  bx.addColorStop(0, G + '40')
+  bx.addColorStop(1, G + '0d')
+  ctx.fillStyle = bx
+  ctx.fill()
+  ctx.lineWidth = 1.2
+  ctx.strokeStyle = G
+  ctx.stroke()
+  const entText = `${info.entries}`
+  text(entText, 70, 254, '800 54px InterX', '#ffffff', 'left')
+  ctx.font = '800 54px InterX'
+  const ew = ctx.measureText(entText).width
+  text('ENTRIES NOW', 80 + ew, 238, '800 13px InterX', L, 'left', '2px')
+  text(info.usdt ? `for ${info.usdt} USDT` : 'paid in USDT', 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
+
+  if (info.mult && info.mult > 1) {
+    const label = `x${+info.mult.toFixed(2)} TODAY`
+    ctx.font = '800 12px InterX'
+    const w = ctx.measureText(label).width + 20
+    roundRect(ctx, 356 - w, 12, w, 24, 12)
+    ctx.fillStyle = G
+    ctx.fill()
+    text(label, 356 - w / 2, 28, '800 12px InterX', '#04130e', 'center')
+  }
   return canvas.toBuffer('image/png')
 }

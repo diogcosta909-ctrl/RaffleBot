@@ -465,8 +465,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 ¡Boost aplicado! Ahora tienes $mult en este sorteo ($used/$max boosts).',
   },
   crypto_invoice: {
-    en: '💎 <b>Pay with USDT</b> ($pct)\n\nSend exactly:\n<code>$amount</code> USDT\n\nTo this address (<b>BNB Smart Chain, BEP20</b> only):\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through BSC (BEP20). Valid for $min minutes.\n\n✅ Your boost is applied automatically 1-2 minutes after the transfer.',
-    es: '💎 <b>Pagar con USDT</b> ($pct)\n\nEnvía exactamente:\n<code>$amount</code> USDT\n\nA esta dirección (solo red <b>BNB Smart Chain, BEP20</b>):\n<code>$address</code>\n\n⚠️ El importe exacto identifica tu pago, envíalo tal cual y solo por BSC (BEP20). Válido $min minutos.\n\n✅ Tu boost se aplica automáticamente 1-2 minutos después de la transferencia.',
+    en: '🟢 <b>Pay with USDT</b> ($pct)\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through BSC (BEP20). Valid for $min minutes.\n\n✅ Your boost is applied automatically 1-2 minutes after the transfer.',
+    es: '🟢 <b>Pagar con USDT</b> ($pct)\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>BNB Smart Chain, BEP20</b>:\n<code>$address</code>\n\n⚠️ El importe exacto identifica tu pago, envíalo tal cual y solo por BSC (BEP20). Válido $min minutos.\n\n✅ Tu boost se aplica automáticamente 1-2 minutos después de la transferencia.',
   },
   crypto_failed: {
     en: 'We received your crypto payment but could not apply the boost. Contact $contact and send this transaction hash:\n<code>$hash</code>',
