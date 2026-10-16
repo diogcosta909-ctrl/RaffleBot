@@ -511,10 +511,10 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     const n = counts.get(firstId) || 0
     boostSummary = `\n\n${
       n > 0
-        ? loc('winner1_boosted', chat.language)
+        ? loc('winner_boosted', chat.language)
             .replace('$stars', `${n * BOOST_PRICE}`)
             .replace('$mult', entriesLabel(weightFor(values, firstId, base), chat.language))
-        : loc('winner1_free', chat.language)
+        : loc('winner_free', chat.language)
     }`
   }
   // Announce winner
