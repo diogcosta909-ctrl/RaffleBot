@@ -27,8 +27,6 @@ export function cryptoEnabled() {
 }
 
 /** Units of 0.0001 USDT for a pack of n boosts (without the unique tail) */
-const CRYPTO_TAILS = 15
-
 function unitsFor(n: number) {
   return Math.round(n * CRYPTO_PRICE * 10000)
 }
@@ -114,24 +112,13 @@ export async function createOrder(info: {
   })
   if (existing) return existing
   const base = unitsFor(info.boosts)
-  // Pack price + a small tail (0.0001 to 0.0015). No limit on pending orders: a free tail is
-  // used when there is one, otherwise the least used tail is shared (oldest order matches first)
+  // Pack price + the lowest free tail: 0.0201, 0.0202, 0.0203... (grows only when many are open)
   const grace = new Date(now.getTime() - 10 * 60000)
   const taken = (
     await CryptoOrderModel.find({ status: 'pending', expiresAt: { $gt: grace } }).select('amountUnits')
   ).map((o: any) => o.amountUnits)
-  const used = (u: number) => taken.filter((x: number) => x === u).length
-  let best = 0
-  const options: number[] = []
-  for (let t = 1; t <= CRYPTO_TAILS; t++) {
-    const c = used(base + t)
-    if (!options.length || c < best) {
-      best = c
-      options.length = 0
-    }
-    if (c === best) options.push(base + t)
-  }
-  const units = options[Math.floor(Math.random() * options.length)]
+  let units = base + 1
+  while (taken.indexOf(units) >= 0) units++
   return CryptoOrderModel.create({
     ...info,
     amountUnits: units,
