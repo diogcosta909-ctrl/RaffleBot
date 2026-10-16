@@ -502,11 +502,21 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     { _id: (<any>raffle)._id },
     { $set: { participantsIds: [], boostIds: [] } }
   )
-  // Boost transparency for the announcement
-  const boostedMark = (id: number) =>
-    raffle.boostEnabled && (counts.get(id) || 0) > 0 ? ' 🚀' : ''
-  // No summary line: each boosted winner is marked with 🚀 next to the name
-  const boostSummary = ''
+  // Several winners: the first one is the real winner and the rest are substitutes,
+  // so the Boost note only talks about winner #1
+  const boostedMark = (_id: number) => ''
+  let boostSummary = ''
+  if (raffle.boostEnabled && winners.length > 1) {
+    const firstId = winners[0].winner.user.id
+    const n = counts.get(firstId) || 0
+    boostSummary = `\n\n${
+      n > 0
+        ? loc('winner1_boosted', chat.language)
+            .replace('$stars', `${n * BOOST_PRICE}`)
+            .replace('$mult', entriesLabel(weightFor(values, firstId, base), chat.language))
+        : loc('winner1_free', chat.language)
+    }`
+  }
   // Announce winner
   if (winners.length == 1) {
     const winner = winners[0].winner
