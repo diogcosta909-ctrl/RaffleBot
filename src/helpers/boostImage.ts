@@ -578,10 +578,10 @@ async function renderWinImage(info: {
   return canvas.toBuffer('image/png')
 }
 
-/** USDT logo supplied by the owner (assets/usdt.png) */
+/** USDT logo supplied by the owner (embedded in usdtLogo.ts) */
 async function usdtLogo() {
   const { loadImage } = loadCanvas()
-  return loadImage(path.join(__dirname, '..', '..', 'assets', 'usdt.png'))
+  return loadImage(Buffer.from(require('./usdtLogo').USDT_LOGO_BASE64, 'base64'))
 }
 
 /** Banner for the crypto payment instructions: logo, amount and network */
