@@ -232,6 +232,7 @@ function pyramid(n: number, cx: number, cy: number, maxW: number, maxH: number) 
  * @param entries total entries the person has now
  * @param mult active multiplier (shows a "x2 today" tag when above 1)
  * @param boosts boosts bought in this purchase (picks the look)
+ * @param winner draws the winner version (crown + WINNER) instead of the purchase one
  */
 export async function renderBoostImage(info: {
   name: string
@@ -239,6 +240,7 @@ export async function renderBoostImage(info: {
   entries: number
   mult?: number
   boosts?: number
+  winner?: boolean
 }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const S = 2 // render at 2x for sharpness
@@ -284,21 +286,31 @@ export async function renderBoostImage(info: {
   }
   halo(186, 112, 120, t.accent, '55')
 
-  // Name and pack
+  // Name and pack (winner version: crown + WINNER, smaller pyramid)
+  const win = !!info.winner
+  if (win) {
+    crownIcon(ctx, t, 186, 26, 40)
+    text('WINNER', 186, 60, '800 12px InterX', t.accent, 'center', '6px')
+  }
   const name = drawableName(info.name)
   if (name) {
-    let size = 22
+    let size = win ? 26 : 22
     ctx.font = `800 ${size}px InterX`
     while (ctx.measureText(name).width > 300 && size > 14) {
       size -= 2
       ctx.font = `800 ${size}px InterX`
     }
-    text(name, 186, 36, ctx.font, '#ffffff', 'center')
+    text(name, 186, win ? 90 : 36, ctx.font, '#ffffff', 'center')
   }
-  text(`bought a ${t.title.toLowerCase()}`, 186, 54, '700 12px InterB', t.accent, 'center', '1px')
+  if (!win) {
+    text(`bought a ${t.title.toLowerCase()}`, 186, 54, '700 12px InterB', t.accent, 'center', '1px')
+  }
 
   // One star per Star paid
-  for (const [x, y, r] of pyramid(Math.max(1, info.stars), 186, 118, 260, 120)) {
+  const stars = win
+    ? pyramid(Math.max(1, info.stars), 186, 141, 220, 76)
+    : pyramid(Math.max(1, info.stars), 186, 118, 260, 120)
+  for (const [x, y, r] of stars) {
     const g = ctx.createLinearGradient(0, y - r, 0, y + r)
     g.addColorStop(0, t.light)
     g.addColorStop(1, t.accent2)
@@ -328,8 +340,8 @@ export async function renderBoostImage(info: {
   text(entText, 70, 254, '800 54px InterX', '#ffffff', 'left')
   ctx.font = '800 54px InterX'
   const ew = ctx.measureText(entText).width
-  text('ENTRIES NOW', 80 + ew, 238, '800 13px InterX', t.accent, 'left', '2px')
-  text(`for ${info.stars} ${info.stars > 1 ? 'stars' : 'star'}`, 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
+  text(win ? 'ENTRIES' : 'ENTRIES NOW', 80 + ew, 238, '800 13px InterX', t.accent, 'left', '2px')
+  text(`${win ? 'won with' : 'for'} ${info.stars} ${info.stars > 1 ? 'stars' : 'star'}`, 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
 
   // Multiplier tag
   if (info.mult && info.mult > 1) {

@@ -518,6 +518,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         },
         {
           stars: n * BOOST_PRICE,
+          boosts: n,
           entries: Math.round(weightFor(values, w.id, base)),
         }
       ).catch(() => undefined)

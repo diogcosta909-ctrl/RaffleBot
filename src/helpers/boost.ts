@@ -301,7 +301,7 @@ export async function notifyBoostWin(
   telegram: any,
   raffle: { chatId: number; messageId?: number },
   winner: { id: number; username?: string; name: string },
-  info: { stars: number; entries: number }
+  info: { stars: number; entries: number; boosts?: number; mult?: number }
 ) {
   const feed = (process.env.BOOST_FEED_CHAT || '').trim()
   if (!feed) return
@@ -327,11 +327,31 @@ export async function notifyBoostWin(
       `🏆 <b>${who} won a giveaway with a Boost!</b>\n` +
       `⭐ ${info.stars} Stars · <b>${entriesLabel(info.entries, 'en')}</b>` +
       (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
-    await telegram.sendMessage(feed, text, {
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-      disable_notification: true,
-    })
+    let sent = false
+    try {
+      const image = await require('./boostImage').renderBoostImage({
+        name: winner.username ? `@${winner.username}` : winner.name,
+        stars: info.stars,
+        entries: info.entries,
+        boosts: info.boosts,
+        winner: true,
+      })
+      await telegram.sendPhoto(
+        feed,
+        { source: image },
+        { caption: text, parse_mode: 'HTML', disable_notification: true }
+      )
+      sent = true
+    } catch (err) {
+      console.error('Boost win image failed, sending text', err)
+    }
+    if (!sent) {
+      await telegram.sendMessage(feed, text, {
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+        disable_notification: true,
+      })
+    }
   } catch (err) {
     console.error('Boost win feed message failed', err)
   }
