@@ -296,6 +296,47 @@ async function sendBoostInvoice(
 const escHtml = (t: string) =>
   t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
+/** Public feed message when the (first) winner of a giveaway had bought a Boost */
+export async function notifyBoostWin(
+  telegram: any,
+  raffle: { chatId: number; messageId?: number },
+  winner: { id: number; username?: string; name: string },
+  info: { stars: number; entries: number }
+) {
+  const feed = (process.env.BOOST_FEED_CHAT || '').trim()
+  if (!feed) return
+  try {
+    let link = ''
+    try {
+      const c: any = await telegram.getChat(raffle.chatId)
+      if (raffle.messageId) {
+        const internal = `${raffle.chatId}`.replace(/^-100/, '')
+        link = c.username
+          ? `https://t.me/${c.username}/${raffle.messageId}`
+          : `${raffle.chatId}`.startsWith('-100')
+          ? `https://t.me/c/${internal}/${raffle.messageId}`
+          : ''
+      }
+    } catch {
+      // no link
+    }
+    const who = winner.username
+      ? escHtml(`@${winner.username}`)
+      : `<a href="tg://user?id=${winner.id}">${escHtml(winner.name)}</a>`
+    const text =
+      `🏆 <b>${who} won a giveaway with a Boost!</b>\n` +
+      `⭐ ${info.stars} Stars · <b>${entriesLabel(info.entries, 'en')}</b>` +
+      (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
+    await telegram.sendMessage(feed, text, {
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      disable_notification: true,
+    })
+  } catch (err) {
+    console.error('Boost win feed message failed', err)
+  }
+}
+
 /** Private notification to the bot owner (ADMIN) for every paid boost */
 async function notifyOwner(
   ctx: ContextMessageUpdate,

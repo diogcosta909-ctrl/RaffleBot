@@ -16,6 +16,7 @@ import {
   BOOST_PRICE,
   BOOST_STEP,
   entriesLabel,
+  notifyBoostWin,
   entryValueOf,
   boostValues,
   boostBlock,
@@ -502,6 +503,26 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     { _id: (<any>raffle)._id },
     { $set: { participantsIds: [], boostIds: [] } }
   )
+  // Tell the public boost feed when the (first) winner had bought a Boost
+  if (raffle.boostEnabled && winners.length > 0) {
+    const w = winners[0].winner.user
+    const n = counts.get(w.id) || 0
+    if (n > 0) {
+      notifyBoostWin(
+        ctx.telegram,
+        raffle,
+        {
+          id: w.id,
+          username: w.username,
+          name: `${w.first_name}${w.last_name ? ` ${w.last_name}` : ''}`,
+        },
+        {
+          stars: n * BOOST_PRICE,
+          entries: Math.round(weightFor(values, w.id, base)),
+        }
+      ).catch(() => undefined)
+    }
+  }
   // Several winners: the first one is the real winner and the rest are substitutes,
   // so the Boost note only talks about winner #1
   const boostedMark = (_id: number) => ''
