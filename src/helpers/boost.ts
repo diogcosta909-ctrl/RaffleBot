@@ -153,11 +153,16 @@ export function weightedIndex(weights: number[]) {
 }
 
 /** Line added to the default raffle message so everybody knows boosts exist */
+/** "1⭐" or, when crypto is on, "1⭐ / 0.02 USDT" (price of one boost unit) */
+function priceTag() {
+  return `${BOOST_PRICE}⭐${cryptoEnabled() ? ` / ${cryptoPriceLabel(1)} USDT` : ''}`
+}
+
 export function boostNote(raffle: Raffle, language: string) {
   if (!raffle.boostEnabled) return ''
   const multNote = multiplierNote(raffle, language)
   return `\n\n${loc('boost_note', language)
-    .replace('$price', `${BOOST_PRICE}`)
+    .replace('$price⭐', priceTag())
     .replace('$mult', boostLabel(language, stepOf(raffle)))
     .replace('$max', `${maxBoosts()}`)}${multNote ? `\n${multNote}` : ''}`
 }
@@ -170,7 +175,7 @@ export function boostNote(raffle: Raffle, language: string) {
 export function boostBlock(language: string, extra: number) {
   const n = Math.round(stepOf())
   const rate = loc(n === 1 ? 'boost_rate_one' : 'boost_rate_many', language)
-    .replace('$price', `${BOOST_PRICE}`)
+    .replace('$price⭐', priceTag())
     .replace('$n', `${n}`)
   const tag =
     multiplierOf() > 1
@@ -187,7 +192,7 @@ export function boostBlock(language: string, extra: number) {
 export function boostButton(raffle: Raffle & { id?: string }, language: string) {
   return [
     {
-      text: `${loc('boost_button', language)} ⭐`,
+      text: `${loc('boost_button', language)} ⭐${cryptoEnabled() ? ' / 🟢 USDT' : ''}`,
       callback_data: `b~${raffle.id}`,
     },
   ]
