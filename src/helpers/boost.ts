@@ -3,8 +3,18 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { RaffleModel, Raffle } from '../models'
 import { findChat, ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
+import { CryptoOrderModel } from '../models/cryptoOrder'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { acceptTerms, hasAcceptedTerms, termsText } from './terms'
+import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
+import {
+  cryptoEnabled,
+  cryptoPriceLabel,
+  createOrder,
+  formatUnits,
+  startCryptoWatcher,
+  CRYPTO_WALLET,
+  CRYPTO_EXPIRY_MIN,
+} from './cryptoPay'
 import { getChatIdForConfig } from './getChatIdForConfig'
 import { loc } from './locale'
 
@@ -241,12 +251,21 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   await trackBoost({ type: 'menu', userId: ctx.from.id, raffleId })
   const left = maxBoosts() - res.used
   const options = BOOST_OPTIONS.filter((n) => n <= left)
-  const keyboard = options.map((n) => [
-    {
-      text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
-      callback_data: `b~${raffleId}~${n}`,
-    },
-  ])
+  const keyboard = options.map((n) => {
+    const row: any[] = [
+      {
+        text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+        callback_data: `b~${raffleId}~${n}`,
+      },
+    ]
+    if (cryptoEnabled()) {
+      row.push({
+        text: `💎 ${cryptoPriceLabel(n)} USDT`,
+        callback_data: `c~${raffleId}~${n}`,
+      })
+    }
+    return row
+  })
   return ctx.reply(
     `${multiplierNote(res.raffle, res.language)}${
       multiplierNote(res.raffle, res.language) ? '\n' : ''
@@ -359,8 +378,9 @@ export async function notifyBoostWin(
 
 /** Private notification to the bot owner (ADMIN) for every paid boost */
 async function notifyOwner(
-  ctx: ContextMessageUpdate,
+  ctx: any,
   info: {
+    crypto?: string
     userId: number
     stars: number
     n: number
@@ -402,7 +422,9 @@ async function notifyOwner(
           admin,
           `🚀 <b>Nuevo boost</b>\n` +
             `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
-            `⭐ ${info.stars} Stars · ${pctLabel(info.n, 'es', step)}\n` +
+            `${
+              info.crypto ? `💎 ${info.crypto} USDT (BSC)` : `⭐ ${info.stars} Stars`
+            } · ${pctLabel(info.n, 'es', step)}\n` +
             `📢 ${escHtml(where)}\n` +
             `🎯 Ahora tiene: ${info.mult}` +
             (link ? `\n🔗 <a href="${link}">Giveaway</a>` : ''),
@@ -421,7 +443,7 @@ async function notifyOwner(
         const mult = multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-          `⭐ ${info.stars} Stars · <b>${pctLabel(info.n, 'en', step)}</b>` +
+          `${info.crypto ? '💎 Crypto' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
@@ -478,6 +500,98 @@ async function refund(ctx: ContextMessageUpdate, userId: number, chargeId: strin
   } catch (err) {
     console.error('Refund failed', chargeId, err)
     return false
+  }
+}
+
+/** A USDT payment was matched to an order: apply the boost like a Stars payment */
+async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
+  const userId = order.userId
+  const n = order.boosts
+  const raffleId = order.raffleId
+  const admin = parseInt(process.env.ADMIN, 10)
+  const amount = formatUnits(order.amountUnits)
+  const res: any = await validateBoost(raffleId, userId, n)
+  const language = res.language || 'en'
+  const fail = async (key: string) => {
+    await CryptoOrderModel.updateOne({ _id: order._id }, { status: 'failed' })
+    try {
+      await telegram.sendMessage(
+        userId,
+        `${errorText(key, language)}\n\n${loc('crypto_failed', language)
+          .replace('$contact', supportContact())
+          .replace('$hash', txHash)}`,
+        { parse_mode: 'HTML', disable_web_page_preview: true }
+      )
+    } catch (err) {
+      console.error('Crypto fail notice not sent', err)
+    }
+    if (admin) {
+      try {
+        await telegram.sendMessage(
+          admin,
+          `⚠️ Pago crypto NO aplicado (${key})\n` +
+            `👤 ${userId}\n💎 ${amount} USDT\n🔗 https://bscscan.com/tx/${txHash}\n` +
+            `Hay que devolverlo a mano.`,
+          { disable_web_page_preview: true }
+        )
+      } catch {
+        // do nothing
+      }
+    }
+  }
+  if (res.error) return fail(res.error)
+  const upd: any = await RaffleModel.updateOne(
+    { _id: res.raffle._id, winners: { $exists: false } },
+    {
+      $push: {
+        boostIds: { $each: Array(n).fill(userId) },
+        boostMults: { $each: Array(n).fill(multiplierOf()) },
+      },
+    }
+  )
+  if (!upd || !upd.nModified) return fail('raffle_over')
+  await CryptoOrderModel.updateOne({ _id: order._id }, { chatId: res.raffle.chatId })
+  const used = res.used + n
+  const value = res.value + n * multiplierOf()
+  try {
+    const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
+    const raffleChat = await findChat(fresh.chatId)
+    await require('./raffle').refreshRaffleMessage(telegram, fresh, raffleChat)
+  } catch (err) {
+    // message may be unchanged or deleted
+  }
+  await notifyOwner(
+    {
+      telegram,
+      from: {
+        id: userId,
+        username: order.username,
+        first_name: order.firstName || `${userId}`,
+        last_name: order.lastName,
+      },
+    },
+    {
+      userId,
+      stars: n * BOOST_PRICE,
+      crypto: amount,
+      n,
+      chatId: res.raffle.chatId,
+      messageId: res.raffle.messageId,
+      step: stepOf(res.raffle),
+      mult: multLabel(value, 'es', entryValueOf(res.raffle)),
+      total: entryValueOf(res.raffle) + BOOST_STEP * value,
+    }
+  )
+  try {
+    await telegram.sendMessage(
+      userId,
+      loc('boost_applied', language)
+        .replace('$mult', multLabel(value, language, entryValueOf(res.raffle)))
+        .replace('$used', `${used}`)
+        .replace('$max', `${maxBoosts()}`)
+    )
+  } catch (err) {
+    console.error('Crypto confirmation not sent', err)
   }
 }
 
@@ -612,7 +726,16 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const clicks = step('click')
     const menus = step('menu')
     const invoices = step('invoice')
-    const payers = (await PaymentModel.distinct('userId', { status: 'applied', ...sinceMatch })).length
+    const payerIds = new Set<number>([
+      ...(await PaymentModel.distinct('userId', { status: 'applied', ...sinceMatch })),
+      ...(await CryptoOrderModel.distinct('userId', { status: 'paid', ...sinceMatch })),
+    ])
+    const payers = payerIds.size
+    const cryptoPaid = await CryptoOrderModel.aggregate([
+      { $match: { status: 'paid', ...sinceMatch } },
+      { $group: { _id: null, units: { $sum: '$amountUnits' }, count: { $sum: 1 } } },
+    ])
+    const cryptoTotal = cryptoPaid[0] || { units: 0, count: 0 }
     const termsTotal = await ChatModel.countDocuments({ termsAccepted: true })
     const pct = (a: number, b: number) =>
       b ? `${Math.round((a / b) * 1000) / 10}%` : '—'
@@ -627,7 +750,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const text =
       `⭐ <b>Stars</b>\n\n` +
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
-      `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n\n` +
+      `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n` +
+      (cryptoEnabled()
+        ? `💎 Crypto: <b>${formatUnits(cryptoTotal.units)} USDT</b> (${cryptoTotal.count} pagos)\n`
+        : '') +
+      `\n` +
       funnelText +
       `<b>Últimos pagos</b>\n` +
       (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
@@ -723,6 +850,45 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       console.error(err)
     }
   })
+
+  // Pack chosen to pay with USDT (BEP20): show the exact amount and the wallet
+  bot.action(/^c~([a-f0-9]{24})~(\d+)$/, async (ctx) => {
+    const raffleId = (ctx as any).match[1]
+    const n = parseInt((ctx as any).match[2], 10)
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    if (!cryptoEnabled() || !BOOST_OPTIONS.includes(n)) return
+    try {
+      const res: any = await validateBoost(raffleId, ctx.from.id, n)
+      if (res.error) return ctx.reply(errorText(res.error, res.language))
+      await trackBoost({ type: 'invoice', userId: ctx.from.id, raffleId, boosts: n })
+      const u = ctx.from
+      const order = await createOrder({
+        userId: u.id,
+        username: u.username,
+        firstName: u.first_name,
+        lastName: u.last_name,
+        raffleId,
+        boosts: n,
+      })
+      return ctx.replyWithHTML(
+        loc('crypto_invoice', res.language)
+          .replace('$pct', pctLabel(n, res.language, stepOf(res.raffle)))
+          .replace('$amount', formatUnits(order.amountUnits))
+          .replace('$address', CRYPTO_WALLET)
+          .replace('$min', `${CRYPTO_EXPIRY_MIN}`),
+        { disable_web_page_preview: true }
+      )
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // Start watching the chain for USDT payments (needs CRYPTO_WALLET)
+  startCryptoWatcher((order, txHash) => applyCryptoPayment(bot.telegram, order, txHash))
 
   // Validate right before Telegram charges the user
   bot.on('pre_checkout_query', async (ctx) => {

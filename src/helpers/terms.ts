@@ -5,7 +5,7 @@ import { PaymentModel } from '../models/payment'
 import { loc } from './locale'
 
 /** Who users should contact: SUPPORT_CONTACT (e.g. @mysupport) or the bot owner */
-function supportContact() {
+export function supportContact() {
   const contact = (process.env.SUPPORT_CONTACT || '').trim()
   if (contact) return contact.startsWith('@') ? contact : `@${contact}`
   const admin = parseInt(process.env.ADMIN, 10)
