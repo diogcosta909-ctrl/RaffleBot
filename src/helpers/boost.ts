@@ -883,7 +883,6 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         raffleId,
         boosts: n,
       })
-      if (!order) return ctx.reply(loc('crypto_busy', res.language))
       const pct = pctLabel(n, res.language, stepOf(res.raffle))
       const amount = formatUnits(order.amountUnits)
       const caption = loc('crypto_invoice', res.language)

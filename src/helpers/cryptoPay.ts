@@ -27,7 +27,7 @@ export function cryptoEnabled() {
 }
 
 /** Units of 0.0001 USDT for a pack of n boosts (without the unique tail) */
-export const CRYPTO_MAX_PENDING = 15
+const CRYPTO_TAILS = 15
 
 function unitsFor(n: number) {
   return Math.round(n * CRYPTO_PRICE * 10000)
@@ -114,17 +114,24 @@ export async function createOrder(info: {
   })
   if (existing) return existing
   const base = unitsFor(info.boosts)
-  // Same pack amount + a small tail (0.0001 to 0.0015): at most CRYPTO_MAX_PENDING open orders per pack
+  // Pack price + a small tail (0.0001 to 0.0015). No limit on pending orders: a free tail is
+  // used when there is one, otherwise the least used tail is shared (oldest order matches first)
   const grace = new Date(now.getTime() - 10 * 60000)
   const taken = (
     await CryptoOrderModel.find({ status: 'pending', expiresAt: { $gt: grace } }).select('amountUnits')
   ).map((o: any) => o.amountUnits)
-  const free: number[] = []
-  for (let t = 1; t <= CRYPTO_MAX_PENDING; t++) {
-    if (taken.indexOf(base + t) < 0) free.push(base + t)
+  const used = (u: number) => taken.filter((x: number) => x === u).length
+  let best = 0
+  const options: number[] = []
+  for (let t = 1; t <= CRYPTO_TAILS; t++) {
+    const c = used(base + t)
+    if (!options.length || c < best) {
+      best = c
+      options.length = 0
+    }
+    if (c === best) options.push(base + t)
   }
-  if (!free.length) return null
-  const units = free[Math.floor(Math.random() * free.length)]
+  const units = options[Math.floor(Math.random() * options.length)]
   return CryptoOrderModel.create({
     ...info,
     amountUnits: units,
@@ -174,7 +181,7 @@ async function scan(onPaid: (order: any, txHash: string) => Promise<void>) {
   lastLatest = latest
   const safe = latest - 1
   if (!lastScanned) lastScanned = latest - 3000
-  const pending = await CryptoOrderModel.find({ status: 'pending' })
+  const pending = await CryptoOrderModel.find({ status: 'pending' }).sort({ _id: 1 })
   if (!pending.length) {
     lastScanned = Math.max(lastScanned, safe)
     return
