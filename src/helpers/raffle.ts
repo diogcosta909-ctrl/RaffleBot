@@ -448,6 +448,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   const base = entryValueOf(raffle)
   const values = raffle.boostEnabled ? boostValues(raffle) : new Map<number, number>()
   const weights = ids.map((id) => weightFor(values, id, base))
+  const totalWeight = weights.reduce((a, b) => a + b, 0)
   let winners: {
     name: string
     winner: ChatMember
@@ -524,12 +525,20 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     winners.map((w) => {
       const n = counts.get(w.winner.user.id) || 0
       const how = paidWith(raffle, w.winner.user.id, n)
+      const count = (list?: number[]) => (list || []).filter((id) => id === w.winner.user.id).length
+      const usdt = count(raffle.cryptoIds)
+      const credits = count(raffle.creditIds)
+      const weight = weightFor(values, w.winner.user.id, base)
       return {
         id: w.winner.user.id,
         name: w.name.replace('<', '').replace('>', ''),
-        entries: Math.round(weightFor(values, w.winner.user.id, base)),
+        entries: Math.round(weight),
         boosts: n,
         method: how.credits ? 'credits' : how.crypto ? 'usdt' : 'stars',
+        stars: Math.max(0, n - usdt - credits),
+        usdt,
+        credits,
+        chance: totalWeight > 0 ? (weight / totalWeight) * 100 : 0,
       }
     }),
     idsOriginalLength

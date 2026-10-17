@@ -10,7 +10,17 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 /** Saves the winners of a finished raffle (never breaks the draw) */
 export async function logWinners(
   raffle: any,
-  winners: { id: number; name: string; entries: number; boosts: number; method: string }[],
+  winners: {
+    id: number
+    name: string
+    entries: number
+    boosts: number
+    method: string
+    stars?: number
+    usdt?: number
+    credits?: number
+    chance?: number
+  }[],
   participants: number
 ) {
   try {
@@ -24,6 +34,10 @@ export async function logWinners(
         entries: w.entries,
         boosts: w.boosts,
         method: w.method,
+        boostsStars: w.stars,
+        boostsUsdt: w.usdt,
+        boostsCredits: w.credits,
+        chance: w.chance,
         participants,
       }))
     )
@@ -32,14 +46,32 @@ export async function logWinners(
   }
 }
 
+const pctText = (p: number) => (p < 0.1 ? '<0.1%' : p < 10 ? `${p.toFixed(1)}%` : `${Math.round(p)}%`)
+
+/** One winner, in full detail */
 function line(w: any, i: number) {
   const d = new Date(w.createdAt)
   const when = `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
-  const how =
+  // Rows saved before the breakdown existed only have the main method
+  const hasSplit = w.boostsStars !== undefined || w.boostsUsdt !== undefined || w.boostsCredits !== undefined
+  const stars = hasSplit ? w.boostsStars || 0 : w.method === 'stars' ? w.boosts : 0
+  const usdt = hasSplit ? w.boostsUsdt || 0 : w.method === 'usdt' ? w.boosts : 0
+  const credits = hasSplit ? w.boostsCredits || 0 : w.method === 'credits' ? w.boosts : 0
+  const parts: string[] = []
+  if (stars) parts.push(`${stars}⭐`)
+  if (usdt) parts.push(`${usdt} USDT`)
+  if (credits) parts.push(`${credits} credits`)
+  const boostLine =
     w.boosts > 0
-      ? `🚀 ${w.method === 'usdt' ? 'USDT' : w.method === 'credits' ? 'credits' : '⭐'} boost`
-      : '🍀 free entry'
-  return `${i + 1}. <b>${esc(w.name || 'Anonymous')}</b> · ${w.entries} ${w.entries === 1 ? "entry" : "entries"} · ${how} · ${w.participants} players · ${when}`
+      ? `🚀 ${w.boosts} ${w.boosts === 1 ? 'boost' : 'boosts'} bought${parts.length ? ` (${parts.join(' · ')})` : ''}`
+      : '🍀 No boosts — won with a free entry'
+  const chance = typeof w.chance === 'number' ? ` · 🎯 ${pctText(w.chance)} chance` : ''
+  return (
+    `<b>${i + 1}. ${esc(w.name || 'Anonymous')}</b> · ${when}\n` +
+    `🎟 ${w.entries} ${w.entries === 1 ? 'entry' : 'entries'}${chance}\n` +
+    `${boostLine}\n` +
+    `👥 ${w.participants} players`
+  )
 }
 
 async function hallText(query: any) {
@@ -50,7 +82,11 @@ async function hallText(query: any) {
   if (!list.length) {
     return '🏆 <b>Hall of fame</b>\n\nThe first winner will appear here after the next draw.'
   }
-  return `🏆 <b>Hall of fame</b> · last ${list.length} winners\n\n${list.map(line).join('\n')}`
+  const boosted = list.filter((w) => w.boosts > 0).length
+  return (
+    `🏆 <b>Hall of fame</b> · last ${list.length} winners\n` +
+    `🚀 ${boosted} of ${list.length} used boosts\n\n${list.map(line).join('\n\n')}`
+  )
 }
 
 /** Refreshes the pinned hall of fame of a chat (called after every draw) */

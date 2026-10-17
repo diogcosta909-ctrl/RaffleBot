@@ -23,6 +23,16 @@ export class WinnerLog extends Typegoose {
   // stars | usdt | credits (how most of the boosts were paid)
   @prop()
   method?: string
+  // Boosts bought by the winner in that raffle, by payment method
+  @prop()
+  boostsStars?: number
+  @prop()
+  boostsUsdt?: number
+  @prop()
+  boostsCredits?: number
+  // Chance (%) the winner had in the draw
+  @prop()
+  chance?: number
   @prop()
   participants?: number
 }
