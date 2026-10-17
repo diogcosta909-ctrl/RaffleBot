@@ -441,8 +441,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🎟 Aún sin boosts',
   },
   boost_count: {
-    en: '🎟 $n extra entries from boosts',
-    es: '🎟 $n entradas extra por boosts',
+    en: '🎟 $n boosted entries',
+    es: '🎟 $n entradas con boost',
   },
   winner_boosted: {
     en: '🚀 The winner used Boost · boosts: $n ($mult).',
