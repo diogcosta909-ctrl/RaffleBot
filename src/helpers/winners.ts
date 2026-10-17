@@ -103,7 +103,7 @@ async function hallText(telegram: any, chatId?: number) {
   }
   return (
     `🏆 <b>Top 10 winners</b> · all time\n\n${lines.join('\n')}\n\n` +
-    `📊 ${r.raffles} ${r.raffles === 1 ? 'raffle' : 'raffles'} · ${r.winners} different ${r.winners === 1 ? 'winner' : 'winners'}`
+    `📊 ${r.raffles} ${r.raffles === 1 ? 'giveaway' : 'giveaways'} · ${r.winners} different ${r.winners === 1 ? 'winner' : 'winners'}`
   )
 }
 

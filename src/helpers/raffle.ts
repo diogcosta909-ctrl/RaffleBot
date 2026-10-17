@@ -552,7 +552,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     boostSummary = `\n\n${
       n > 0
         ? loc('winner_boosted', chat.language)
-            .replace('$stars', `${n * BOOST_PRICE}`)
+            .replace('$n', `${n}`)
             .replace('$mult', entriesLabel(weightFor(values, firstId, base), chat.language))
         : loc('winner_free', chat.language)
     }`
@@ -582,7 +582,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       text = `${text}\n\n${
         n > 0
           ? loc('winner_boosted', chat.language)
-              .replace('$stars', `${n * BOOST_PRICE}`)
+              .replace('$n', `${n}`)
               .replace('$mult', entriesLabel(weightFor(values, winner.user.id, base), chat.language))
           : loc('winner_free', chat.language)
       }`
