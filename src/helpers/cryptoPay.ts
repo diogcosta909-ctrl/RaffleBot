@@ -4,8 +4,11 @@ import * as http from 'http'
 import { URL } from 'url'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 
-// USDT (BEP20) payments straight to your own wallet, detected on the BNB Smart Chain.
-// No memo exists on BSC, so every order gets an exact amount with a unique cents tail.
+// USDT payments straight to your own wallets, detected on-chain:
+//  - BNB Smart Chain (BEP20): CRYPTO_WALLET
+//  - TON (USDT jetton): CRYPTO_WALLET_TON
+// Every order gets an exact amount with a unique cents tail, which identifies the payer.
+export type Network = 'bsc' | 'ton'
 export const CRYPTO_WALLET = (process.env.CRYPTO_WALLET || '').trim().toLowerCase()
 // USDT price of each ⭐ (default 0.02)
 export const CRYPTO_PRICE =
@@ -22,8 +25,43 @@ const RPCS = (
   .map((u) => u.trim())
   .filter(Boolean)
 
-export function cryptoEnabled() {
+export const TON_WALLET = (process.env.CRYPTO_WALLET_TON || '').trim()
+const TON_API = (process.env.TON_API || 'https://toncenter.com').trim().replace(/\/$/, '')
+const TON_KEY = (process.env.TON_API_KEY || '').trim()
+const USDT_TON = (
+  process.env.TON_USDT_MASTER || 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs'
+).trim()
+
+export function bscEnabled() {
   return /^0x[a-f0-9]{40}$/.test(CRYPTO_WALLET)
+}
+
+export function tonEnabled() {
+  return /^(EQ|UQ|kQ|0Q)[A-Za-z0-9_-]{46}$/.test(TON_WALLET)
+}
+
+export function cryptoEnabled() {
+  return bscEnabled() || tonEnabled()
+}
+
+/** Networks the user can pay on */
+export function networks(): Network[] {
+  const list: Network[] = []
+  if (bscEnabled()) list.push('bsc')
+  if (tonEnabled()) list.push('ton')
+  return list
+}
+
+export function networkLabel(n: Network | string) {
+  return n === 'ton' ? 'TON network' : 'BNB Smart Chain (BEP20)'
+}
+
+export function networkShort(n: Network | string) {
+  return n === 'ton' ? 'TON' : 'BSC'
+}
+
+export function walletOf(n: Network | string) {
+  return n === 'ton' ? TON_WALLET : CRYPTO_WALLET
 }
 
 /** Units of 0.0001 USDT for a pack of n boosts (without the unique tail) */
@@ -75,6 +113,38 @@ function post(url: string, body: string): Promise<any> {
   })
 }
 
+function getJson(url: string, headers: any = {}): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url)
+    const lib: any = u.protocol === 'http:' ? http : https
+    const req = lib.request(
+      {
+        hostname: u.hostname,
+        port: u.port || undefined,
+        path: u.pathname + u.search,
+        method: 'GET',
+        headers,
+        timeout: 10000,
+      },
+      (res: any) => {
+        let data = ''
+        res.on('data', (d: any) => (data += d))
+        res.on('end', () => {
+          if (res.statusCode >= 400) return reject(new Error(`HTTP ${res.statusCode}`))
+          try {
+            resolve(JSON.parse(data))
+          } catch (err) {
+            reject(err)
+          }
+        })
+      }
+    )
+    req.on('error', reject)
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+    req.end()
+  })
+}
+
 /** JSON-RPC call, trying each RPC endpoint until one answers */
 async function rpc(method: string, params: any[]) {
   let lastErr: any
@@ -94,10 +164,17 @@ let lastScanned = 0
 let lastLatest = 0
 let lastOkAt = 0
 let lastError = ''
+let tonOkAt = 0
+let tonError = ''
 
-/** Watcher health for /status */
+/** Watcher health for /status (BSC) */
 export function getCryptoStatus() {
   return { lastScanned, lastLatest, lastOkAt, lastError }
+}
+
+/** Watcher health for /status (TON) */
+export function getTonStatus() {
+  return { lastOkAt: tonOkAt, lastError: tonError }
 }
 
 /** Creates (or reuses) the pending order for this user, raffle and pack */
@@ -109,9 +186,14 @@ export async function createOrder(info: {
   raffleId: string
   boosts: number
   backRaffleId?: string
+  network?: Network
 }) {
   const now = new Date()
+  const network: Network = info.network === 'ton' ? 'ton' : 'bsc'
+  // Orders saved before TON existed have no network (= BSC)
+  const netMatch: any = network === 'bsc' ? { $in: ['bsc', null] } : 'ton'
   const existing: any = await CryptoOrderModel.findOne({
+    network: netMatch,
     userId: info.userId,
     raffleId: info.raffleId,
     boosts: info.boosts,
@@ -123,14 +205,16 @@ export async function createOrder(info: {
   // Pack price + the lowest free tail: 0.0201, 0.0202, 0.0203... (grows only when many are open)
   const grace = new Date(now.getTime() - 10 * 60000)
   const taken = (
-    await CryptoOrderModel.find({ status: 'pending', expiresAt: { $gt: grace } }).select('amountUnits')
+    await CryptoOrderModel.find({ status: 'pending', network: netMatch, expiresAt: { $gt: grace } }).select('amountUnits')
   ).map((o: any) => o.amountUnits)
   let units = base + 1
   while (taken.indexOf(units) >= 0) units++
   return CryptoOrderModel.create({
     ...info,
+    network,
     amountUnits: units,
     startBlock: lastLatest,
+    startTs: Math.floor(now.getTime() / 1000),
     expiresAt: new Date(now.getTime() + CRYPTO_EXPIRY_MIN * 60000),
   } as any)
 }
@@ -146,10 +230,20 @@ async function handleLog(
   const order = pending.find(
     (o) =>
       o.status === 'pending' &&
+      (o.network || 'bsc') === 'bsc' &&
       o.amountUnits === units &&
       block >= (o.startBlock || 0) - 10
   )
   if (!order) return
+  await settle(order, txHash, onPaid)
+}
+
+/** Marks the order paid (once per transaction) and applies it */
+async function settle(
+  order: any,
+  txHash: string,
+  onPaid: (order: any, txHash: string) => Promise<void>
+) {
   if (await CryptoOrderModel.countDocuments({ txHash })) return
   const updated = await CryptoOrderModel.findOneAndUpdate(
     { _id: order._id, status: 'pending' },
@@ -166,17 +260,14 @@ async function handleLog(
 }
 
 async function scan(onPaid: (order: any, txHash: string) => Promise<void>) {
-  const now = Date.now()
-  // Orders stay matchable 10 more minutes after their expiry (late transfers)
-  await CryptoOrderModel.updateMany(
-    { status: 'pending', expiresAt: { $lt: new Date(now - 10 * 60000) } },
-    { status: 'expired' }
-  )
   const latest = parseInt(await rpc('eth_blockNumber', []), 16)
   lastLatest = latest
   const safe = latest - 1
   if (!lastScanned) lastScanned = latest - 3000
-  const pending = await CryptoOrderModel.find({ status: 'pending' }).sort({ _id: 1 })
+  const pending = await CryptoOrderModel.find({
+    status: 'pending',
+    network: { $in: ['bsc', null] },
+  }).sort({ _id: 1 })
   if (!pending.length) {
     lastScanned = Math.max(lastScanned, safe)
     return
@@ -201,26 +292,76 @@ async function scan(onPaid: (order: any, txHash: string) => Promise<void>) {
   }
 }
 
-/** Checks the chain every 30 seconds and calls onPaid for each matched order */
+/** TON: incoming USDT jetton transfers to the wallet, matched by exact amount */
+async function scanTon(onPaid: (order: any, txHash: string) => Promise<void>) {
+  const pending: any[] = await CryptoOrderModel.find({ status: 'pending', network: 'ton' }).sort({ _id: 1 })
+  if (!pending.length) return
+  const since =
+    Math.floor(Math.min(...pending.map((o) => new Date(o.createdAt).getTime())) / 1000) - 120
+  const url =
+    `${TON_API}/api/v3/jetton/transfers?owner_address=${encodeURIComponent(TON_WALLET)}` +
+    `&direction=in&jetton_master=${encodeURIComponent(USDT_TON)}` +
+    `&start_utime=${since}&limit=100&sort=desc`
+  const r = await getJson(url, TON_KEY ? { 'X-API-Key': TON_KEY } : {})
+  for (const t of r.jetton_transfers || []) {
+    if (t.transaction_aborted) continue
+    // USDT on TON has 6 decimals; orders use units of 0.0001
+    const units = Math.round(Number(t.amount) / 100)
+    const txHash = `${t.transaction_hash}`
+    const ts = Number(t.transaction_now) || 0
+    const order = pending.find(
+      (o) =>
+        o.status === 'pending' &&
+        o.amountUnits === units &&
+        ts >= Math.floor(new Date(o.createdAt).getTime() / 1000) - 120
+    )
+    if (!order) continue
+    await settle(order, txHash, onPaid)
+    order.status = 'paid'
+  }
+}
+
+/** Checks the chains every 30 seconds and calls onPaid for each matched order */
 export function startCryptoWatcher(
   onPaid: (order: any, txHash: string) => Promise<void>
 ) {
   if (!cryptoEnabled()) {
-    console.log('Crypto payments off (set CRYPTO_WALLET to enable)')
+    console.log('Crypto payments off (set CRYPTO_WALLET and/or CRYPTO_WALLET_TON to enable)')
     return
   }
-  console.log('Crypto payments on: USDT BEP20')
+  console.log(`Crypto payments on: USDT ${networks().map(networkShort).join(' + ')}`)
   let busy = false
   const tick = async () => {
     if (busy) return
     busy = true
+    // Orders stay matchable 10 more minutes after their expiry (late transfers)
     try {
-      await scan(onPaid)
-      lastOkAt = Date.now()
-      lastError = ''
+      await CryptoOrderModel.updateMany(
+        { status: 'pending', expiresAt: { $lt: new Date(Date.now() - 10 * 60000) } },
+        { status: 'expired' }
+      )
     } catch (err) {
-      lastError = `${(err && err.message) || err}`.slice(0, 120)
-      console.error('Crypto scan failed', err && err.message)
+      console.error('Crypto expiry failed', err && err.message)
+    }
+    if (bscEnabled()) {
+      try {
+        await scan(onPaid)
+        lastOkAt = Date.now()
+        lastError = ''
+      } catch (err) {
+        lastError = `${(err && err.message) || err}`.slice(0, 120)
+        console.error('Crypto scan failed', err && err.message)
+      }
+    }
+    if (tonEnabled()) {
+      try {
+        await scanTon(onPaid)
+        tonOkAt = Date.now()
+        tonError = ''
+      } catch (err) {
+        tonError = `${(err && err.message) || err}`.slice(0, 120)
+        console.error('TON scan failed', err && err.message)
+      }
     }
     busy = false
   }

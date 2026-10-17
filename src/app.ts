@@ -27,6 +27,7 @@ import { setupTopBoosters } from './helpers/topBoosters'
 import { setupClientStats } from './helpers/clientStats'
 import { setupCodes } from './helpers/codes'
 import { setupStatus } from './helpers/status'
+import { setupWinners } from './helpers/winners'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -54,6 +55,7 @@ setupTopBoosters(bot)
 setupClientStats(bot)
 setupCodes(bot)
 setupStatus(bot)
+setupWinners(bot)
 setupCleanup()
 
 // Setup commands

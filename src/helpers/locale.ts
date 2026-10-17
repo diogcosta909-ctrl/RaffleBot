@@ -465,16 +465,20 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 ¡Boost aplicado! Ahora tienes $mult en este sorteo ($used/$max boosts).',
   },
   crypto_invoice: {
-    en: '🟢 <b>Pay with USDT</b> ($pct)\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through BSC (BEP20). Valid for $min minutes.\n\n✅ Your boost is applied automatically 1-2 minutes after the transfer.',
-    es: '🟢 <b>Pagar con USDT</b> ($pct)\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>BNB Smart Chain, BEP20</b>:\n<code>$address</code>\n\n⚠️ El importe exacto identifica tu pago, envíalo tal cual y solo por BSC (BEP20). Válido $min minutos.\n\n✅ Tu boost se aplica automáticamente 1-2 minutos después de la transferencia.',
+    en: '🟢 <b>Pay with USDT</b> ($pct)\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>$network</b> only:\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through $network. Valid for $min minutes.\n\n✅ Your boost is applied automatically 1-2 minutes after the transfer.',
+    es: '🟢 <b>Pagar con USDT</b> ($pct)\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>$network</b>:\n<code>$address</code>\n\n⚠️ El importe exacto identifica tu pago, envíalo tal cual y solo por $network. Válido $min minutos.\n\n✅ Tu boost se aplica automáticamente 1-2 minutos después de la transferencia.',
   },
   remind_stars: {
     en: '👋 You left a boost waiting: <b>$pct</b>.\nFinish it now, before the raffle ends 👇',
     es: '👋 Dejaste un boost a medias: <b>$pct</b>.\nTermínalo ahora, antes de que acabe el sorteo 👇',
   },
   remind_crypto: {
-    en: '⏳ Your USDT payment is still pending.\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⌛ Valid for $min more minutes.',
-    es: '⏳ Tu pago en USDT sigue pendiente.\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>BNB Smart Chain, BEP20</b>:\n<code>$address</code>\n\n⌛ Válido $min minutos más.',
+    en: '⏳ Your USDT payment is still pending.\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>$network</b> only:\n<code>$address</code>\n\n⌛ Valid for $min more minutes.',
+    es: '⏳ Tu pago en USDT sigue pendiente.\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>$network</b>:\n<code>$address</code>\n\n⌛ Válido $min minutos más.',
+  },
+  crypto_network: {
+    en: '🟢 <b>Pay with USDT</b>\n\nChoose the network you will send from:',
+    es: '🟢 <b>Pagar con USDT</b>\n\nElige la red desde la que vas a enviar:',
   },
   odds_line: {
     en: '🎯 Your chance to win now: $pct',
@@ -581,8 +585,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '💰 No tienes créditos suficientes. Pulsa Recharge Credits.',
   },
   crypto_invoice_topup: {
-    en: '🟢 <b>Recharge with USDT</b> ($n)\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through BSC (BEP20). Valid for $min minutes.\n\n✅ Your credits are added automatically 1-2 minutes after the transfer.',
-    es: '🟢 <b>Recarga con USDT</b> ($n)\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>BNB Smart Chain, BEP20</b>:\n<code>$address</code>\n\n⚠️ El importe exacto identifica tu pago, envíalo tal cual y solo por BSC (BEP20). Válido $min minutos.\n\n✅ Tus créditos se añaden automáticamente 1-2 minutos después de la transferencia.',
+    en: '🟢 <b>Recharge with USDT</b> ($n)\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>$network</b> only:\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through $network. Valid for $min minutes.\n\n✅ Your credits are added automatically 1-2 minutes after the transfer.',
+    es: '🟢 <b>Recarga con USDT</b> ($n)\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>$network</b>:\n<code>$address</code>\n\n⚠️ El importe exacto identifica tu pago, envíalo tal cual y solo por $network. Válido $min minutos.\n\n✅ Tus créditos se añaden automáticamente 1-2 minutos después de la transferencia.',
   },
   crypto_failed: {
     en: 'We received your crypto payment but could not apply the boost. Contact $contact and send this transaction hash:\n<code>$hash</code>',

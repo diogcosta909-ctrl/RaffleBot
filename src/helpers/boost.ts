@@ -9,11 +9,15 @@ import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, getCredits, addCredits, spendCr
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
+  networks,
+  networkLabel,
+  networkShort,
+  walletOf,
+  Network,
   cryptoPriceLabel,
   createOrder,
   formatUnits,
   startCryptoWatcher,
-  CRYPTO_WALLET,
   CRYPTO_EXPIRY_MIN,
 } from './cryptoPay'
 import { getChatIdForConfig } from './getChatIdForConfig'
@@ -435,6 +439,7 @@ async function notifyOwner(
   ctx: any,
   info: {
     crypto?: string
+    network?: string
     credits?: boolean
     userId: number
     stars: number
@@ -481,7 +486,7 @@ async function notifyOwner(
               info.credits
                 ? `💰 ${creditsLabel(info.n, 'es')}`
                 : info.crypto
-                ? `🟢 ${info.crypto} USDT (BSC)`
+                ? `🟢 ${info.crypto} USDT (${networkShort(info.network || 'bsc')})`
                 : `⭐ ${info.stars} Stars`
             } · ${pctLabel(info.n, 'es', step)}\n` +
             `📢 ${escHtml(where)}\n` +
@@ -702,6 +707,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       userId,
       stars: n * BOOST_PRICE,
       crypto: amount,
+      network: order.network || 'bsc',
       n,
       chatId: res.raffle.chatId,
       messageId: res.raffle.messageId,
@@ -721,6 +727,21 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
   } catch (err) {
     console.error('Crypto confirmation not sent', err)
   }
+}
+
+/** Network picked for a USDT payment, or the chooser message when there are two */
+async function pickNetwork(ctx: ContextMessageUpdate, picked: string | undefined, back: string, lang: string) {
+  const nets = networks()
+  if (picked && (nets as string[]).indexOf(picked) >= 0) return picked as Network
+  if (nets.length === 1) return nets[0]
+  const label: any = { bsc: '🟡 BNB Chain (BEP20)', ton: '🔷 TON' }
+  await ctx.reply(loc('crypto_network', lang), {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [nets.map((n) => ({ text: label[n], callback_data: `${back}~${n}` }))],
+    },
+  } as any)
+  return undefined
 }
 
 /**
@@ -980,7 +1001,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   })
 
   // Pack chosen to pay with USDT (BEP20): show the exact amount and the wallet
-  bot.action(/^c~([a-f0-9]{24})~(\d+)$/, async (ctx) => {
+  bot.action(/^c~([a-f0-9]{24})~(\d+)(?:~(bsc|ton))?$/, async (ctx) => {
     const raffleId = (ctx as any).match[1]
     const n = parseInt((ctx as any).match[2], 10)
     try {
@@ -992,9 +1013,12 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     try {
       const res: any = await validateBoost(raffleId, ctx.from.id, n)
       if (res.error) return ctx.reply(errorText(res.error, res.language))
+      const network = await pickNetwork(ctx, (ctx as any).match[3], `c~${raffleId}~${n}`, res.language)
+      if (!network) return
       await trackBoost({ type: 'invoice', userId: ctx.from.id, raffleId, boosts: n, method: 'crypto' })
       const u = ctx.from
       const order = await createOrder({
+        network,
         userId: u.id,
         username: u.username,
         firstName: u.first_name,
@@ -1007,10 +1031,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const caption = loc('crypto_invoice', res.language)
         .replace('$pct', pct)
         .replace('$amount', amount)
-        .replace('$address', CRYPTO_WALLET)
+        .replace('$network', networkLabel(network))
+        .replace('$address', walletOf(network))
         .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
       try {
-        const image = await require('./boostImage').renderUsdtImage({ amount, pct })
+        const image = await require('./boostImage').renderUsdtImage({ amount, pct, network: networkLabel(network) })
         return await ctx.replyWithPhoto({ source: image }, { caption, parse_mode: 'HTML' } as any)
       } catch (err) {
         console.error('USDT image failed, sending text', err)
@@ -1092,7 +1117,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   })
 
   // USDT order for a credit pack
-  bot.action(/^tc~(\d+)~([a-f0-9]{24}|0)$/, async (ctx) => {
+  bot.action(/^tc~(\d+)~([a-f0-9]{24}|0)(?:~(bsc|ton))?$/, async (ctx) => {
     const n = parseInt((ctx as any).match[1], 10)
     const raffleId = (ctx as any).match[2]
     try {
@@ -1103,8 +1128,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     if (!cryptoEnabled() || CREDIT_PACKS.indexOf(n) < 0) return
     try {
       const lang = (await findChat(ctx.from.id)).language
+      const network = await pickNetwork(ctx, (ctx as any).match[3], `tc~${n}~${raffleId}`, lang)
+      if (!network) return
       const u = ctx.from
       const order = await createOrder({
+        network,
         userId: u.id,
         username: u.username,
         firstName: u.first_name,
@@ -1117,12 +1145,14 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const caption = loc('crypto_invoice_topup', lang)
         .replace('$n', packLabel(n, lang))
         .replace('$amount', amount)
-        .replace('$address', CRYPTO_WALLET)
+        .replace('$network', networkLabel(network))
+        .replace('$address', walletOf(network))
         .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
       try {
         const image = await require('./boostImage').renderUsdtImage({
           amount,
           pct: packLabel(n, lang),
+          network: networkLabel(network),
         })
         return await ctx.replyWithPhoto({ source: image }, { caption, parse_mode: 'HTML' } as any)
       } catch (err) {
@@ -1434,7 +1464,8 @@ export async function remindOnce(telegram: any) {
         o.userId,
         loc('remind_crypto', lang)
           .replace('$amount', formatUnits(o.amountUnits))
-          .replace('$address', CRYPTO_WALLET)
+          .replace('$network', networkLabel(o.network || 'bsc'))
+          .replace('$address', walletOf(o.network || 'bsc'))
           .replace('$min', `${left}`),
         { parse_mode: 'HTML', disable_web_page_preview: true }
       )

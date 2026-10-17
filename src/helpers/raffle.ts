@@ -24,6 +24,7 @@ import {
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { topBoostersText } from './odds'
+import { logWinners } from './winners'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
 import { InstanceType } from 'typegoose'
@@ -516,6 +517,22 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   await RaffleModel.updateOne(
     { _id: (<any>raffle)._id },
     { $set: { participantsIds: [], boostIds: [], cryptoIds: [], creditIds: [] } }
+  )
+  // Hall of fame (/winners)
+  await logWinners(
+    raffle,
+    winners.map((w) => {
+      const n = counts.get(w.winner.user.id) || 0
+      const how = paidWith(raffle, w.winner.user.id, n)
+      return {
+        id: w.winner.user.id,
+        name: w.name.replace('<', '').replace('>', ''),
+        entries: Math.round(weightFor(values, w.winner.user.id, base)),
+        boosts: n,
+        method: how.credits ? 'credits' : how.crypto ? 'usdt' : 'stars',
+      }
+    }),
+    idsOriginalLength
   )
   // Tell the public boost feed when the (first) winner had bought a Boost
   if (raffle.boostEnabled && winners.length > 0) {

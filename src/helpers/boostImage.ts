@@ -624,7 +624,7 @@ function drawCreditCoin(ctx: any, x: number, y: number, r: number) {
 }
 
 /** Banner for the crypto payment instructions: logo, amount and network */
-export async function renderUsdtImage(info: { amount: string; pct: string }): Promise<Buffer> {
+export async function renderUsdtImage(info: { amount: string; pct: string; network?: string }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const logo = await usdtLogo()
   const S = 2
@@ -650,7 +650,7 @@ export async function renderUsdtImage(info: { amount: string; pct: string }): Pr
   ctx.fillText(`${info.amount} USDT`, W / 2, 130)
   ctx.fillStyle = '#7fe0bf'
   ctx.font = '12px InterB'
-  ctx.fillText(`${info.pct.toUpperCase()}  ·  BNB SMART CHAIN (BEP20)`, W / 2, 158)
+  ctx.fillText(`${info.pct.toUpperCase()}  ·  ${(info.network || 'BNB Smart Chain (BEP20)').toUpperCase()}`, W / 2, 158)
   return canvas.toBuffer('image/png')
 }
 

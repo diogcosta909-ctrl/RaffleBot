@@ -5,7 +5,7 @@ import { ChatModel } from '../models/chat'
 import { RaffleModel } from '../models/raffle'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { PromoCodeModel } from '../models/promoCode'
-import { cryptoEnabled, getCryptoStatus, CRYPTO_WALLET } from './cryptoPay'
+import { cryptoEnabled, bscEnabled, tonEnabled, getCryptoStatus, getTonStatus, CRYPTO_WALLET, TON_WALLET } from './cryptoPay'
 
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -69,19 +69,23 @@ export function setupStatus(bot: Telegraf<ContextMessageUpdate>) {
     lines.push(tg.ok ? `✅ Telegram OK (${tg.ms} ms)` : '❌ Telegram NO responde')
 
     if (cryptoEnabled()) {
-      const st = getCryptoStatus()
-      const wallet = `${CRYPTO_WALLET.slice(0, 6)}…${CRYPTO_WALLET.slice(-4)}`
+      const short = (w: string) => `${w.slice(0, 6)}…${w.slice(-4)}`
+      const nets: { name: string; wallet: string; st: any; label: string }[] = []
+      if (bscEnabled()) nets.push({ name: 'BSC', wallet: CRYPTO_WALLET, st: getCryptoStatus(), label: 'Red BSC' })
+      if (tonEnabled()) nets.push({ name: 'TON', wallet: TON_WALLET, st: getTonStatus(), label: 'Red TON' })
       lines.push('')
-      lines.push(`🟢 <b>USDT (BSC)</b> · wallet ${wallet}`)
-      if (!st.lastOkAt) {
-        lines.push('⏳ Aún no ha hecho la primera comprobación')
-      } else if (now - st.lastOkAt > 3 * 60000) {
-        lines.push(`❌ Sin comprobar la red hace ${age(now - st.lastOkAt)}${st.lastError ? ` (${esc(st.lastError)})` : ''}`)
-      } else {
-        lines.push(`✅ Red BSC OK · última comprobación hace ${age(now - st.lastOkAt)}`)
-      }
-      if (st.lastLatest && st.lastScanned) {
-        lines.push(`📦 Bloques por revisar: ${Math.max(0, st.lastLatest - st.lastScanned)}`)
+      for (const net of nets) {
+        lines.push(`🟢 <b>USDT (${net.name})</b> · wallet ${short(net.wallet)}`)
+        if (!net.st.lastOkAt) {
+          lines.push('⏳ Aún no ha hecho la primera comprobación')
+        } else if (now - net.st.lastOkAt > 3 * 60000) {
+          lines.push(`❌ Sin comprobar la red hace ${age(now - net.st.lastOkAt)}${net.st.lastError ? ` (${esc(net.st.lastError)})` : ''}`)
+        } else {
+          lines.push(`✅ ${net.label} OK · última comprobación hace ${age(now - net.st.lastOkAt)}`)
+        }
+        if (net.name === 'BSC' && net.st.lastLatest && net.st.lastScanned) {
+          lines.push(`📦 Bloques por revisar: ${Math.max(0, net.st.lastLatest - net.st.lastScanned)}`)
+        }
       }
       const pending: any[] = await CryptoOrderModel.find({ status: 'pending' }).sort({ _id: 1 })
       lines.push(
@@ -90,7 +94,7 @@ export function setupStatus(bot: Telegraf<ContextMessageUpdate>) {
           : '🧾 Pedidos pendientes: 0'
       )
     } else {
-      lines.push('', '⚪ USDT desactivado (falta CRYPTO_WALLET)')
+      lines.push('', '⚪ USDT desactivado (falta CRYPTO_WALLET o CRYPTO_WALLET_TON)')
     }
 
     const terms = await ChatModel.countDocuments({ termsAccepted: true })

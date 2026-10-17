@@ -1,7 +1,7 @@
 // Dependencies
 import { prop, Typegoose } from 'typegoose'
 
-// Pending/paid USDT (BEP20) payment for a raffle boost, matched by its exact amount
+// Pending/paid USDT payment (BSC or TON) for a raffle boost, matched by its exact amount
 export class CryptoOrder extends Typegoose {
   @prop({ required: true, index: true })
   userId: number
@@ -38,6 +38,12 @@ export class CryptoOrder extends Typegoose {
   // Credit topups (raffleId = 'topup'): raffle whose boost menu to go back to
   @prop()
   backRaffleId?: string
+  // bsc | ton (orders saved before TON existed have none = bsc)
+  @prop({ index: true })
+  network?: string
+  // TON orders: creation time in unix seconds
+  @prop()
+  startTs?: number
 }
 
 export const CryptoOrderModel = new CryptoOrder().getModelForClass(CryptoOrder, {
