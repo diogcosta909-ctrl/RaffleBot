@@ -524,29 +524,34 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     { _id: (<any>raffle)._id },
     { $set: { participantsIds: [], boostIds: [], cryptoIds: [], creditIds: [] } }
   )
-  // Wins are counted forever (raffles are deleted after 18 days); then the pinned ranking updates
-  await recordRaffleWins(raffle)
-  await updateHallOfFame(ctx.telegram, raffle.chatId)
-  // Tell the public boost feed when the (first) winner had bought a Boost
-  if (raffle.boostEnabled && winners.length > 0) {
-    const w = winners[0].winner.user
-    const n = counts.get(w.id) || 0
-    if (n > 0) {
-      notifyBoostWin(
-        ctx.telegram,
-        raffle,
-        {
-          id: w.id,
-          username: w.username,
-          name: `${w.first_name}${w.last_name ? ` ${w.last_name}` : ''}`,
-        },
-        {
-          stars: n * BOOST_PRICE,
-          boosts: n,
-          entries: Math.round(weightFor(values, w.id, base)),
-          ...paidWith(raffle, w.id, n),
-        }
-      ).catch(() => undefined)
+  // Everything below only runs once the winners are announced: if the announcement fails the
+  // draw is retried with new winners, and the wins and the feed notice must belong to the final draw
+  const firstWinner = winners.length > 0 ? winners[0] : undefined
+  const afterAnnounce = async () => {
+    // Wins are counted forever (raffles are deleted after 18 days); then the pinned ranking updates
+    await recordRaffleWins(raffle)
+    await updateHallOfFame(ctx.telegram, raffle.chatId)
+    // Tell the public boost feed when the (first) winner had bought a Boost
+    if (raffle.boostEnabled && firstWinner) {
+      const w = firstWinner.winner.user
+      const n = counts.get(w.id) || 0
+      if (n > 0) {
+        notifyBoostWin(
+          ctx.telegram,
+          raffle,
+          {
+            id: w.id,
+            username: w.username,
+            name: `${w.first_name}${w.last_name ? ` ${w.last_name}` : ''}`,
+          },
+          {
+            stars: n * BOOST_PRICE,
+            boosts: n,
+            entries: Math.round(weightFor(values, w.id, base)),
+            ...paidWith(raffle, w.id, n),
+          }
+        ).catch(() => undefined)
+      }
     }
   }
   // Several winners: the first one is the real winner and the rest are substitutes,
@@ -742,4 +747,5 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       }
     }
   }
+  await afterAnnounce()
 }
