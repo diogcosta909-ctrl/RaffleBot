@@ -754,3 +754,102 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
   }
   return canvas.toBuffer('image/png')
 }
+
+/** Image for the public feed when someone recharges credits (blue credits theme) */
+export async function renderRechargeImage(info: {
+  name: string
+  credits: number // pack bought
+  bonus?: number // free credits on top
+  paid: string // "20 stars" / "0.4 USDT"
+}): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const S = 2
+  const canvas = createCanvas(372 * S, 300 * S)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(S, S)
+  const G = '#4f7cff'
+  const L = '#a9c4ff'
+  const bonus = info.bonus || 0
+  const total = Math.max(1, Math.round(info.credits + bonus))
+  const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
+    ctx.font = font
+    ctx.fillStyle = color
+    ctx.textAlign = align
+    ;(ctx as any).letterSpacing = ls
+    ctx.fillText(s, x, y)
+    ;(ctx as any).letterSpacing = '0px'
+  }
+  const dark = '#050914'
+  ctx.fillStyle = dark
+  ctx.fillRect(0, 0, 372, 300)
+  const bg = ctx.createRadialGradient(186, 112, 10, 186, 112, 230)
+  bg.addColorStop(0, '#12245a')
+  bg.addColorStop(1, dark)
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, 372, 300)
+  ctx.strokeStyle = 'rgba(79,124,255,0.10)'
+  ctx.lineWidth = 1
+  for (let k = -300; k < 400; k += 22) {
+    ctx.beginPath()
+    ctx.moveTo(k, 0)
+    ctx.lineTo(k + 300, 300)
+    ctx.stroke()
+  }
+  const h = ctx.createRadialGradient(186, 118, 0, 186, 118, 120)
+  h.addColorStop(0, 'rgba(79,124,255,0.38)')
+  h.addColorStop(1, 'rgba(79,124,255,0)')
+  ctx.fillStyle = h
+  ctx.fillRect(0, 0, 372, 300)
+
+  const name = drawableName(info.name)
+  if (name) {
+    let size = 22
+    ctx.font = `800 ${size}px InterX`
+    while (ctx.measureText(name).width > 300 && size > 14) {
+      size -= 2
+      ctx.font = `800 ${size}px InterX`
+    }
+    text(name, 186, 36, ctx.font, '#ffffff', 'center')
+  }
+  text('recharged credits', 186, 54, '700 12px InterB', L, 'center', '1px')
+
+  // One big coin with glowing rings; a "+N FREE" badge when the pack comes with bonus
+  for (const [rad, alpha] of [[84, 0.08], [66, 0.12]]) {
+    ctx.beginPath()
+    ctx.arc(186, 118, rad, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(169,196,255,${alpha * 2})`
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+  }
+  drawCreditCoin(ctx, 186, 118, 52)
+  if (bonus > 0) {
+    const label = `+${bonus} FREE`
+    ctx.font = '800 13px InterX'
+    const w = ctx.measureText(label).width + 22
+    roundRect(ctx, 246, 74, w, 26, 13)
+    ctx.fillStyle = '#ffd24a'
+    ctx.fill()
+    text(label, 246 + w / 2, 92, '800 13px InterX', '#2a1b00', 'center')
+  }
+
+  ctx.fillStyle = G
+  ctx.globalAlpha = 0.4
+  ctx.fillRect(36, 188, 300, 1)
+  ctx.globalAlpha = 1
+  roundRect(ctx, 36, 200, 300, 76, 16)
+  const bx = ctx.createLinearGradient(0, 200, 0, 276)
+  bx.addColorStop(0, G + '40')
+  bx.addColorStop(1, G + '0d')
+  ctx.fillStyle = bx
+  ctx.fill()
+  ctx.lineWidth = 1.2
+  ctx.strokeStyle = G
+  ctx.stroke()
+  const big = `+${total}`
+  text(big, 70, 254, '800 54px InterX', '#ffffff', 'left')
+  ctx.font = '800 54px InterX'
+  const ew = ctx.measureText(big).width
+  text('CREDITS', 80 + ew, 238, '800 13px InterX', L, 'left', '2px')
+  text(bonus > 0 ? `${info.credits} + ${bonus} free` : info.paid, 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
+  return canvas.toBuffer('image/png')
+}

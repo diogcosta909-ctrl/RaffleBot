@@ -580,7 +580,15 @@ async function refund(ctx: ContextMessageUpdate, userId: number, chargeId: strin
 }
 
 /** Confirms a credit recharge to the user and tells the owner */
-async function notifyTopup(telegram: any, u: any, n: number, paid: string, balance: number, backId?: string) {
+async function notifyTopup(
+  telegram: any,
+  u: any,
+  n: number,
+  paid: string,
+  balance: number,
+  backId?: string,
+  pack?: { credits: number; paid: string; label: string }
+) {
   let lang = 'en'
   try {
     lang = (await findChat(u.id)).language
@@ -617,6 +625,38 @@ async function notifyTopup(telegram: any, u: any, n: number, paid: string, balan
       console.error('Topup owner notice failed', err)
     }
   }
+  // Public feed (BOOST_FEED_CHAT), in English, with an image
+  const feed = (process.env.BOOST_FEED_CHAT || '').trim()
+  if (feed) {
+    try {
+      const name = u.username ? `@${u.username}` : `${u.first_name || u.id}${u.last_name ? ` ${u.last_name}` : ''}`
+      const who = u.username ? escHtml(name) : `<a href="tg://user?id=${u.id}">${escHtml(name)}</a>`
+      const text = `💳 <b>${who} recharged credits</b>\n${pack ? pack.label : paid} · ${creditsLabel(n, 'en')}`
+      let sent = false
+      try {
+        const credits = pack ? pack.credits : n
+        const image = await require('./boostImage').renderRechargeImage({
+          name,
+          credits,
+          bonus: Math.max(0, n - credits),
+          paid: pack ? pack.paid : '',
+        })
+        await telegram.sendPhoto(feed, { source: image }, { caption: text, parse_mode: 'HTML', disable_notification: true })
+        sent = true
+      } catch (err) {
+        console.error('Recharge image failed, sending text', err)
+      }
+      if (!sent) {
+        await telegram.sendMessage(feed, text, {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          disable_notification: true,
+        })
+      }
+    } catch (err) {
+      console.error('Recharge feed message failed', err)
+    }
+  }
 }
 
 /** A USDT payment was matched to an order: apply the boost like a Stars payment */
@@ -640,7 +680,12 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       added,
       `🪙 ${formatUnits(order.amountUnits)} USDT`,
       balance,
-      order.backRaffleId
+      order.backRaffleId,
+      {
+        credits: order.boosts,
+        paid: `${cryptoPriceLabel(order.boosts)} USDT`,
+        label: `🪙 ${cryptoPriceLabel(order.boosts)} USDT`,
+      }
     )
     return
   }
@@ -1359,7 +1404,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         }
         return ctx.reply(`${loc('please_retry', 'en')}\n\n${loc(ok ? 'boost_refunded' : 'boost_refund_failed', 'en')}`)
       }
-      await notifyTopup(ctx.telegram, u, added, `⭐ ${p.total_amount} Stars`, balance, backId)
+      await notifyTopup(ctx.telegram, u, added, `⭐ ${p.total_amount} Stars`, balance, backId, {
+        credits: n,
+        paid: `${p.total_amount} stars`,
+        label: `⭐ ${p.total_amount} Stars`,
+      })
       return
     }
     if (!p || !p.invoice_payload.startsWith(PAYLOAD_PREFIX)) return
