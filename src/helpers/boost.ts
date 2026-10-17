@@ -349,7 +349,7 @@ async function sendBoostInvoice(
       )
       .replace('$after', `${res.used + n}`)
       .replace('$max', `${maxBoosts()}`),
-    payload: `${PAYLOAD_PREFIX}${raffleId}:${n}`,
+    payload: `${PAYLOAD_PREFIX}${raffleId}:${n}:${+multiplierOf().toFixed(2)}`,
     provider_token: '',
     currency: 'XTR',
     prices: [{ label: `Boost ${pctLabel(n, language, stepOf(res.raffle))}`, amount: n * BOOST_PRICE }],
@@ -357,12 +357,12 @@ async function sendBoostInvoice(
 }
 
 /** "🎯 Your chance: 0.4% → 1.6%" after a purchase (empty if it can't be computed) */
-async function chanceAfterBuy(raffle: any, value: number, n: number, language: string) {
+async function chanceAfterBuy(raffle: any, value: number, n: number, language: string, mult: number) {
   try {
     const base = entryValueOf(raffle)
     const totals = await raffleTotals(raffle._id, base, BOOST_STEP)
     if (!totals) return ''
-    return `\n${oddsChangeLine(language, totals, value, n * multiplierOf(), base, BOOST_STEP)}`
+    return `\n${oddsChangeLine(language, totals, value, n * mult, base, BOOST_STEP)}`
   } catch (err) {
     return ''
   }
@@ -448,6 +448,7 @@ async function notifyOwner(
     mult: string
     total: number
     messageId?: number
+    boostMult?: number
     step?: number
   }
 ) {
@@ -504,7 +505,7 @@ async function notifyOwner(
         const who = u.username
           ? escHtml(name)
           : `<a href="tg://user?id=${info.userId}">${escHtml(name)}</a>`
-        const mult = multiplierOf()
+        const mult = info.boostMult || multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
           `${info.credits ? '💰 Credits' : info.crypto ? '🟢 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
@@ -554,8 +555,10 @@ async function notifyOwner(
 const TOPUP_PREFIX = 'topup:'
 
 function parsePayload(payload: string) {
-  const [raffleId, n] = payload.substr(PAYLOAD_PREFIX.length).split(':')
-  return { raffleId, n: Math.max(1, parseInt(n || '1', 10) || 1) }
+  const [raffleId, n, m] = payload.substr(PAYLOAD_PREFIX.length).split(':')
+  // Multiplier in force when the invoice was made (0 = old invoice without it)
+  const mult = parseFloat(m || '0')
+  return { raffleId, n: Math.max(1, parseInt(n || '1', 10) || 1), mult: mult >= 1 ? mult : 0 }
 }
 
 async function refund(ctx: ContextMessageUpdate, userId: number, chargeId: string) {
@@ -672,12 +675,14 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
     }
   }
   if (res.error) return fail(res.error)
+  // Value of the boost = multiplier in force when the order was made
+  const mult = order.mult >= 1 ? order.mult : multiplierOf()
   const upd: any = await RaffleModel.updateOne(
     { _id: res.raffle._id, winners: { $exists: false } },
     {
       $push: {
         boostIds: { $each: Array(n).fill(userId) },
-        boostMults: { $each: Array(n).fill(multiplierOf()) },
+        boostMults: { $each: Array(n).fill(mult) },
         cryptoIds: { $each: Array(n).fill(userId) },
       },
     }
@@ -685,7 +690,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
   if (!upd || !upd.nModified) return fail('raffle_over')
   await CryptoOrderModel.updateOne({ _id: order._id }, { chatId: res.raffle.chatId })
   const used = res.used + n
-  const value = res.value + n * multiplierOf()
+  const value = res.value + n * mult
   try {
     const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
     const raffleChat = await findChat(fresh.chatId)
@@ -711,7 +716,8 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       n,
       chatId: res.raffle.chatId,
       messageId: res.raffle.messageId,
-      step: stepOf(res.raffle),
+      step: BOOST_STEP * mult,
+      boostMult: mult,
       mult: multLabel(value, 'es', entryValueOf(res.raffle)),
       total: entryValueOf(res.raffle) + BOOST_STEP * value,
     }
@@ -722,7 +728,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       loc('boost_applied', language)
         .replace('$mult', multLabel(value, language, entryValueOf(res.raffle)))
         .replace('$used', `${used}`)
-        .replace('$max', `${maxBoosts()}`) + (await chanceAfterBuy(res.raffle, value, n, language))
+        .replace('$max', `${maxBoosts()}`) + (await chanceAfterBuy(res.raffle, value, n, language, mult))
     )
   } catch (err) {
     console.error('Crypto confirmation not sent', err)
@@ -1025,6 +1031,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         lastName: u.last_name,
         raffleId,
         boosts: n,
+        mult: multiplierOf(),
       })
       const pct = pctLabel(n, res.language, stepOf(res.raffle))
       const amount = formatUnits(order.amountUnits)
@@ -1178,6 +1185,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const userId = ctx.from.id
       const res: any = await validateBoost(raffleId, userId, n)
       if (res.error) return ctx.reply(errorText(res.error, res.language))
+      const mult = multiplierOf()
       const balance = await spendCredits(userId, n, {
         raffleId,
         chatId: res.raffle.chatId,
@@ -1191,7 +1199,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         {
           $push: {
             boostIds: { $each: Array(n).fill(userId) },
-            boostMults: { $each: Array(n).fill(multiplierOf()) },
+            boostMults: { $each: Array(n).fill(mult) },
             creditIds: { $each: Array(n).fill(userId) },
           },
         }
@@ -1202,7 +1210,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       }
       await trackBoost({ type: 'invoice', userId, raffleId, boosts: n, method: 'credits', reminded: true })
       const used = res.used + n
-      const value = res.value + n * multiplierOf()
+      const value = res.value + n * mult
       try {
         const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
         const raffleChat = await findChat(fresh.chatId)
@@ -1217,7 +1225,8 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         n,
         chatId: res.raffle.chatId,
         messageId: res.raffle.messageId,
-        step: stepOf(res.raffle),
+        step: BOOST_STEP * mult,
+      boostMult: mult,
         mult: multLabel(value, 'es', entryValueOf(res.raffle)),
         total: entryValueOf(res.raffle) + BOOST_STEP * value,
       })
@@ -1225,7 +1234,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         `${loc('boost_applied', res.language)
           .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
           .replace('$used', `${used}`)
-          .replace('$max', `${maxBoosts()}`)}${await chanceAfterBuy(res.raffle, value, n, res.language)}\n${loc('boost_credits_line', res.language).replace('$n', `${balance}`)}`
+          .replace('$max', `${maxBoosts()}`)}${await chanceAfterBuy(res.raffle, value, n, res.language, mult)}\n${loc('boost_credits_line', res.language).replace('$n', `${balance}`)}`
       )
       // Low balance: right moment to offer a recharge
       if (balance <= 1) {
@@ -1350,7 +1359,9 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       return
     }
     if (!p || !p.invoice_payload.startsWith(PAYLOAD_PREFIX)) return
-    const { raffleId, n } = parsePayload(p.invoice_payload)
+    const { raffleId, n, mult: paidMult } = parsePayload(p.invoice_payload)
+    // Value of the boost = multiplier in force when the invoice was made
+    const mult = paidMult || multiplierOf()
     const chargeId = p.telegram_payment_charge_id
     const userId = ctx.from.id
     // Idempotency: ignore duplicates
@@ -1384,7 +1395,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       {
         $push: {
           boostIds: { $each: Array(n).fill(userId) },
-          boostMults: { $each: Array(n).fill(multiplierOf()) },
+          boostMults: { $each: Array(n).fill(mult) },
         },
       }
     )
@@ -1398,7 +1409,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       )
     }
     const used = res.used + n
-    const value = res.value + n * multiplierOf()
+    const value = res.value + n * mult
     try {
       const fresh = await RaffleModel.findById(res.raffle._id).select(
         '-participantsIds'
@@ -1419,7 +1430,8 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       n,
       chatId: res.raffle.chatId,
       messageId: res.raffle.messageId,
-      step: stepOf(res.raffle),
+      step: BOOST_STEP * mult,
+      boostMult: mult,
       mult: multLabel(value, 'es', entryValueOf(res.raffle)),
       total: entryValueOf(res.raffle) + BOOST_STEP * value,
     })
@@ -1427,7 +1439,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       loc('boost_applied', res.language)
         .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
         .replace('$used', `${used}`)
-        .replace('$max', `${maxBoosts()}`) + (await chanceAfterBuy(res.raffle, value, n, res.language))
+        .replace('$max', `${maxBoosts()}`) + (await chanceAfterBuy(res.raffle, value, n, res.language, mult))
     )
   })
 }

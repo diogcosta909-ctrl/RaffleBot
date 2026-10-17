@@ -187,6 +187,7 @@ export async function createOrder(info: {
   boosts: number
   backRaffleId?: string
   network?: Network
+  mult?: number
 }) {
   const now = new Date()
   const network: Network = info.network === 'ton' ? 'ton' : 'bsc'
@@ -200,7 +201,14 @@ export async function createOrder(info: {
     status: 'pending',
     expiresAt: { $gt: now },
   })
-  if (existing) return existing
+  if (existing) {
+    // Keep the value of the moment the user asks again
+    if (info.mult && existing.mult !== info.mult) {
+      existing.mult = info.mult
+      await existing.save()
+    }
+    return existing
+  }
   const base = unitsFor(info.boosts)
   // Pack price + the lowest free tail: 0.0201, 0.0202, 0.0203... (grows only when many are open)
   const grace = new Date(now.getTime() - 10 * 60000)

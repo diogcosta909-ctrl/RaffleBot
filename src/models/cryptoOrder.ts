@@ -35,6 +35,9 @@ export class CryptoOrder extends Typegoose {
   // Abandoned-payment reminder already sent
   @prop()
   reminded?: boolean
+  // Boost multiplier when the order was made (the boost keeps this value)
+  @prop()
+  mult?: number
   // Credit topups (raffleId = 'topup'): raffle whose boost menu to go back to
   @prop()
   backRaffleId?: string
