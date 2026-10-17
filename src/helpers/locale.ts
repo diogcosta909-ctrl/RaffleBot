@@ -576,6 +576,10 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '⏳ Too many wrong codes. Try again in a few minutes.',
     es: '⏳ Demasiados códigos incorrectos. Inténtalo de nuevo en unos minutos.',
   },
+  code_limit: {
+    en: '⏳ You can redeem up to $n codes per day. Try again tomorrow.',
+    es: '⏳ Puedes canjear hasta $n códigos al día. Inténtalo de nuevo mañana.',
+  },
   topup_back: {
     en: '🚀 Back to Boost',
     es: '🚀 Volver al Boost',

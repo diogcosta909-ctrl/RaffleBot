@@ -2,6 +2,7 @@
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { PromoCodeModel } from '../models/promoCode'
 import { findChat } from '../models/chat'
+import { CreditTxModel } from '../models/creditTx'
 import { addCredits } from './credits'
 import { loc } from './locale'
 
@@ -18,6 +19,29 @@ function isAdmin(ctx: any) {
   const admin = parseInt(process.env.ADMIN, 10)
   return !!admin && ctx.from.id === admin && ctx.chat.type === 'private'
 }
+
+// Anti-abuse: max code redemptions per person in 24 h (free credits attract fake accounts)
+const DAILY_LIMIT = Math.max(1, parseInt(process.env.CODE_DAILY_LIMIT || '2', 10) || 2)
+// Same code redeemed this many times within 10 minutes → alert the owner
+const BURST_ALERT = 5
+// Alerts already sent (so each one reaches the owner only once)
+const alerted = new Set<string>()
+
+async function alertOwner(telegram: any, key: string, text: string) {
+  if (alerted.has(key)) return
+  alerted.add(key)
+  const admin = parseInt(process.env.ADMIN, 10)
+  if (!admin) return
+  try {
+    await telegram.sendMessage(admin, text, { parse_mode: 'HTML' })
+  } catch (err) {
+    console.error('Abuse alert not sent', err)
+  }
+}
+
+const who = (u: any) =>
+  `<a href="tg://user?id=${u.id}">${esc(u.username ? `@${u.username}` : `${u.first_name || ''}${u.last_name ? ` ${u.last_name}` : ''}`.trim() || `${u.id}`)}</a>`
+const today = () => new Date().toISOString().slice(0, 10)
 
 // Brute-force guard: 5 wrong codes per 10 minutes and user
 const fails = new Map<number, number[]>()
@@ -51,7 +75,7 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
         '🎁 <b>Códigos de créditos</b>\n\n' +
           '<code>/code 5</code> → 5 créditos para 1 persona\n' +
           '<code>/code 5 5</code> → 5 créditos para cada una de 5 personas\n\n' +
-          'Cada persona solo puede canjear un código una vez, y cada canje sale en el feed.\n' +
+          `Cada persona solo puede canjear un código una vez (máx. ${DAILY_LIMIT} códigos por persona al día), y cada canje sale en el feed.\n` +
           '/codes ver los códigos · <code>/delcode CODIGO</code> desactivar'
       )
     }
@@ -107,7 +131,28 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
     const lang = (await findChat(userId)).language
     raw = (raw || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '')
     if (!raw) return ctx.reply(loc('code_usage', lang))
-    if (blocked(userId)) return ctx.reply(loc('code_blocked', lang))
+    if (blocked(userId)) {
+      await alertOwner(
+        ctx.telegram,
+        `block:${userId}:${today()}`,
+        `⚠️ <b>Posible abuso de códigos</b>\n👤 ${who(ctx.from)} (<code>${userId}</code>) ha fallado 5 códigos seguidos.`
+      )
+      return ctx.reply(loc('code_blocked', lang))
+    }
+    // Daily limit per person
+    const recent = await CreditTxModel.countDocuments({
+      userId,
+      type: 'code',
+      createdAt: { $gte: new Date(Date.now() - 24 * 3600 * 1000) },
+    })
+    if (recent >= DAILY_LIMIT) {
+      await alertOwner(
+        ctx.telegram,
+        `limit:${userId}:${today()}`,
+        `⚠️ <b>Límite diario de códigos</b>\n👤 ${who(ctx.from)} (<code>${userId}</code>) intentó canjear más de ${DAILY_LIMIT} códigos en 24 h.`
+      )
+      return ctx.reply(loc('code_limit', lang).replace('$n', `${DAILY_LIMIT}`))
+    }
     const doc: any = await PromoCodeModel.findOneAndUpdate(
       {
         code: raw,
@@ -135,6 +180,23 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
     const name = ctx.from.username
       ? `@${ctx.from.username}`
       : `${ctx.from.first_name}${ctx.from.last_name ? ` ${ctx.from.last_name}` : ''}`
+    // Many redemptions of one code in a few minutes usually means fake accounts
+    try {
+      const burst = await CreditTxModel.countDocuments({
+        type: 'code',
+        ref: doc.code,
+        createdAt: { $gte: new Date(Date.now() - 10 * 60000) },
+      })
+      if (burst >= BURST_ALERT) {
+        await alertOwner(
+          ctx.telegram,
+          `burst:${doc.code}`,
+          `⚠️ <b>Posible abuso de códigos</b>\n<code>${esc(doc.code)}</code> se ha canjeado ${burst} veces en 10 minutos (${doc.uses}/${doc.maxUses}).\nSi no es normal: <code>/delcode ${esc(doc.code)}</code>`
+        )
+      }
+    } catch (err) {
+      console.error('Burst check failed', err)
+    }
     const admin = parseInt(process.env.ADMIN, 10)
     if (admin) {
       try {
