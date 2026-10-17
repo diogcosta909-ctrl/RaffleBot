@@ -103,7 +103,14 @@ async function ranking(chatId?: number) {
   const boosts = new Map<number, number>()
   if (ids.length) {
     const add = (id: number, n: number) => boosts.set(id, (boosts.get(id) || 0) + (n || 0))
-    const scope: any = chatId ? { chatId } : {}
+    // Payments carry the chat; older ones only know the raffle (look it up while it still exists)
+    let scope: any = {}
+    let spendScope: any = {}
+    if (chatId) {
+      const raffleIds = (await RaffleModel.find({ chatId }).select('_id')).map((r: any) => `${r._id}`)
+      scope = { $or: [{ chatId }, { chatId: { $exists: false }, raffleId: { $in: raffleIds } }] }
+      spendScope = scope
+    }
     const stars: any[] = await PaymentModel.find({
       ...scope,
       status: 'applied',
@@ -118,12 +125,6 @@ async function ranking(chatId?: number) {
       raffleId: { $ne: 'topup' },
     }).select('userId boosts')
     for (const o of usdt) add(o.userId, o.boosts || 1)
-    // Credit spends carry the chat; older ones only know the raffle (look it up while it still exists)
-    let spendScope: any = {}
-    if (chatId) {
-      const raffleIds = (await RaffleModel.find({ chatId }).select('_id')).map((r: any) => `${r._id}`)
-      spendScope = { $or: [{ chatId }, { chatId: { $exists: false }, raffleId: { $in: raffleIds } }] }
-    }
     const spends: any[] = await CreditTxModel.find({
       type: 'spend',
       userId: { $in: ids },
