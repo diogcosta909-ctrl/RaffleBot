@@ -61,6 +61,15 @@ export async function recordRaffleWins(raffle: any) {
 /** Counts giveaways that finished before the permanent ranking existed (still stored, < 18 days old) */
 async function backfillWins() {
   try {
+    // One-time reset: earlier versions also counted substitutes, so recount from scratch
+    const marker = await WinCountModel.findOne({ chatId: 0, userId: 0 })
+    if (!marker) {
+      await WinCountModel.deleteMany({})
+      await RaffleModel.updateMany({}, { $set: { winsRecorded: false } })
+      await ChatModel.updateMany({}, { $set: { giveawaysDone: 0 } })
+      await WinCountModel.create({ chatId: 0, userId: 0, wins: 0 })
+      console.log('Hall of fame: recounted (first winner only)')
+    }
     const old: any[] = await RaffleModel.find({
       winners: { $exists: true, $ne: '' },
       winsRecorded: { $ne: true },
@@ -77,7 +86,7 @@ async function backfillWins() {
  * chatId = only that chat; undefined = every chat.
  */
 async function ranking(chatId?: number) {
-  const rows: any[] = await WinCountModel.find(chatId ? { chatId } : {}).select('userId wins')
+  const rows: any[] = await WinCountModel.find(chatId ? { chatId, userId: { $gt: 0 } } : { userId: { $gt: 0 } }).select('userId wins')
   const wins = new Map<number, number>()
   for (const r of rows) wins.set(r.userId, (wins.get(r.userId) || 0) + (r.wins || 0))
   let giveaways = 0
