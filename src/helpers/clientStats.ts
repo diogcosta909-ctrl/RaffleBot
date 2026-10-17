@@ -90,17 +90,18 @@ export function setupClientStats(bot: Telegraf<ContextMessageUpdate>) {
       const pl = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
       const f1 = (n: number) => (Math.round(n * 10) / 10).toString()
 
-      // Giveaways that sold the most boosts: link to the giveaway, 🚀 boosts, 👤 buyers
-      const top = Array.from(raffles.entries())
-        .sort((a, b) => b[1].boosts - a[1].boosts)
-        .slice(0, 10)
+      // Live giveaways (not finished yet) that sold the most boosts:
+      // link to the giveaway, 🚀 boosts, 👤 buyers
+      const sorted = Array.from(raffles.entries()).sort((a, b) => b[1].boosts - a[1].boosts)
       const topLines: string[] = []
-      for (let i = 0; i < top.length; i++) {
-        const [raffleId, r] = top[i]
+      for (let k = 0; k < sorted.length && topLines.length < 10; k++) {
+        const [raffleId, r] = sorted[k]
         let link = ''
         try {
-          const doc: any = await RaffleModel.findById(raffleId).select('chatId messageId')
-          if (doc && doc.messageId) {
+          const doc: any = await RaffleModel.findById(raffleId).select('chatId messageId winners')
+          // Finished (or deleted) giveaways don't appear
+          if (!doc || doc.winners) continue
+          if (doc.messageId) {
             const internal = `${doc.chatId}`.replace(/^-100/, '')
             try {
               const c: any = await ctx.telegram.getChat(doc.chatId)
@@ -111,11 +112,12 @@ export function setupClientStats(bot: Telegraf<ContextMessageUpdate>) {
             if (!link && `${doc.chatId}`.startsWith('-100')) link = `https://t.me/c/${internal}/${doc.messageId}`
           }
         } catch {
-          // no link
+          continue
         }
         const label = link ? `<a href="${link}">Giveaway</a>` : 'Giveaway'
-        topLines.push(`${i + 1}. ${label} • ${r.boosts} 🚀 • ${r.buyers.size} 👤`)
+        topLines.push(`${topLines.length + 1}. ${label} • ${r.boosts} 🚀 • ${r.buyers.size} 👤`)
       }
+      if (!topLines.length) topLines.push('— No live giveaways with boosts right now')
 
       const best = list
         .sort((a, b) => b.boosts - a.boosts)
@@ -131,7 +133,7 @@ export function setupClientStats(bot: Telegraf<ContextMessageUpdate>) {
           `🚀 Boosts por comprador: <b>${f1(boosts / total)}</b>\n` +
           `💰 Gasto medio: <b>${f1(stars / total)}⭐</b>` +
           (usdt ? ` + <b>${formatUnits(Math.round(usdt / total))} USDT</b>` : '') +
-          `\n\n🔝 <b>Top 10 giveaways</b> (🚀 boosts · 👤 compradores)\n${topLines.join('\n')}` +
+          `\n\n🔝 <b>Top 10 live giveaways</b> (🚀 boosts · 👤 compradores)\n${topLines.join('\n')}` +
           `\n\n🏅 <b>Top 10 compradores</b> (🚀 boosts · 🛒 compras)\n${best.join('\n')}`,
         { disable_web_page_preview: true }
       )
