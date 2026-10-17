@@ -90,30 +90,37 @@ export function setupClientStats(bot: Telegraf<ContextMessageUpdate>) {
       const pl = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
       const f1 = (n: number) => (Math.round(n * 10) / 10).toString()
 
-      // Raffles that sold the most boosts, with the chat they belong to
+      // Giveaways that sold the most boosts: link to the giveaway, 🚀 boosts, 👤 buyers
       const top = Array.from(raffles.entries())
         .sort((a, b) => b[1].boosts - a[1].boosts)
-        .slice(0, 5)
+        .slice(0, 10)
       const topLines: string[] = []
       for (let i = 0; i < top.length; i++) {
         const [raffleId, r] = top[i]
-        let title = `Sorteo ${raffleId.slice(-4)}`
+        let link = ''
         try {
-          const doc: any = await RaffleModel.findById(raffleId).select('chatId')
-          if (doc) {
-            const c: any = await ctx.telegram.getChat(doc.chatId)
-            title = c.title || (c.username ? `@${c.username}` : title)
+          const doc: any = await RaffleModel.findById(raffleId).select('chatId messageId')
+          if (doc && doc.messageId) {
+            const internal = `${doc.chatId}`.replace(/^-100/, '')
+            try {
+              const c: any = await ctx.telegram.getChat(doc.chatId)
+              link = c.username ? `https://t.me/${c.username}/${doc.messageId}` : ''
+            } catch {
+              // chat not reachable: try the private link below
+            }
+            if (!link && `${doc.chatId}`.startsWith('-100')) link = `https://t.me/c/${internal}/${doc.messageId}`
           }
         } catch {
-          // keep the short id
+          // no link
         }
-        topLines.push(`${i + 1}. ${esc(title)} · ${pl(r.boosts, 'boost', 'boosts')} · ${pl(r.buyers.size, 'comprador', 'compradores')}`)
+        const label = link ? `<a href="${link}">Giveaway</a>` : 'Giveaway'
+        topLines.push(`${i + 1}. ${label} • ${r.boosts} 🚀 • ${r.buyers.size} 👤`)
       }
 
       const best = list
         .sort((a, b) => b.boosts - a.boosts)
-        .slice(0, 3)
-        .map((b) => `• ${esc(b.name || 'Sin nombre')} · ${pl(b.boosts, 'boost', 'boosts')} · ${pl(b.purchases, 'compra', 'compras')}`)
+        .slice(0, 10)
+        .map((b, i) => `${i + 1}. ${esc(b.name || 'Sin nombre')} • ${b.boosts} 🚀 • ${b.purchases} 🛒`)
 
       const sinceTxt = since ? ` (desde ${since.toISOString().slice(0, 10)})` : ''
       return ctx.replyWithHTML(
@@ -124,8 +131,8 @@ export function setupClientStats(bot: Telegraf<ContextMessageUpdate>) {
           `🚀 Boosts por comprador: <b>${f1(boosts / total)}</b>\n` +
           `💰 Gasto medio: <b>${f1(stars / total)}⭐</b>` +
           (usdt ? ` + <b>${formatUnits(Math.round(usdt / total))} USDT</b>` : '') +
-          `\n\n🔝 <b>Sorteos con más boosts</b>\n${topLines.join('\n')}` +
-          `\n\n🏅 <b>Mejores compradores</b>\n${best.join('\n')}`,
+          `\n\n🔝 <b>Top 10 giveaways</b> (🚀 boosts · 👤 compradores)\n${topLines.join('\n')}` +
+          `\n\n🏅 <b>Top 10 compradores</b> (🚀 boosts · 🛒 compras)\n${best.join('\n')}`,
         { disable_web_page_preview: true }
       )
     } catch (err) {
