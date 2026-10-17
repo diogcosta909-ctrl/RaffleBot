@@ -239,7 +239,7 @@ export async function refreshRaffleMessage(
       { $match: { chatId: raffle.chatId, messageId: raffle.messageId } },
       {
         $project: {
-          participantsIds: { $size: '$participantsIds' },
+          participantsIds: { $size: { $setUnion: [{ $ifNull: ['$participantsIds', []] }, []] } },
           boosts: { $size: { $ifNull: ['$boostIds', []] } },
           multCount: { $size: { $ifNull: ['$boostMults', []] } },
           multSum: { $sum: { $ifNull: ['$boostMults', []] } },
@@ -575,14 +575,14 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           '$winner',
           `<a href="tg://user?id=${winner.user.id}">${name}</a>`
         )
-        .replace('$numberOfParticipants', `${idsOriginalLength}`)
+        .replace('$numberOfParticipants', `${Math.round(idsOriginalLength * base)}`)
     } else {
       text = `🎉 ${loc('winner', chat.language)} — <a href="tg://user?id=${
         winner.user.id
       }">${name}</a>! ${loc('congratulations', chat.language)}!\n\n${loc(
         'participants_number',
         chat.language
-      )} — ${idsOriginalLength}.`
+      )} — ${Math.round(idsOriginalLength * base)}.`
     }
     if (raffle.boostEnabled) {
       const n = counts.get(winner.user.id) || 0
@@ -639,7 +639,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
               )
               .join(', ')
           )
-          .replace('$numberOfParticipants', `${idsOriginalLength}`)
+          .replace('$numberOfParticipants', `${Math.round(idsOriginalLength * base)}`)
         text = `${text}${boostSummary}`
       } else {
         text = `🎉 ${loc('winners', chat.language)}:\n`
@@ -651,7 +651,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         text = `${text}\n\n${loc('congratulations', chat.language)}!\n\n${loc(
           'participants_number',
           chat.language
-        )} — ${idsOriginalLength}.${boostSummary}`
+        )} — ${Math.round(idsOriginalLength * base)}.${boostSummary}`
       }
       if (!nodelete) {
         if (!raffle.raffleMessage || raffle.raffleMessage.text) {
@@ -695,7 +695,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       text = `${text}\n\n${loc('congratulations', chat.language)}!\n\n${loc(
         'participants_number',
         chat.language
-      )} — ${idsOriginalLength}.${boostSummary}`
+      )} — ${Math.round(idsOriginalLength * base)}.${boostSummary}`
       console.log(`Announcing winners for ${raffle.chatId}`, raffle.messageId)
       if (!nodelete) {
         if (!raffle.raffleMessage || raffle.raffleMessage.text) {
