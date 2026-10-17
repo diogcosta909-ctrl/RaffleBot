@@ -192,7 +192,7 @@ export function boostBlock(language: string, extra: number) {
 export function boostButton(raffle: Raffle & { id?: string }, language: string) {
   return [
     {
-      text: `${loc('boost_button', language)} ⭐${cryptoEnabled() ? ' / 🟢 USDT' : ''}`,
+      text: cryptoEnabled() ? 'Boost ⭐️ or USDT' : `${loc('boost_button', language)} ⭐`,
       callback_data: `b~${raffle.id}`,
     },
   ]
