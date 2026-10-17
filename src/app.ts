@@ -23,6 +23,7 @@ import { setupDebug } from './commands/debug'
 import { setupBoost } from './helpers/boost'
 import { setupTerms } from './helpers/terms'
 import { setupBroadcast } from './helpers/broadcast'
+import { setupTopBoosters } from './helpers/topBoosters'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -46,6 +47,7 @@ setupListenForForwards(bot)
 setupBoost(bot)
 setupTerms(bot)
 setupBroadcast(bot)
+setupTopBoosters(bot)
 setupCleanup()
 
 // Setup commands

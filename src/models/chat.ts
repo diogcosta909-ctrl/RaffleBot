@@ -21,6 +21,9 @@ export class Chat extends Typegoose {
   // Owner's chat only: /stars stats count from this date (set by /resetstars)
   @prop()
   statsResetAt?: Date
+  // Owner's chat only: day (Andorra time) the weekly Top Boosters post was sent
+  @prop()
+  topPostedDay?: string
   @prop({ required: true, default: false })
   boost: boolean
   // Value of each entry (1 normally, 1.5 or 2 on special days)
