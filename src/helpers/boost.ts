@@ -1072,13 +1072,13 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
         const row: any[] = [
           {
-            text: `${hot}${shortPack(n)} · ${n * BOOST_PRICE}⭐`,
+            text: `${hot}${shortPack(n)} = ${n * BOOST_PRICE}⭐`,
             callback_data: `ts~${n}~${raffleId}`,
           },
         ]
         if (cryptoEnabled()) {
           row.push({
-            text: `${hot}${shortPack(n)} · ${cryptoPriceLabel(n)} USDT`,
+            text: `${hot}${shortPack(n)} = ${cryptoPriceLabel(n)} USDT`,
             callback_data: `tc~${n}~${raffleId}`,
           })
         }
