@@ -481,8 +481,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '💰 Tus créditos: $n',
   },
   recharge_button: {
-    en: 'RECHARGE',
-    es: 'RECHARGE',
+    en: 'Recharge Credits',
+    es: 'Recharge Credits',
   },
   credit_one: {
     en: 'credit',
@@ -513,8 +513,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 Volver al Boost',
   },
   credit_not_enough: {
-    en: '💰 Not enough credits. Tap RECHARGE.',
-    es: '💰 No tienes créditos suficientes. Pulsa RECHARGE.',
+    en: '💰 Not enough credits. Tap Recharge Credits.',
+    es: '💰 No tienes créditos suficientes. Pulsa Recharge Credits.',
   },
   crypto_invoice_topup: {
     en: '🟢 <b>Recharge with USDT</b> ($n)\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through BSC (BEP20). Valid for $min minutes.\n\n✅ Your credits are added automatically 1-2 minutes after the transfer.',
