@@ -873,7 +873,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     try {
       const res: any = await validateBoost(raffleId, ctx.from.id, n)
       if (res.error) return ctx.reply(errorText(res.error, res.language))
-      await trackBoost({ type: 'invoice', userId: ctx.from.id, raffleId, boosts: n })
+      await trackBoost({ type: 'invoice', userId: ctx.from.id, raffleId, boosts: n, method: 'crypto' })
       const u = ctx.from
       const order = await createOrder({
         userId: u.id,
@@ -904,6 +904,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
 
   // Start watching the chain for USDT payments (needs CRYPTO_WALLET)
   startCryptoWatcher((order, txHash) => applyCryptoPayment(bot.telegram, order, txHash))
+  startReminders(bot.telegram)
 
   // Validate right before Telegram charges the user
   bot.on('pre_checkout_query', async (ctx) => {
@@ -1003,4 +1004,99 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         .replace('$max', `${maxBoosts()}`)
     )
   })
+}
+
+/**
+ * Abandoned-payment reminders (one per person and raffle, 10 min after opening the payment):
+ * Stars invoices that were never paid, and USDT orders still waiting.
+ */
+const REMIND_AFTER_MIN = 10
+
+export async function remindOnce(telegram: any) {
+  const now = Date.now()
+  // Stars invoices left unpaid
+  const events: any[] = await BoostEventModel.find({
+    type: 'invoice',
+    method: 'stars',
+    reminded: { $ne: true },
+    createdAt: { $lt: new Date(now - REMIND_AFTER_MIN * 60000), $gt: new Date(now - 90 * 60000) },
+  }).limit(50)
+  for (const e of events) {
+    await BoostEventModel.updateOne({ _id: e._id }, { reminded: true })
+    try {
+      const already = await BoostEventModel.countDocuments({
+        userId: e.userId,
+        raffleId: e.raffleId,
+        reminded: true,
+        _id: { $ne: e._id },
+      })
+      if (already) continue
+      const paid =
+        (await PaymentModel.countDocuments({
+          userId: e.userId,
+          raffleId: e.raffleId,
+          status: 'applied',
+          createdAt: { $gte: e.createdAt },
+        })) +
+        (await CryptoOrderModel.countDocuments({
+          userId: e.userId,
+          raffleId: e.raffleId,
+          status: 'paid',
+          paidAt: { $gte: e.createdAt },
+        }))
+      if (paid) continue
+      const n = e.boosts || 1
+      const res: any = await validateBoost(e.raffleId, e.userId, n)
+      if (res.error) continue
+      const lang = (await findChat(e.userId)).language
+      const row: any[] = [
+        {
+          text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, lang, stepOf(res.raffle))}`,
+          callback_data: `b~${e.raffleId}~${n}`,
+        },
+      ]
+      if (cryptoEnabled()) {
+        row.push({ text: `🟢 ${cryptoPriceLabel(n)} USDT`, callback_data: `c~${e.raffleId}~${n}` })
+      }
+      await telegram.sendMessage(
+        e.userId,
+        loc('remind_stars', lang).replace('$pct', pctLabel(n, lang, stepOf(res.raffle))),
+        { parse_mode: 'HTML', reply_markup: { inline_keyboard: [row] } }
+      )
+    } catch (err) {
+      console.error('Stars reminder failed', err)
+    }
+  }
+  // USDT orders still pending
+  const orders: any[] = await CryptoOrderModel.find({
+    status: 'pending',
+    reminded: { $ne: true },
+    createdAt: { $lt: new Date(now - REMIND_AFTER_MIN * 60000) },
+    expiresAt: { $gt: new Date(now) },
+  }).limit(50)
+  for (const o of orders) {
+    await CryptoOrderModel.updateOne({ _id: o._id }, { reminded: true })
+    try {
+      const res: any = await validateBoost(o.raffleId, o.userId, o.boosts)
+      if (res.error) continue
+      const lang = (await findChat(o.userId)).language
+      const left = Math.max(1, Math.round((new Date(o.expiresAt).getTime() - now) / 60000))
+      await telegram.sendMessage(
+        o.userId,
+        loc('remind_crypto', lang)
+          .replace('$amount', formatUnits(o.amountUnits))
+          .replace('$address', CRYPTO_WALLET)
+          .replace('$min', `${left}`),
+        { parse_mode: 'HTML', disable_web_page_preview: true }
+      )
+    } catch (err) {
+      console.error('USDT reminder failed', err)
+    }
+  }
+}
+
+function startReminders(telegram: any) {
+  setInterval(() => {
+    remindOnce(telegram).catch((err) => console.error('Reminders failed', err))
+  }, 60 * 1000)
 }

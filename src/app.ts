@@ -24,6 +24,7 @@ import { setupBoost } from './helpers/boost'
 import { setupTerms } from './helpers/terms'
 import { setupBroadcast } from './helpers/broadcast'
 import { setupTopBoosters } from './helpers/topBoosters'
+import { setupClientStats } from './helpers/clientStats'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -48,6 +49,7 @@ setupBoost(bot)
 setupTerms(bot)
 setupBroadcast(bot)
 setupTopBoosters(bot)
+setupClientStats(bot)
 setupCleanup()
 
 // Setup commands

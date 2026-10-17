@@ -15,6 +15,12 @@ export class BoostEvent extends Typegoose {
   // false when the click was rejected (not joined, raffle over, max reached)
   @prop({ default: true })
   ok?: boolean
+  // stars | crypto (how the invoice was opened)
+  @prop()
+  method?: string
+  // Abandoned-payment reminder already sent for this event
+  @prop()
+  reminded?: boolean
 }
 
 export const BoostEventModel = new BoostEvent().getModelForClass(BoostEvent, {

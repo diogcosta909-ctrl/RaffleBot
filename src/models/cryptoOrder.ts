@@ -32,6 +32,9 @@ export class CryptoOrder extends Typegoose {
   expiresAt: Date
   @prop()
   paidAt?: Date
+  // Abandoned-payment reminder already sent
+  @prop()
+  reminded?: boolean
 }
 
 export const CryptoOrderModel = new CryptoOrder().getModelForClass(CryptoOrder, {
