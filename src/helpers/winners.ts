@@ -139,7 +139,7 @@ async function hallText(telegram: any, chatId?: number) {
     const name = esc(await nameOf(telegram, chatId, u.id))
     const medal = i < 3 ? MEDALS[i] : `${i + 1}.`
     const w = `${u.wins} ${u.wins === 1 ? 'win' : 'wins'}`
-    const b = u.boosts > 0 ? `🚀 ${u.boosts} ${u.boosts === 1 ? 'boost' : 'boosts'} bought` : '🚀 0 boosts'
+    const b = u.boosts > 0 ? `${u.boosts} ${u.boosts === 1 ? 'boost' : 'boosts'} bought` : '0 boosts'
     lines.push(`${medal} <b>${name}</b> · ${w} · ${b}`)
   }
   return (
