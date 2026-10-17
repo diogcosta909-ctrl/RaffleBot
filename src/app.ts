@@ -22,6 +22,7 @@ import { setupId } from './commands/id'
 import { setupDebug } from './commands/debug'
 import { setupBoost } from './helpers/boost'
 import { setupTerms } from './helpers/terms'
+import { setupBroadcast } from './helpers/broadcast'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -44,6 +45,7 @@ setupListenForForwards(bot)
 // Setup Stars boost (before /start so boost deep links are handled first)
 setupBoost(bot)
 setupTerms(bot)
+setupBroadcast(bot)
 setupCleanup()
 
 // Setup commands
