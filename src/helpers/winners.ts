@@ -47,9 +47,9 @@ export async function recordRaffleWins(raffle: any) {
       { $set: { winsRecorded: true } }
     )
     if (!claimed || !claimed.nModified) return
-    for (const id of `${raffle.winners}`.split(',')) {
-      const userId = parseInt(id, 10)
-      if (!userId) continue
+    // Only the first winner counts; the others are substitutes
+    const userId = parseInt(`${raffle.winners}`.split(',')[0], 10)
+    if (userId) {
       await WinCountModel.updateOne({ chatId: raffle.chatId, userId }, { $inc: { wins: 1 } }, { upsert: true })
     }
     await ChatModel.updateOne({ chatId: raffle.chatId }, { $inc: { giveawaysDone: 1 } }, { upsert: true })
