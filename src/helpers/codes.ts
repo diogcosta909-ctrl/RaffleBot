@@ -23,8 +23,6 @@ function isAdmin(ctx: any) {
 // Optional extra limit: max code redemptions per person in 24 h (0 = off, the default).
 // Each account can always redeem each code only once.
 const DAILY_LIMIT = Math.max(0, parseInt(process.env.CODE_DAILY_LIMIT || '0', 10) || 0)
-// Same code redeemed this many times within 10 minutes → alert the owner
-const BURST_ALERT = 5
 // Alerts already sent (so each one reaches the owner only once)
 const alerted = new Set<string>()
 
@@ -183,23 +181,6 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
     const name = ctx.from.username
       ? `@${ctx.from.username}`
       : `${ctx.from.first_name}${ctx.from.last_name ? ` ${ctx.from.last_name}` : ''}`
-    // Many redemptions of one code in a few minutes usually means fake accounts
-    try {
-      const burst = await CreditTxModel.countDocuments({
-        type: 'code',
-        ref: doc.code,
-        createdAt: { $gte: new Date(Date.now() - 10 * 60000) },
-      })
-      if (burst >= BURST_ALERT) {
-        await alertOwner(
-          ctx.telegram,
-          `burst:${doc.code}`,
-          `⚠️ <b>Posible abuso de códigos</b>\n<code>${esc(doc.code)}</code> se ha canjeado ${burst} veces en 10 minutos (${doc.uses}/${doc.maxUses}).\nSi no es normal: <code>/delcode ${esc(doc.code)}</code>`
-        )
-      }
-    } catch (err) {
-      console.error('Burst check failed', err)
-    }
     const admin = parseInt(process.env.ADMIN, 10)
     if (admin) {
       try {
