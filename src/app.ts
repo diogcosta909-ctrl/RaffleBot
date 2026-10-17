@@ -6,7 +6,7 @@ dotenv.config({ path: `${__dirname}/../.env` })
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { setupStartAndHelp } from './commands/startAndHelp'
 import { setupStartRaffle } from './commands/startRaffle'
-import { finishRaffle, setupCallback, setupListener } from './helpers/raffle'
+import { finishRaffle, setupCallback, setupListener, withRetry } from './helpers/raffle'
 import { setupLanguage, setupLanguageCallback } from './commands/language'
 import { setupNumberCallback, setupNumber } from './commands/number'
 import { setupTestLocale } from './commands/testLocales'
@@ -73,6 +73,24 @@ setupConfigRaffle(bot)
 setupAddChat(bot)
 setupId(bot)
 setupDebug(bot)
+// Giveaways forwarded at the same time are finished a few at a time (Telegram rate limits)
+const finishing = new Set<string>()
+const MAX_AT_ONCE = 3
+let running = 0
+const waiting: (() => void)[] = []
+async function takeSlot() {
+  if (running < MAX_AT_ONCE) {
+    running++
+    return
+  }
+  await new Promise<void>((resolve) => waiting.push(resolve))
+}
+function releaseSlot() {
+  const next = waiting.shift()
+  if (next) next()
+  else running--
+}
+
 bot.on('message', async (ctx) => {
   if (
     !ctx.chat ||
@@ -102,6 +120,22 @@ bot.on('message', async (ctx) => {
   if (!raffle) {
     return
   }
+  const key = `${raffle._id}`
+  const reply = (text: string) =>
+    withRetry(() => ctx.reply(text, { reply_to_message_id: ctx.message.message_id })).catch(
+      () => undefined
+    )
+  // Already finished, or being finished right now: never draw it twice
+  if ((raffle as any).winners || finishing.has(key)) {
+    await reply('👍')
+    return
+  }
+  finishing.add(key)
+  try {
+    await takeSlot()
+  } catch (e) {
+    // never happens
+  }
   try {
     let numberOfTries = 0
     let succeeded = false
@@ -122,14 +156,13 @@ bot.on('message', async (ctx) => {
         }
       }
     }
-    await ctx.reply('👍', {
-      reply_to_message_id: ctx.message.message_id,
-    })
+    await reply('👍')
   } catch (err) {
     console.error(err)
-    await ctx.reply('👎 try again', {
-      reply_to_message_id: ctx.message.message_id,
-    })
+    await reply('👎 try again')
+  } finally {
+    finishing.delete(key)
+    releaseSlot()
   }
 })
 

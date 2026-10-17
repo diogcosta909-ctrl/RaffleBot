@@ -410,7 +410,7 @@ function paidWith(raffle: any, userId: number, n: number) {
 }
 
 /** Runs a Telegram call again after the wait Telegram asks for when it answers "Too Many Requests" */
-async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   for (let i = 0; ; i++) {
     try {
       return await fn()
