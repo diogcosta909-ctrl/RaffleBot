@@ -33,8 +33,6 @@ function fail(userId: number) {
   fails.set(userId, list)
 }
 
-const dateText = (d?: Date) => (d ? new Date(d).toISOString().slice(0, 10) : '—')
-
 /**
  * Credit codes. Owner: /code <credits> [uses] [NAME] [7d] [feed], /codes, /delcode NAME.
  * Users: /redeem CODE.
@@ -42,48 +40,44 @@ const dateText = (d?: Date) => (d ? new Date(d).toISOString().slice(0, 10) : '�
 export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
   bot.command('code', async (ctx: any) => {
     if (!isAdmin(ctx)) return
-    const parts: string[] = (ctx.message.text || '').split(/\s+/).slice(1).filter(Boolean)
-    const numbers = parts.filter((p) => /^\d+$/.test(p)).map((p) => parseInt(p, 10))
+    const numbers = (ctx.message.text || '')
+      .split(/\s+/)
+      .slice(1)
+      .filter((p: string) => /^\d+$/.test(p))
+      .map((p: string) => parseInt(p, 10))
     const credits = numbers[0]
     if (!credits) {
       return ctx.replyWithHTML(
         '🎁 <b>Códigos de créditos</b>\n\n' +
-          '<code>/code 10</code> → código al azar, 10 créditos, 1 persona\n' +
-          '<code>/code 10 50</code> → 10 créditos, 50 personas distintas\n' +
-          '<code>/code 5 100 WELCOME</code> → con nombre propio\n' +
-          '<code>/code 5 100 WELCOME 7d</code> → caduca en 7 días\n' +
-          '<code>/code 5 100 WELCOME feed</code> → cada canje sale en el feed\n\n' +
-          'Cada persona solo puede canjear un código una vez.\n' +
-          '/codes ver los códigos · <code>/delcode NOMBRE</code> desactivar'
+          '<code>/code 5</code> → 5 créditos para 1 persona\n' +
+          '<code>/code 5 5</code> → 5 créditos para cada una de 5 personas\n\n' +
+          'Cada persona solo puede canjear un código una vez, y cada canje sale en el feed.\n' +
+          '/codes ver los códigos · <code>/delcode CODIGO</code> desactivar'
       )
     }
     const maxUses = numbers[1] || 1
-    const expiry = parts.find((p) => /^\d+d$/i.test(p))
-    const days = expiry ? parseInt(expiry, 10) : 0
-    const feed = parts.some((p) => p.toLowerCase() === 'feed')
-    const name = parts.find(
-      (p) => !/^\d+$/.test(p) && !/^\d+d$/i.test(p) && p.toLowerCase() !== 'feed'
-    )
-    const code = (name || randomCode()).toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 20)
-    if (!code) return ctx.reply('Nombre no válido (usa letras y números).')
-    try {
-      await PromoCodeModel.create({
-        code,
-        credits,
-        maxUses,
-        feed,
-        expiresAt: days ? new Date(Date.now() + days * 24 * 3600 * 1000) : undefined,
-      })
-    } catch (err) {
-      return ctx.reply(`❌ Ya existe un código llamado ${code}.`)
+    let code = randomCode()
+    let created = false
+    for (let tries = 0; tries < 5 && !created; tries++) {
+      try {
+        await PromoCodeModel.create({ code, credits, maxUses, feed: true })
+        created = true
+      } catch (err) {
+        code = randomCode()
+      }
     }
+    if (!created) return ctx.reply('❌ No se pudo crear el código, inténtalo otra vez.')
+    const bot = process.env.USERNAME
+    const share =
+      `🎁 Free credits!\n` +
+      `Tap to redeem: https://t.me/${bot}?start=redeem_${code}\n` +
+      `or send /redeem ${code} to @${bot}`
     return ctx.replyWithHTML(
       `✅ <b>Código creado</b>\n\n<code>${code}</code>\n` +
         `🎁 ${credits} créditos por persona\n` +
-        `👥 Hasta ${maxUses} ${maxUses === 1 ? 'persona' : 'personas'}\n` +
-        `⏳ Caduca: ${days ? dateText(new Date(Date.now() + days * 24 * 3600 * 1000)) : 'nunca'}\n` +
-        `📢 Aviso en el feed: ${feed ? 'sí' : 'no'}\n\n` +
-        `Se canjea con:\n<code>/redeem ${code}</code>`
+        `👥 Hasta ${maxUses} ${maxUses === 1 ? 'persona' : 'personas'}\n\n` +
+        `📤 <b>Mensaje para compartir</b> (toca para copiar):\n<code>${esc(share)}</code>`,
+      { disable_web_page_preview: true }
     )
   })
 
@@ -92,12 +86,11 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
     const list: any[] = await PromoCodeModel.find({}).sort({ createdAt: -1 }).limit(20)
     if (!list.length) return ctx.reply('Aún no hay códigos. Crea uno con /code 10')
     const lines = list.map((c) => {
-      const expired = c.expiresAt && new Date(c.expiresAt).getTime() < Date.now()
-      const state = !c.active ? '⛔' : expired ? '⌛' : c.uses >= c.maxUses ? '✅' : '🟢'
-      return `${state} <code>${esc(c.code)}</code> · ${c.credits} créditos · ${c.uses}/${c.maxUses} canjes · caduca ${dateText(c.expiresAt)}${c.feed ? ' · feed' : ''}`
+      const state = !c.active ? '⛔' : c.uses >= c.maxUses ? '✅' : '🟢'
+      return `${state} <code>${esc(c.code)}</code> · ${c.credits} créditos · ${c.uses}/${c.maxUses} canjes`
     })
     return ctx.replyWithHTML(
-      `🎁 <b>Códigos</b>\n\n${lines.join('\n')}\n\n🟢 activo · ✅ agotado · ⌛ caducado · ⛔ desactivado`
+      `🎁 <b>Códigos</b>\n\n${lines.join('\n')}\n\n🟢 activo · ✅ agotado · ⛔ desactivado`
     )
   })
 
@@ -109,24 +102,18 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
     return ctx.reply(res && res.nModified ? `⛔ ${name} desactivado.` : `No encontré ${name} (o ya estaba desactivado).`)
   })
 
-  bot.command('redeem', async (ctx: any) => {
-    if (ctx.chat.type !== 'private') return
+  const redeem = async (ctx: any, raw: string) => {
     const userId = ctx.from.id
     const lang = (await findChat(userId)).language
-    const raw = ((ctx.message.text || '').split(/\s+/)[1] || '').toUpperCase()
+    raw = (raw || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '')
     if (!raw) return ctx.reply(loc('code_usage', lang))
     if (blocked(userId)) return ctx.reply(loc('code_blocked', lang))
-    const now = new Date()
-    // One atomic step: active, not expired, uses left and not redeemed by this person yet
     const doc: any = await PromoCodeModel.findOneAndUpdate(
       {
         code: raw,
         active: true,
         redeemedBy: { $ne: userId },
-        $and: [
-          { $expr: { $lt: ['$uses', '$maxUses'] } },
-          { $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }] },
-        ],
+        $expr: { $lt: ['$uses', '$maxUses'] },
       },
       { $inc: { uses: 1 }, $push: { redeemedBy: userId } },
       { new: true }
@@ -137,7 +124,6 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
       let key = 'code_invalid'
       if (c && c.active) {
         if ((c.redeemedBy || []).indexOf(userId) >= 0) key = 'code_used'
-        else if (c.expiresAt && new Date(c.expiresAt).getTime() < now.getTime()) key = 'code_expired'
         else if (c.uses >= c.maxUses) key = 'code_exhausted'
       }
       return ctx.reply(loc(key, lang))
@@ -162,17 +148,33 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
         console.error('Code owner notice failed', err)
       }
     }
+    // Every redemption is announced in the public boost feed
     const feed = (process.env.BOOST_FEED_CHAT || '').trim()
-    if (doc.feed && feed) {
+    if (feed) {
       try {
         await ctx.telegram.sendMessage(
           feed,
-          `🎁 <b>${esc(name)}</b> redeemed a code · +${doc.credits} credits\n🎟 Codes left: ${Math.max(0, doc.maxUses - doc.uses)}`,
+          `🎁 <b>${esc(name)}</b> redeemed a code · +${doc.credits} credits\n` +
+            `🎟 Codes left: ${Math.max(0, doc.maxUses - doc.uses)}\n` +
+            `💡 Got a code? Send /redeem YOURCODE to @${process.env.USERNAME}`,
           { parse_mode: 'HTML', disable_notification: true }
         )
       } catch (err) {
         console.error('Code feed notice failed', err)
       }
     }
+  }
+
+  bot.command('redeem', async (ctx: any) => {
+    if (ctx.chat.type !== 'private') return
+    return redeem(ctx, (ctx.message.text || '').split(/\s+/)[1] || '')
+  })
+
+  // Deep link from the shared message: /start redeem_<CODE>
+  bot.use(async (ctx: any, next: any) => {
+    const text = ctx.message && ctx.message.text
+    const match = text && /^\/start redeem_([A-Za-z0-9_-]{3,20})$/.exec(text)
+    if (!match || ctx.chat.type !== 'private') return next()
+    return redeem(ctx, match[1])
   })
 }
