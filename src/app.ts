@@ -25,6 +25,8 @@ import { setupTerms } from './helpers/terms'
 import { setupBroadcast } from './helpers/broadcast'
 import { setupTopBoosters } from './helpers/topBoosters'
 import { setupClientStats } from './helpers/clientStats'
+import { setupCodes } from './helpers/codes'
+import { setupStatus } from './helpers/status'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -50,6 +52,8 @@ setupTerms(bot)
 setupBroadcast(bot)
 setupTopBoosters(bot)
 setupClientStats(bot)
+setupCodes(bot)
+setupStatus(bot)
 setupCleanup()
 
 // Setup commands

@@ -92,6 +92,13 @@ async function rpc(method: string, params: any[]) {
 
 let lastScanned = 0
 let lastLatest = 0
+let lastOkAt = 0
+let lastError = ''
+
+/** Watcher health for /status */
+export function getCryptoStatus() {
+  return { lastScanned, lastLatest, lastOkAt, lastError }
+}
 
 /** Creates (or reuses) the pending order for this user, raffle and pack */
 export async function createOrder(info: {
@@ -209,7 +216,10 @@ export function startCryptoWatcher(
     busy = true
     try {
       await scan(onPaid)
+      lastOkAt = Date.now()
+      lastError = ''
     } catch (err) {
+      lastError = `${(err && err.message) || err}`.slice(0, 120)
       console.error('Crypto scan failed', err && err.message)
     }
     busy = false

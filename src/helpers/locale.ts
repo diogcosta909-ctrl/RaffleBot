@@ -528,6 +528,34 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '\n🎁 A pack like <b>10+1</b> = 10 credits + 1 free.',
     es: '\n🎁 Un pack como <b>10+1</b> = 10 créditos + 1 gratis.',
   },
+  code_usage: {
+    en: '🎁 Send your code like this:\n/redeem YOURCODE',
+    es: '🎁 Envía tu código así:\n/redeem TUCODIGO',
+  },
+  code_ok: {
+    en: '🎁 <b>Code redeemed!</b>\n+$n credits added.\n💰 Your credits: <b>$bal</b>',
+    es: '🎁 <b>¡Código canjeado!</b>\n+$n créditos añadidos.\n💰 Tus créditos: <b>$bal</b>',
+  },
+  code_invalid: {
+    en: '❌ That code does not exist or is no longer active.',
+    es: '❌ Ese código no existe o ya no está activo.',
+  },
+  code_used: {
+    en: '⚠️ You already redeemed this code.',
+    es: '⚠️ Ya canjeaste este código.',
+  },
+  code_expired: {
+    en: '⌛ This code has expired.',
+    es: '⌛ Este código ha caducado.',
+  },
+  code_exhausted: {
+    en: '😕 This code has no redemptions left.',
+    es: '😕 Este código ya no tiene canjes disponibles.',
+  },
+  code_blocked: {
+    en: '⏳ Too many wrong codes. Try again in a few minutes.',
+    es: '⏳ Demasiados códigos incorrectos. Inténtalo de nuevo en unos minutos.',
+  },
   topup_back: {
     en: '🚀 Back to Boost',
     es: '🚀 Volver al Boost',
