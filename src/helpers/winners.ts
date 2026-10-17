@@ -1,101 +1,119 @@
 // Dependencies
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
-import { WinnerLogModel } from '../models/winnerLog'
+import { RaffleModel } from '../models'
+import { PaymentModel } from '../models/payment'
+import { CryptoOrderModel } from '../models/cryptoOrder'
+import { CreditTxModel } from '../models/creditTx'
 import { findChat } from '../models/chat'
 import { checkIfAdmin } from './checkAdmin'
 
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MEDALS = ['🥇', '🥈', '🥉']
+const TOP = 10
 
-/** Saves the winners of a finished raffle (never breaks the draw) */
-export async function logWinners(
-  raffle: any,
-  winners: {
-    id: number
-    name: string
-    entries: number
-    boosts: number
-    method: string
-    stars?: number
-    usdt?: number
-    credits?: number
-    chance?: number
-  }[],
-  participants: number
-) {
+// Names (user id → display name), cached so the message refreshes fast
+const names = new Map<number, string>()
+
+async function nameOf(telegram: any, chatId: number | undefined, id: number) {
+  const cached = names.get(id)
+  if (cached) return cached
+  let name = ''
+  const read = (u: any) =>
+    u.username ? `@${u.username}` : `${u.first_name || ''}${u.last_name ? ` ${u.last_name}` : ''}`.trim()
   try {
-    await WinnerLogModel.insertMany(
-      winners.map((w, i) => ({
-        chatId: raffle.chatId,
-        raffleId: `${raffle._id}`,
-        userId: w.id,
-        name: w.name,
-        position: i + 1,
-        entries: w.entries,
-        boosts: w.boosts,
-        method: w.method,
-        boostsStars: w.stars,
-        boostsUsdt: w.usdt,
-        boostsCredits: w.credits,
-        chance: w.chance,
-        participants,
-      }))
-    )
+    if (chatId) name = read((await telegram.getChatMember(chatId, id)).user)
   } catch (err) {
-    console.error('Winners not logged', err)
+    // left the chat
   }
+  if (!name) {
+    try {
+      name = read(await telegram.getChat(id))
+    } catch (err) {
+      // never opened the bot
+    }
+  }
+  if (name) names.set(id, name)
+  return name || 'Anonymous'
 }
 
-const pctText = (p: number) => (p < 0.1 ? '<0.1%' : p < 10 ? `${p.toFixed(1)}%` : `${Math.round(p)}%`)
+/**
+ * All-time ranking: raffles won and boosts bought in total (Stars + USDT + credits).
+ * chatId = only that chat; undefined = every chat.
+ */
+async function ranking(chatId?: number) {
+  const where: any = { winners: { $exists: true, $ne: '' } }
+  if (chatId) where.chatId = chatId
+  const raffles: any[] = await RaffleModel.find(where).select('chatId winners')
+  const wins = new Map<number, number>()
+  for (const r of raffles) {
+    for (const id of `${r.winners}`.split(',')) {
+      const n = parseInt(id, 10)
+      if (n) wins.set(n, (wins.get(n) || 0) + 1)
+    }
+  }
+  const ids = Array.from(wins.keys())
+  const boosts = new Map<number, number>()
+  if (ids.length) {
+    const add = (id: number, n: number) => boosts.set(id, (boosts.get(id) || 0) + (n || 0))
+    const scope: any = chatId ? { chatId } : {}
+    const stars: any[] = await PaymentModel.find({
+      ...scope,
+      status: 'applied',
+      userId: { $in: ids },
+      raffleId: { $ne: 'topup' },
+    }).select('userId boosts')
+    for (const p of stars) add(p.userId, p.boosts || 1)
+    const usdt: any[] = await CryptoOrderModel.find({
+      ...scope,
+      status: 'paid',
+      userId: { $in: ids },
+      raffleId: { $ne: 'topup' },
+    }).select('userId boosts')
+    for (const o of usdt) add(o.userId, o.boosts || 1)
+    // Credit spends only know the raffle, so look the chat's raffles up
+    const raffleIds = chatId
+      ? (await RaffleModel.find({ chatId }).select('_id')).map((r: any) => `${r._id}`)
+      : undefined
+    const spends: any[] = await CreditTxModel.find({
+      type: 'spend',
+      userId: { $in: ids },
+      ...(raffleIds ? { raffleId: { $in: raffleIds } } : {}),
+    }).select('userId delta')
+    for (const t of spends) add(t.userId, -t.delta)
+  }
+  const list = ids
+    .map((id) => ({ id, wins: wins.get(id) || 0, boosts: boosts.get(id) || 0 }))
+    .sort((a, b) => b.wins - a.wins || b.boosts - a.boosts || a.id - b.id)
+  return { list: list.slice(0, TOP), raffles: raffles.length, winners: ids.length }
+}
 
-/** One winner, in full detail */
-function line(w: any, i: number) {
-  const d = new Date(w.createdAt)
-  const when = `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
-  // Rows saved before the breakdown existed only have the main method
-  const hasSplit = w.boostsStars !== undefined || w.boostsUsdt !== undefined || w.boostsCredits !== undefined
-  const stars = hasSplit ? w.boostsStars || 0 : w.method === 'stars' ? w.boosts : 0
-  const usdt = hasSplit ? w.boostsUsdt || 0 : w.method === 'usdt' ? w.boosts : 0
-  const credits = hasSplit ? w.boostsCredits || 0 : w.method === 'credits' ? w.boosts : 0
-  const parts: string[] = []
-  if (stars) parts.push(`${stars}⭐`)
-  if (usdt) parts.push(`${usdt} USDT`)
-  if (credits) parts.push(`${credits} credits`)
-  const boostLine =
-    w.boosts > 0
-      ? `🚀 ${w.boosts} ${w.boosts === 1 ? 'boost' : 'boosts'} bought${parts.length ? ` (${parts.join(' · ')})` : ''}`
-      : '🍀 No boosts — won with a free entry'
-  const chance = typeof w.chance === 'number' ? ` · 🎯 ${pctText(w.chance)} chance` : ''
+async function hallText(telegram: any, chatId?: number) {
+  const r = await ranking(chatId)
+  if (!r.list.length) {
+    return '🏆 <b>Top 10 winners</b>\n\nThe first winner will appear here after the next draw.'
+  }
+  const lines: string[] = []
+  for (let i = 0; i < r.list.length; i++) {
+    const u = r.list[i]
+    const name = esc(await nameOf(telegram, chatId, u.id))
+    const medal = i < 3 ? MEDALS[i] : `${i + 1}.`
+    const w = `${u.wins} ${u.wins === 1 ? 'win' : 'wins'}`
+    const b = u.boosts > 0 ? `🚀 ${u.boosts} ${u.boosts === 1 ? 'boost' : 'boosts'} bought` : '🚀 0 boosts'
+    lines.push(`${medal} <b>${name}</b> · ${w} · ${b}`)
+  }
   return (
-    `<b>${i + 1}. ${esc(w.name || 'Anonymous')}</b> · ${when}\n` +
-    `🎟 ${w.entries} ${w.entries === 1 ? 'entry' : 'entries'}${chance}\n` +
-    `${boostLine}\n` +
-    `👥 ${w.participants} players`
+    `🏆 <b>Top 10 winners</b> · all time\n\n${lines.join('\n')}\n\n` +
+    `📊 ${r.raffles} ${r.raffles === 1 ? 'raffle' : 'raffles'} · ${r.winners} different ${r.winners === 1 ? 'winner' : 'winners'}`
   )
 }
 
-async function hallText(query: any) {
-  // First winner of each raffle only (the rest are substitutes)
-  const list: any[] = await WinnerLogModel.find({ ...query, position: 1 })
-    .sort({ createdAt: -1 })
-    .limit(10)
-  if (!list.length) {
-    return '🏆 <b>Hall of fame</b>\n\nThe first winner will appear here after the next draw.'
-  }
-  const boosted = list.filter((w) => w.boosts > 0).length
-  return (
-    `🏆 <b>Hall of fame</b> · last ${list.length} winners\n` +
-    `🚀 ${boosted} of ${list.length} used boosts\n\n${list.map(line).join('\n\n')}`
-  )
-}
-
-/** Refreshes the pinned hall of fame of a chat (called after every draw) */
+/** Refreshes the pinned ranking of a chat (called after every draw) */
 export async function updateHallOfFame(telegram: any, chatId: number) {
   try {
     const chat = await findChat(chatId)
     if (!chat.hofMessageId) return
     try {
-      await telegram.editMessageText(chatId, chat.hofMessageId, undefined, await hallText({ chatId }), {
+      await telegram.editMessageText(chatId, chat.hofMessageId, undefined, await hallText(telegram, chatId), {
         parse_mode: 'HTML',
         disable_web_page_preview: true,
       })
@@ -117,35 +135,34 @@ export async function updateHallOfFame(telegram: any, chatId: number) {
 
 /**
  * /winners
- *  - group, admin: creates the pinned hall of fame (it updates itself after every draw)
- *  - group, anyone else: shows the current list
- *  - private: last winners of every raffle
+ *  - group, admin: creates the pinned ranking (it updates itself after every draw)
+ *  - group, anyone else: shows the current ranking
+ *  - private: ranking of every chat together
  */
 export function setupWinners(bot: Telegraf<ContextMessageUpdate>) {
   bot.command('winners', async (ctx) => {
     try {
       if (ctx.chat.type === 'private') {
-        return ctx.replyWithHTML(await hallText({}), { disable_web_page_preview: true } as any)
+        return ctx.replyWithHTML(await hallText(ctx.telegram), { disable_web_page_preview: true } as any)
       }
       const chatId = ctx.chat.id
       const isAdmin = await checkIfAdmin(ctx, false)
+      const text = await hallText(ctx.telegram, chatId)
       if (!isAdmin) {
-        return ctx.replyWithHTML(await hallText({ chatId }), { disable_web_page_preview: true } as any)
+        return ctx.replyWithHTML(text, { disable_web_page_preview: true } as any)
       }
       const chat = await findChat(chatId)
-      const text = await hallText({ chatId })
+      const upToDate = '✅ The pinned ranking is up to date. It updates itself after every draw.'
       if (chat.hofMessageId) {
         try {
           await ctx.telegram.editMessageText(chatId, chat.hofMessageId, undefined, text, {
             parse_mode: 'HTML',
             disable_web_page_preview: true,
           })
-          return ctx.reply('✅ The pinned hall of fame is up to date. It updates itself after every draw.')
+          return ctx.reply(upToDate)
         } catch (err) {
           const msg = `${(err && (err.description || err.message)) || ''}`
-          if (/not modified/i.test(msg)) {
-            return ctx.reply('✅ The pinned hall of fame is up to date. It updates itself after every draw.')
-          }
+          if (/not modified/i.test(msg)) return ctx.reply(upToDate)
           // Deleted or missing: create a new one below
         }
       }

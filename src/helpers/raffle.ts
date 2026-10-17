@@ -24,7 +24,7 @@ import {
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { topBoostersText } from './odds'
-import { logWinners, updateHallOfFame } from './winners'
+import { updateHallOfFame } from './winners'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
 import { InstanceType } from 'typegoose'
@@ -448,7 +448,6 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   const base = entryValueOf(raffle)
   const values = raffle.boostEnabled ? boostValues(raffle) : new Map<number, number>()
   const weights = ids.map((id) => weightFor(values, id, base))
-  const totalWeight = weights.reduce((a, b) => a + b, 0)
   let winners: {
     name: string
     winner: ChatMember
@@ -518,30 +517,6 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   await RaffleModel.updateOne(
     { _id: (<any>raffle)._id },
     { $set: { participantsIds: [], boostIds: [], cryptoIds: [], creditIds: [] } }
-  )
-  // Hall of fame (/winners)
-  await logWinners(
-    raffle,
-    winners.map((w) => {
-      const n = counts.get(w.winner.user.id) || 0
-      const how = paidWith(raffle, w.winner.user.id, n)
-      const count = (list?: number[]) => (list || []).filter((id) => id === w.winner.user.id).length
-      const usdt = count(raffle.cryptoIds)
-      const credits = count(raffle.creditIds)
-      const weight = weightFor(values, w.winner.user.id, base)
-      return {
-        id: w.winner.user.id,
-        name: w.name.replace('<', '').replace('>', ''),
-        entries: Math.round(weight),
-        boosts: n,
-        method: how.credits ? 'credits' : how.crypto ? 'usdt' : 'stars',
-        stars: Math.max(0, n - usdt - credits),
-        usdt,
-        credits,
-        chance: totalWeight > 0 ? (weight / totalWeight) * 100 : 0,
-      }
-    }),
-    idsOriginalLength
   )
   // The pinned hall of fame of this chat (if any) updates itself
   await updateHallOfFame(ctx.telegram, raffle.chatId)
