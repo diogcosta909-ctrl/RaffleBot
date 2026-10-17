@@ -69,9 +69,9 @@ export function pctWithRatio(f: number) {
   return f > 0 && f < 0.5 ? `${pct(f)} (1/${Math.round(1 / f)})` : pct(f)
 }
 
-/** Line for the boost menu: current chance + hint about the buttons */
+/** Line for the boost menu: current chance */
 export function oddsLine(language: string, f: number) {
-  return `${loc('odds_line', language).replace('$pct', pctWithRatio(f))}\n${loc('odds_hint', language)}`
+  return loc('odds_line', language).replace('$pct', pctWithRatio(f))
 }
 
 /** Line after buying: "🎯 Your chance: 0.4% → 1.6%" (value = value AFTER buying, added = value just bought) */

@@ -17,7 +17,7 @@ import {
   CRYPTO_EXPIRY_MIN,
 } from './cryptoPay'
 import { getChatIdForConfig } from './getChatIdForConfig'
-import { raffleTotals, chanceOf, pct, oddsLine, oddsChangeLine } from './odds'
+import { raffleTotals, chanceOf, oddsLine, oddsChangeLine } from './odds'
 import { loc } from './locale'
 
 // Config (env overridable): 1 Star = +0.3 weight (x1.3), max 10 boosts per user per raffle
@@ -279,25 +279,19 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
   // Chance of winning now and after each pack (same formula as the draw)
   const base = entryValueOf(res.raffle)
   const totals = await raffleTotals(res.raffle._id, base, BOOST_STEP)
-  const after = (n: number) =>
-    totals ? ` → ${pct(chanceOf(totals, res.value, base, BOOST_STEP, n * multiplierOf()))}` : ''
   const keyboard: any[] = options.map((n) => {
     // With enough credits only the credits button is shown for that pack
     if (credits >= n) {
       return [
         {
-          text: totals
-            ? `💰 ${creditsLabel(n, res.language)}${after(n)}`
-            : `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+          text: `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
           callback_data: `w~${raffleId}~${n}`,
         },
       ]
     }
     const row: any[] = [
       {
-        text: totals
-          ? `${n * BOOST_PRICE}⭐${after(n)}`
-          : `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+        text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
         callback_data: `b~${raffleId}~${n}`,
       },
     ]
