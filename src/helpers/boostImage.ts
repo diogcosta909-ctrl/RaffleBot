@@ -250,9 +250,11 @@ export async function renderBoostImage(info: {
   boosts?: number
   winner?: boolean
   crypto?: boolean
+  credits?: boolean
   usdt?: string
 }): Promise<Buffer> {
   if (info.winner) return renderWinImage(info)
+  if (info.credits) return renderCryptoImage({ ...info, theme: 'credits' })
   if (info.crypto) return renderCryptoImage(info)
   const { createCanvas } = loadCanvas()
   const S = 2 // render at 2x for sharpness
@@ -435,10 +437,15 @@ async function renderWinImage(info: {
   entries: number
   boosts?: number
   crypto?: boolean
+  credits?: boolean
 }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
-  const cr = !!info.crypto
-  const logo = cr ? await usdtLogo() : null
+  const cc = !!info.credits
+  const cr = !!info.crypto || cc
+  const logo = cr && !cc ? await usdtLogo() : null
+  const P = cc
+    ? { bg0: '#12245a', bg1: '#050914', ray: 'rgba(169,196,255,0.07)', halo: '#4f7cff', conf: ['#4f7cff', '#ffffff', '#a9c4ff', '#ffd54a', '#3556d8'], rd: '#2c46b0', rb0: '#d6e2ff', rb1: '#4f7cff', rt: '#0a1640', pill: '#4f7cff', label: 'CREDITS BOOST' }
+    : { bg0: '#0f4a38', bg1: '#05100c', ray: 'rgba(127,224,191,0.07)', halo: '#26a17b', conf: ['#26a17b', '#ffffff', '#7fe0bf', '#ffd54a', '#1d7f61'], rd: '#1d7f61', rb0: '#b6f5df', rb1: '#26a17b', rt: '#04251b', pill: '#26a17b', label: 'USDT BOOST' }
   const S = 2
   const canvas = createCanvas(372 * S, 300 * S)
   const ctx = canvas.getContext('2d')
@@ -455,8 +462,8 @@ async function renderWinImage(info: {
 
   // Background: golden rays and glow
   const bg = ctx.createRadialGradient(186, 100, 10, 186, 100, 250)
-  bg.addColorStop(0, cr ? '#0f4a38' : '#6b4a0c')
-  bg.addColorStop(1, cr ? '#05100c' : '#120a02')
+  bg.addColorStop(0, cr ? P.bg0 : '#6b4a0c')
+  bg.addColorStop(1, cr ? P.bg1 : '#120a02')
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, 372, 300)
   for (let k = 0; k < 28; k++) {
@@ -465,12 +472,12 @@ async function renderWinImage(info: {
     ctx.moveTo(186, 100)
     ctx.lineTo(186 + Math.cos(a - 0.035) * 320, 100 + Math.sin(a - 0.035) * 320)
     ctx.lineTo(186 + Math.cos(a + 0.035) * 320, 100 + Math.sin(a + 0.035) * 320)
-    ctx.fillStyle = cr ? 'rgba(127,224,191,0.07)' : 'rgba(255,220,120,0.07)'
+    ctx.fillStyle = cr ? P.ray : 'rgba(255,220,120,0.07)'
     ctx.fill()
   }
   const halo = ctx.createRadialGradient(186, 90, 0, 186, 90, 110)
-  halo.addColorStop(0, cr ? '#26a17b66' : '#ffd54a66')
-  halo.addColorStop(1, cr ? '#26a17b00' : '#ffd54a00')
+  halo.addColorStop(0, cr ? `${P.halo}66` : '#ffd54a66')
+  halo.addColorStop(1, cr ? `${P.halo}00` : '#ffd54a00')
   ctx.fillStyle = halo
   ctx.beginPath()
   ctx.arc(186, 90, 110, 0, Math.PI * 2)
@@ -478,7 +485,7 @@ async function renderWinImage(info: {
 
   // Confetti
   const rnd = seeded(5)
-  const colors = cr ? ['#26a17b', '#ffffff', '#7fe0bf', '#ffd54a', '#1d7f61'] : ['#ffd54a', '#ffffff', '#ffb300', t.accent, '#ff6ec7']
+  const colors = cr ? P.conf : ['#ffd54a', '#ffffff', '#ffb300', t.accent, '#ff6ec7']
   for (let k = 0; k < 60; k++) {
     ctx.save()
     ctx.translate(rnd() * 372, rnd() * 250)
@@ -497,6 +504,10 @@ async function renderWinImage(info: {
   for (let k = 0; k < n; k++) {
     const x = 186 + (k - (n - 1) / 2) * 34
     const y = 128
+    if (cc) {
+      drawCreditCoin(ctx, x, y, 14)
+      continue
+    }
     if (cr) {
       ctx.drawImage(logo, x - 14, y - 14, 28, 28)
       ctx.lineWidth = 1.2
@@ -518,7 +529,7 @@ async function renderWinImage(info: {
   }
 
   // Ribbon
-  ctx.fillStyle = cr ? '#1d7f61' : '#b8860b'
+  ctx.fillStyle = cr ? P.rd : '#b8860b'
   ctx.beginPath()
   ctx.moveTo(34, 156)
   ctx.lineTo(70, 156)
@@ -536,12 +547,12 @@ async function renderWinImage(info: {
   ctx.closePath()
   ctx.fill()
   const rb = ctx.createLinearGradient(0, 148, 0, 182)
-  rb.addColorStop(0, cr ? '#b6f5df' : '#fff0a8')
-  rb.addColorStop(1, cr ? '#26a17b' : '#f0a800')
+  rb.addColorStop(0, cr ? P.rb0 : '#fff0a8')
+  rb.addColorStop(1, cr ? P.rb1 : '#f0a800')
   roundRect(ctx, 56, 148, 260, 34, 6)
   ctx.fillStyle = rb
   ctx.fill()
-  text('WINNER', 186, 172, '800 20px InterX', cr ? '#04251b' : '#4a2c00', '8px')
+  text('WINNER', 186, 172, '800 20px InterX', cr ? P.rt : '#4a2c00', '8px')
 
   // Name
   const name = drawableName(info.name)
@@ -564,10 +575,10 @@ async function renderWinImage(info: {
   ctx.stroke()
   text(`${info.entries} ENTRIES`, 111, 255, '800 15px InterX', '#ffffff', '1px')
   roundRect(ctx, 198, 230, 138, 40, 20)
-  ctx.fillStyle = cr ? '#26a17b' : t.accent
+  ctx.fillStyle = cr ? P.pill : t.accent
   ctx.fill()
   text(
-    cr ? 'USDT BOOST' : `${info.stars} ${info.stars > 1 ? 'STARS' : 'STAR'} BOOST`,
+    cr ? P.label : `${info.stars} ${info.stars > 1 ? 'STARS' : 'STAR'} BOOST`,
     267,
     255,
     '800 14px InterX',
@@ -582,6 +593,34 @@ async function renderWinImage(info: {
 async function usdtLogo() {
   const { loadImage } = loadCanvas()
   return loadImage(Buffer.from(require('./usdtLogo').USDT_LOGO_BASE64, 'base64'))
+}
+
+/** Generic credit coin (blue, lightning bolt) used for boosts paid with credits */
+function drawCreditCoin(ctx: any, x: number, y: number, r: number) {
+  const g = ctx.createLinearGradient(0, y - r, 0, y + r)
+  g.addColorStop(0, '#9db8ff')
+  g.addColorStop(1, '#3556d8')
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fillStyle = g
+  ctx.fill()
+  ctx.lineWidth = Math.max(1.2, r * 0.07)
+  ctx.strokeStyle = '#ffffff'
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(x, y, r * 0.78, 0, Math.PI * 2)
+  ctx.lineWidth = Math.max(1, r * 0.04)
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)'
+  ctx.stroke()
+  const pts = [[0.16, -0.58], [-0.34, 0.08], [-0.02, 0.08], [-0.16, 0.58], [0.34, -0.1], [0.02, -0.1]]
+  ctx.beginPath()
+  pts.forEach(([px, py], i) => {
+    if (i === 0) ctx.moveTo(x + px * r, y + py * r)
+    else ctx.lineTo(x + px * r, y + py * r)
+  })
+  ctx.closePath()
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
 }
 
 /** Banner for the crypto payment instructions: logo, amount and network */
@@ -616,15 +655,16 @@ export async function renderUsdtImage(info: { amount: string; pct: string }): Pr
 }
 
 /** Feed card for purchases paid in USDT: green Tether look, one coin (logo) per pack unit */
-async function renderCryptoImage(info: { name: string; entries: number; mult?: number; boosts?: number; stars: number; usdt?: string }) {
+async function renderCryptoImage(info: { name: string; entries: number; mult?: number; boosts?: number; stars: number; usdt?: string; theme?: string }) {
   const { createCanvas } = loadCanvas()
-  const logo = await usdtLogo()
+  const credits = info.theme === 'credits'
+  const logo = credits ? null : await usdtLogo()
   const S = 2
   const canvas = createCanvas(372 * S, 300 * S)
   const ctx = canvas.getContext('2d')
   ctx.scale(S, S)
-  const G = '#26a17b'
-  const L = '#7fe0bf'
+  const G = credits ? '#4f7cff' : '#26a17b'
+  const L = credits ? '#a9c4ff' : '#7fe0bf'
   const n = Math.max(1, Math.round(info.boosts || info.stars || 1))
   const t = TIERS[tierFor(n)]
   const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
@@ -635,15 +675,16 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     ctx.fillText(s, x, y)
     ;(ctx as any).letterSpacing = '0px'
   }
-  ctx.fillStyle = '#05100c'
+  const dark = credits ? '#050914' : '#05100c'
+  ctx.fillStyle = dark
   ctx.fillRect(0, 0, 372, 300)
   const bg = ctx.createRadialGradient(186, 112, 10, 186, 112, 230)
-  bg.addColorStop(0, '#0f3a2e')
-  bg.addColorStop(1, '#05100c')
+  bg.addColorStop(0, credits ? '#12245a' : '#0f3a2e')
+  bg.addColorStop(1, dark)
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, 372, 300)
   // Circuit-like diagonal lines instead of rays
-  ctx.strokeStyle = 'rgba(38,161,123,0.10)'
+  ctx.strokeStyle = credits ? 'rgba(79,124,255,0.10)' : 'rgba(38,161,123,0.10)'
   ctx.lineWidth = 1
   for (let k = -300; k < 400; k += 22) {
     ctx.beginPath()
@@ -652,8 +693,8 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     ctx.stroke()
   }
   const h = ctx.createRadialGradient(186, 118, 0, 186, 118, 120)
-  h.addColorStop(0, 'rgba(38,161,123,0.38)')
-  h.addColorStop(1, 'rgba(38,161,123,0)')
+  h.addColorStop(0, credits ? 'rgba(79,124,255,0.38)' : 'rgba(38,161,123,0.38)')
+  h.addColorStop(1, credits ? 'rgba(79,124,255,0)' : 'rgba(38,161,123,0)')
   ctx.fillStyle = h
   ctx.fillRect(0, 0, 372, 300)
 
@@ -667,9 +708,13 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     }
     text(name, 186, 36, ctx.font, '#ffffff', 'center')
   }
-  text(`bought a ${t.title.toLowerCase()} with USDT`, 186, 54, '700 12px InterB', L, 'center', '1px')
+  text(`bought a ${t.title.toLowerCase()} with ${credits ? 'credits' : 'USDT'}`, 186, 54, '700 12px InterB', L, 'center', '1px')
 
   for (const [x, y, r] of pyramid(n, 186, 126, 260, 108)) {
+    if (credits) {
+      drawCreditCoin(ctx, x, y, r)
+      continue
+    }
     ctx.drawImage(logo, x - r, y - r, r * 2, r * 2)
     ctx.lineWidth = Math.max(1.2, r * 0.07)
     ctx.strokeStyle = '#ffffff'
@@ -696,7 +741,7 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
   ctx.font = '800 54px InterX'
   const ew = ctx.measureText(entText).width
   text('ENTRIES NOW', 80 + ew, 238, '800 13px InterX', L, 'left', '2px')
-  text(info.usdt ? `for ${info.usdt} USDT` : 'paid in USDT', 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
+  text(credits ? `paid with ${n} ${n === 1 ? 'credit' : 'credits'}` : info.usdt ? `for ${info.usdt} USDT` : 'paid in USDT', 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
 
   if (info.mult && info.mult > 1) {
     const label = `x${+info.mult.toFixed(2)} TODAY`

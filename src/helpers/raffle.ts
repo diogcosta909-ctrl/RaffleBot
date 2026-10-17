@@ -388,6 +388,17 @@ function getButtons(raffle: InstanceType<Raffle>, language: string) {
  * @param raffle Raffle to finish
  * @param ctx Context of message that finished raffle
  */
+/** How the winner paid most of their boosts: Stars (default on ties), USDT or credits */
+function paidWith(raffle: any, userId: number, n: number) {
+  const count = (list?: number[]) => (list || []).filter((id) => id === userId).length
+  const usdt = count(raffle.cryptoIds)
+  const credits = count(raffle.creditIds)
+  const stars = Math.max(0, n - usdt - credits)
+  if (usdt > stars && usdt >= credits) return { crypto: true, credits: false }
+  if (credits > stars && credits > usdt) return { crypto: false, credits: true }
+  return { crypto: false, credits: false }
+}
+
 export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, defaultChat?: Chat) {
   console.log(`Finishing raffle for chat ${raffle.chatId}`)
   // Get participants ids
@@ -501,7 +512,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // The winners are saved, so the participants and boosts are no longer needed
   await RaffleModel.updateOne(
     { _id: (<any>raffle)._id },
-    { $set: { participantsIds: [], boostIds: [], cryptoIds: [] } }
+    { $set: { participantsIds: [], boostIds: [], cryptoIds: [], creditIds: [] } }
   )
   // Tell the public boost feed when the (first) winner had bought a Boost
   if (raffle.boostEnabled && winners.length > 0) {
@@ -520,8 +531,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           stars: n * BOOST_PRICE,
           boosts: n,
           entries: Math.round(weightFor(values, w.id, base)),
-          crypto:
-            ((raffle as any).cryptoIds || []).filter((id: number) => id === w.id).length * 2 > n,
+          ...paidWith(raffle, w.id, n),
         }
       ).catch(() => undefined)
     }

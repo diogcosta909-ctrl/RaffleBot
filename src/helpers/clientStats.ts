@@ -3,6 +3,7 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { RaffleModel } from '../models/raffle'
+import { CreditTxModel } from '../models/creditTx'
 import { findChat } from '../models/chat'
 import { formatUnits } from './cryptoPay'
 
@@ -50,9 +51,12 @@ export function setupClientStats(bot: Telegraf<ContextMessageUpdate>) {
       for (const p of payments) {
         const b = touch(p.userId, p.userName || '')
         b.purchases++
-        b.boosts += p.boosts || 1
         b.stars += p.stars || 0
-        raffle(p.raffleId, p.userId, p.boosts || 1)
+        // Credit recharges are revenue; their boosts are counted when the credits are spent
+        if (p.raffleId !== 'topup') {
+          b.boosts += p.boosts || 1
+          raffle(p.raffleId, p.userId, p.boosts || 1)
+        }
       }
       for (const o of orders) {
         const name = o.username
@@ -60,9 +64,19 @@ export function setupClientStats(bot: Telegraf<ContextMessageUpdate>) {
           : `${o.firstName || ''}${o.lastName ? ` ${o.lastName}` : ''}`.trim()
         const b = touch(o.userId, name)
         b.purchases++
-        b.boosts += o.boosts || 1
         b.usdtUnits += o.amountUnits || 0
-        raffle(o.raffleId, o.userId, o.boosts || 1)
+        if (o.raffleId !== 'topup') {
+          b.boosts += o.boosts || 1
+          raffle(o.raffleId, o.userId, o.boosts || 1)
+        }
+      }
+      const spendQuery: any = { type: 'spend' }
+      if (since) spendQuery.createdAt = { $gte: since }
+      const spends: any[] = await CreditTxModel.find(spendQuery)
+      for (const t of spends) {
+        const b = touch(t.userId, t.name || '')
+        b.boosts += -t.delta
+        if (t.raffleId) raffle(t.raffleId, t.userId, -t.delta)
       }
 
       const list = Array.from(buyers.values())

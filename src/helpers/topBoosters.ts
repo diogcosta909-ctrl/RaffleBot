@@ -2,6 +2,7 @@
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
+import { CreditTxModel } from '../models/creditTx'
 import { findChat } from '../models/chat'
 
 const TZ = 'Europe/Andorra'
@@ -23,11 +24,13 @@ export async function topBoosters(days = DAYS) {
   }
   const stars: any[] = await PaymentModel.find({
     status: 'applied',
+    raffleId: { $ne: 'topup' },
     createdAt: { $gte: since },
   })
   for (const p of stars) add(p.userId, p.userName || '', p.boosts || 1)
   const crypto: any[] = await CryptoOrderModel.find({
     status: 'paid',
+    raffleId: { $ne: 'topup' },
     paidAt: { $gte: since },
   })
   for (const o of crypto) {
@@ -36,6 +39,11 @@ export async function topBoosters(days = DAYS) {
       : `${o.firstName || ''}${o.lastName ? ` ${o.lastName}` : ''}`.trim()
     add(o.userId, name, o.boosts || 1)
   }
+  const spends: any[] = await CreditTxModel.find({
+    type: 'spend',
+    createdAt: { $gte: since },
+  })
+  for (const t of spends) add(t.userId, t.name || '', -t.delta)
   return Array.from(byUser.values())
     .filter((u) => u.boosts > 0)
     .sort((a, b) => b.boosts - a.boosts)

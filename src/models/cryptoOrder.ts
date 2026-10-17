@@ -35,6 +35,9 @@ export class CryptoOrder extends Typegoose {
   // Abandoned-payment reminder already sent
   @prop()
   reminded?: boolean
+  // Credit topups (raffleId = 'topup'): raffle whose boost menu to go back to
+  @prop()
+  backRaffleId?: string
 }
 
 export const CryptoOrderModel = new CryptoOrder().getModelForClass(CryptoOrder, {

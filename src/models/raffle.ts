@@ -29,6 +29,9 @@ export class Raffle extends Typegoose {
   // One entry per boost paid in USDT (user id repeated N times), subset of boostIds
   @arrayProp({ default: [], items: Number })
   cryptoIds?: number[]
+  // One entry per boost paid with credits (user id repeated N times), subset of boostIds
+  @arrayProp({ default: [], items: Number })
+  creditIds?: number[]
   // Raffle message layout: 2 = "Boost your odds" block (raffles created from now on)
   @prop({ default: 1 })
   boostLayout?: number

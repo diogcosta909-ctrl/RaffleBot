@@ -413,8 +413,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'Valor de entrada actual: $value. Usa /setentryvalue seguido de un número del 1 al 10, ej. /setentryvalue 1.5',
   },
   terms_text: {
-    en: '📄 <b>Terms for Boost purchases</b>\n\n1. Boost is an optional digital add-on paid with Telegram Stars. Each Boost adds extra entries to your participation in one specific giveaway.\n2. Boost increases your chances but never guarantees a win. Free entries can also win. The winner is picked at random by the bot.\n3. Boosts only apply to the giveaway you bought them for and cannot be transferred.\n4. Purchases are final. If the giveaway ends before your Boost is applied, your Stars are refunded automatically.\n5. Prizes are offered and delivered by the giveaway organizer (the channel or group admin), not by Telegram.\n6. This bot is run by an independent operator. Telegram is not responsible for these purchases and its support cannot help with them.\n7. For payment issues use /paysupport, for anything else /support. Contact: $contact',
-    es: '📄 <b>Términos de compra del Boost</b>\n\n1. El Boost es un extra digital opcional que se paga con Telegram Stars. Cada Boost añade entradas extra a tu participación en un sorteo concreto.\n2. El Boost aumenta tus opciones pero nunca garantiza ganar. Las entradas gratis también pueden ganar. El ganador lo elige el bot al azar.\n3. Los Boosts solo valen para el sorteo en el que los compraste y no se pueden transferir.\n4. Las compras son definitivas. Si el sorteo termina antes de aplicar tu Boost, se te devuelven las Stars automáticamente.\n5. Los premios los ofrece y entrega el organizador del sorteo (el admin del canal o grupo), no Telegram.\n6. Este bot lo gestiona un operador independiente. Telegram no es responsable de estas compras y su soporte no puede ayudar con ellas.\n7. Para problemas de pago usa /paysupport, para lo demás /support. Contacto: $contact',
+    en: '📄 <b>Terms for Boost purchases</b>\n\n1. Boost is an optional digital add-on paid with Telegram Stars. Each Boost adds extra entries to your participation in one specific giveaway.\n2. Boost increases your chances but never guarantees a win. Free entries can also win. The winner is picked at random by the bot.\n3. Boosts only apply to the giveaway you bought them for and cannot be transferred.\n4. Purchases are final. If the giveaway ends before your Boost is applied, your Stars are refunded automatically. Credits (1 credit = 1 Boost) are bought in advance with Stars or USDT, are only used for Boosts and are not refundable once added.\n5. Prizes are offered and delivered by the giveaway organizer (the channel or group admin), not by Telegram.\n6. This bot is run by an independent operator. Telegram is not responsible for these purchases and its support cannot help with them.\n7. For payment issues use /paysupport, for anything else /support. Contact: $contact',
+    es: '📄 <b>Términos de compra del Boost</b>\n\n1. El Boost es un extra digital opcional que se paga con Telegram Stars. Cada Boost añade entradas extra a tu participación en un sorteo concreto.\n2. El Boost aumenta tus opciones pero nunca garantiza ganar. Las entradas gratis también pueden ganar. El ganador lo elige el bot al azar.\n3. Los Boosts solo valen para el sorteo en el que los compraste y no se pueden transferir.\n4. Las compras son definitivas. Si el sorteo termina antes de aplicar tu Boost, se te devuelven las Stars automáticamente. Los créditos (1 crédito = 1 Boost) se compran por adelantado con Stars o USDT, solo se usan para Boosts y no se reembolsan una vez añadidos.\n5. Los premios los ofrece y entrega el organizador del sorteo (el admin del canal o grupo), no Telegram.\n6. Este bot lo gestiona un operador independiente. Telegram no es responsable de estas compras y su soporte no puede ayudar con ellas.\n7. Para problemas de pago usa /paysupport, para lo demás /support. Contacto: $contact',
   },
   terms_accept_prompt: {
     en: 'To buy a Boost you need to accept these terms.',
@@ -475,6 +475,50 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
   remind_crypto: {
     en: '⏳ Your USDT payment is still pending.\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⌛ Valid for $min more minutes.',
     es: '⏳ Tu pago en USDT sigue pendiente.\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>BNB Smart Chain, BEP20</b>:\n<code>$address</code>\n\n⌛ Válido $min minutos más.',
+  },
+  boost_credits_line: {
+    en: '💰 Your credits: $n',
+    es: '💰 Tus créditos: $n',
+  },
+  recharge_button: {
+    en: 'RECHARGE',
+    es: 'RECHARGE',
+  },
+  credit_one: {
+    en: 'credit',
+    es: 'crédito',
+  },
+  credit_many: {
+    en: 'credits',
+    es: 'créditos',
+  },
+  recharge_text: {
+    en: '💳 <b>Recharge your credits</b>\n\n1 credit = 1 boost ($pct). Credits never expire and are used in one tap, no payment needed each time.\n\n💰 Your credits: <b>$n</b>\n\nChoose a pack:',
+    es: '💳 <b>Recarga tus créditos</b>\n\n1 crédito = 1 boost ($pct). Los créditos no caducan y se usan con un toque, sin pagar cada vez.\n\n💰 Tus créditos: <b>$n</b>\n\nElige un pack:',
+  },
+  topup_invoice_title: {
+    en: 'Recharge $n credits',
+    es: 'Recarga de $n créditos',
+  },
+  topup_invoice_description: {
+    en: 'Credits for boosts: 1 credit = 1 boost. Not refundable once added.',
+    es: 'Créditos para boosts: 1 crédito = 1 boost. No reembolsables una vez añadidos.',
+  },
+  topup_done: {
+    en: '✅ <b>$added added.</b>\n💰 Your credits: <b>$n</b>',
+    es: '✅ <b>$added añadidos.</b>\n💰 Tus créditos: <b>$n</b>',
+  },
+  topup_back: {
+    en: '🚀 Back to Boost',
+    es: '🚀 Volver al Boost',
+  },
+  credit_not_enough: {
+    en: '💰 Not enough credits. Tap RECHARGE.',
+    es: '💰 No tienes créditos suficientes. Pulsa RECHARGE.',
+  },
+  crypto_invoice_topup: {
+    en: '🟢 <b>Recharge with USDT</b> ($n)\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⚠️ The exact amount identifies your payment, send it as shown and only through BSC (BEP20). Valid for $min minutes.\n\n✅ Your credits are added automatically 1-2 minutes after the transfer.',
+    es: '🟢 <b>Recarga con USDT</b> ($n)\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>BNB Smart Chain, BEP20</b>:\n<code>$address</code>\n\n⚠️ El importe exacto identifica tu pago, envíalo tal cual y solo por BSC (BEP20). Válido $min minutos.\n\n✅ Tus créditos se añaden automáticamente 1-2 minutos después de la transferencia.',
   },
   crypto_failed: {
     en: 'We received your crypto payment but could not apply the boost. Contact $contact and send this transaction hash:\n<code>$hash</code>',

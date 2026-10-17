@@ -26,6 +26,9 @@ export class Chat extends Typegoose {
   topPostedDay?: string
   @prop({ required: true, default: false })
   boost: boolean
+  // Boost credits (private chats): 1 credit = 1 boost
+  @prop({ default: 0 })
+  credits?: number
   // Value of each entry (1 normally, 1.5 or 2 on special days)
   @prop({ default: 1 })
   entryValue?: number

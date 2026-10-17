@@ -5,6 +5,7 @@ import { findChat, ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
+import { CREDIT_PACKS, getCredits, addCredits, spendCredits } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -71,6 +72,11 @@ export function stepOf(raffle?: any) {
 }
 
 /** "+3 entries" for a pack of n boosts */
+/** "1 credit" / "5 credits" */
+function creditsLabel(n: number, language = 'en') {
+  return `${n} ${loc(n === 1 ? 'credit_one' : 'credit_many', language)}`
+}
+
 function pctLabel(n: number, language = 'en', step = BOOST_STEP) {
   return `+${entriesLabel(step * n, language)}`
 }
@@ -229,7 +235,7 @@ function errorText(key: string, language = 'en') {
 }
 
 /** Private chat: show the boost packs the user can still buy */
-async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
+export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   const res = await validateBoost(raffleId, ctx.from.id)
   if (res.error) {
     return ctx.reply(errorText(res.error, res.language))
@@ -256,7 +262,17 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   await trackBoost({ type: 'menu', userId: ctx.from.id, raffleId })
   const left = maxBoosts() - res.used
   const options = BOOST_OPTIONS.filter((n) => n <= left)
-  const keyboard = options.map((n) => {
+  const credits = await getCredits(ctx.from.id)
+  const keyboard: any[] = options.map((n) => {
+    // With enough credits only the credits button is shown for that pack
+    if (credits >= n) {
+      return [
+        {
+          text: `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+          callback_data: `w~${raffleId}~${n}`,
+        },
+      ]
+    }
     const row: any[] = [
       {
         text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
@@ -271,6 +287,7 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
     }
     return row
   })
+  keyboard.push([{ text: loc('recharge_button', res.language), callback_data: `r~${raffleId}` }])
   return ctx.reply(
     `${multiplierNote(res.raffle, res.language)}${
       multiplierNote(res.raffle, res.language) ? '\n' : ''
@@ -279,7 +296,7 @@ async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
       .replace('$step', `+${entriesLabel(stepOf(res.raffle), res.language)}`)
       .replace('$mult', multLabel(res.value, res.language, entryValueOf(res.raffle)))
       .replace('$used', `${res.used}`)
-      .replace('$max', `${maxBoosts()}`)}`,
+      .replace('$max', `${maxBoosts()}`)}\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}`,
     { reply_markup: { inline_keyboard: keyboard } }
   )
 }
@@ -325,7 +342,7 @@ export async function notifyBoostWin(
   telegram: any,
   raffle: { chatId: number; messageId?: number },
   winner: { id: number; username?: string; name: string },
-  info: { stars: number; entries: number; boosts?: number; mult?: number; crypto?: boolean }
+  info: { stars: number; entries: number; boosts?: number; mult?: number; crypto?: boolean; credits?: boolean }
 ) {
   const feed = (process.env.BOOST_FEED_CHAT || '').trim()
   if (!feed) return
@@ -349,7 +366,7 @@ export async function notifyBoostWin(
       : `<a href="tg://user?id=${winner.id}">${escHtml(winner.name)}</a>`
     const text =
       `🏆 <b>${who} won a giveaway with a Boost!</b>\n` +
-      `${info.crypto ? '🟢 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
+      `${info.credits ? '💰 Paid with credits' : info.crypto ? '🟢 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
       (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
     let sent = false
     try {
@@ -360,6 +377,7 @@ export async function notifyBoostWin(
         boosts: info.boosts,
         winner: true,
         crypto: !!info.crypto,
+        credits: !!info.credits,
       })
       await telegram.sendPhoto(
         feed,
@@ -387,6 +405,7 @@ async function notifyOwner(
   ctx: any,
   info: {
     crypto?: string
+    credits?: boolean
     userId: number
     stars: number
     n: number
@@ -429,7 +448,11 @@ async function notifyOwner(
           `🚀 <b>Nuevo boost</b>\n` +
             `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
             `${
-              info.crypto ? `🟢 ${info.crypto} USDT (BSC)` : `⭐ ${info.stars} Stars`
+              info.credits
+                ? `💰 ${creditsLabel(info.n, 'es')}`
+                : info.crypto
+                ? `🟢 ${info.crypto} USDT (BSC)`
+                : `⭐ ${info.stars} Stars`
             } · ${pctLabel(info.n, 'es', step)}\n` +
             `📢 ${escHtml(where)}\n` +
             `🎯 Ahora tiene: ${info.mult}` +
@@ -449,7 +472,7 @@ async function notifyOwner(
         const mult = multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-          `${info.crypto ? '🟢 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
+          `${info.credits ? '💰 Credits' : info.crypto ? '🟢 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
@@ -469,6 +492,7 @@ async function notifyOwner(
             boosts: info.n,
             crypto: !!info.crypto,
             usdt: info.crypto,
+            credits: !!info.credits,
           })
           await ctx.telegram.sendPhoto(
             feed,
@@ -492,6 +516,8 @@ async function notifyOwner(
 }
 
 /** Parses "boost:<raffleId>:<n>" (n defaults to 1) */
+const TOPUP_PREFIX = 'topup:'
+
 function parsePayload(payload: string) {
   const [raffleId, n] = payload.substr(PAYLOAD_PREFIX.length).split(':')
   return { raffleId, n: Math.max(1, parseInt(n || '1', 10) || 1) }
@@ -511,8 +537,70 @@ async function refund(ctx: ContextMessageUpdate, userId: number, chargeId: strin
   }
 }
 
+/** Confirms a credit recharge to the user and tells the owner */
+async function notifyTopup(telegram: any, u: any, n: number, paid: string, balance: number, backId?: string) {
+  let lang = 'en'
+  try {
+    lang = (await findChat(u.id)).language
+  } catch {
+    // keep en
+  }
+  try {
+    const extra: any = { parse_mode: 'HTML' }
+    if (backId && backId !== '0') {
+      extra.reply_markup = {
+        inline_keyboard: [[{ text: loc('topup_back', lang), callback_data: `b~${backId}` }]],
+      }
+    }
+    await telegram.sendMessage(
+      u.id,
+      loc('topup_done', lang)
+        .replace('$added', creditsLabel(n, lang))
+        .replace('$n', `${balance}`),
+      extra
+    )
+  } catch (err) {
+    console.error('Topup confirmation not sent', err)
+  }
+  const admin = parseInt(process.env.ADMIN, 10)
+  if (admin) {
+    try {
+      const name = u.username ? `@${u.username}` : `${u.first_name || u.id}${u.last_name ? ` ${u.last_name}` : ''}`
+      await telegram.sendMessage(
+        admin,
+        `💳 <b>Recarga de créditos</b>\n👤 <a href="tg://user?id=${u.id}">${escHtml(name)}</a>\n${paid} · ${creditsLabel(n, 'es')}\n💰 Saldo ahora: ${balance}`,
+        { parse_mode: 'HTML' }
+      )
+    } catch (err) {
+      console.error('Topup owner notice failed', err)
+    }
+  }
+}
+
 /** A USDT payment was matched to an order: apply the boost like a Stars payment */
 async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
+  if (order.raffleId === 'topup') {
+    const balance = await addCredits(order.userId, order.boosts, {
+      type: 'topup',
+      method: 'usdt',
+      ref: txHash,
+    })
+    const who = {
+      id: order.userId,
+      username: order.username,
+      first_name: order.firstName || `${order.userId}`,
+      last_name: order.lastName,
+    }
+    await notifyTopup(
+      telegram,
+      who,
+      order.boosts,
+      `🟢 ${formatUnits(order.amountUnits)} USDT`,
+      balance,
+      order.backRaffleId
+    )
+    return
+  }
   const userId = order.userId
   const n = order.boosts
   const raffleId = order.raffleId
@@ -902,6 +990,194 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
   })
 
+  // RECHARGE: credit packs paid with Stars or USDT (id = raffle to come back to, or 0)
+  bot.action(/^r~([a-f0-9]{24}|0)$/, async (ctx) => {
+    const raffleId = (ctx as any).match[1]
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    try {
+      const lang = (await findChat(ctx.from.id)).language
+      const credits = await getCredits(ctx.from.id)
+      const keyboard: any[] = CREDIT_PACKS.map((n) => {
+        const row: any[] = [
+          {
+            text: `${creditsLabel(n, lang)} · ${n * BOOST_PRICE}⭐`,
+            callback_data: `ts~${n}~${raffleId}`,
+          },
+        ]
+        if (cryptoEnabled()) {
+          row.push({
+            text: `${creditsLabel(n, lang)} · ${cryptoPriceLabel(n)} USDT`,
+            callback_data: `tc~${n}~${raffleId}`,
+          })
+        }
+        return row
+      })
+      if (raffleId !== '0') {
+        keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
+      }
+      return ctx.replyWithHTML(
+        loc('recharge_text', lang)
+          .replace('$pct', pctLabel(1, lang))
+          .replace('$n', `${credits}`),
+        { reply_markup: { inline_keyboard: keyboard } } as any
+      )
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // Stars invoice for a credit pack
+  bot.action(/^ts~(\d+)~([a-f0-9]{24}|0)$/, async (ctx) => {
+    const n = parseInt((ctx as any).match[1], 10)
+    const raffleId = (ctx as any).match[2]
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    if (CREDIT_PACKS.indexOf(n) < 0) return
+    try {
+      const lang = (await findChat(ctx.from.id)).language
+      await (ctx.telegram as any).callApi('sendInvoice', {
+        chat_id: ctx.chat.id,
+        title: loc('topup_invoice_title', lang).replace('$n', `${n}`),
+        description: loc('topup_invoice_description', lang),
+        payload: `${TOPUP_PREFIX}${n}:${raffleId}`,
+        provider_token: '',
+        currency: 'XTR',
+        prices: [{ label: creditsLabel(n, lang), amount: n * BOOST_PRICE }],
+      })
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // USDT order for a credit pack
+  bot.action(/^tc~(\d+)~([a-f0-9]{24}|0)$/, async (ctx) => {
+    const n = parseInt((ctx as any).match[1], 10)
+    const raffleId = (ctx as any).match[2]
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    if (!cryptoEnabled() || CREDIT_PACKS.indexOf(n) < 0) return
+    try {
+      const lang = (await findChat(ctx.from.id)).language
+      const u = ctx.from
+      const order = await createOrder({
+        userId: u.id,
+        username: u.username,
+        firstName: u.first_name,
+        lastName: u.last_name,
+        raffleId: 'topup',
+        boosts: n,
+        backRaffleId: raffleId,
+      })
+      const amount = formatUnits(order.amountUnits)
+      const caption = loc('crypto_invoice_topup', lang)
+        .replace('$n', creditsLabel(n, lang))
+        .replace('$amount', amount)
+        .replace('$address', CRYPTO_WALLET)
+        .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
+      try {
+        const image = await require('./boostImage').renderUsdtImage({
+          amount,
+          pct: creditsLabel(n, lang),
+        })
+        return await ctx.replyWithPhoto({ source: image }, { caption, parse_mode: 'HTML' } as any)
+      } catch (err) {
+        console.error('USDT image failed, sending text', err)
+      }
+      return ctx.replyWithHTML(caption, { disable_web_page_preview: true })
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // Boost paid with credits
+  bot.action(/^w~([a-f0-9]{24})~(\d+)$/, async (ctx) => {
+    const raffleId = (ctx as any).match[1]
+    const n = parseInt((ctx as any).match[2], 10)
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    if (!BOOST_OPTIONS.includes(n)) return
+    try {
+      const userId = ctx.from.id
+      const res: any = await validateBoost(raffleId, userId, n)
+      if (res.error) return ctx.reply(errorText(res.error, res.language))
+      const balance = await spendCredits(userId, n, {
+        raffleId,
+        name: ctx.from.username
+          ? `@${ctx.from.username}`
+          : `${ctx.from.first_name}${ctx.from.last_name ? ` ${ctx.from.last_name}` : ''}`,
+      })
+      if (balance < 0) return ctx.reply(loc('credit_not_enough', res.language))
+      const upd: any = await RaffleModel.updateOne(
+        { _id: res.raffle._id, winners: { $exists: false } },
+        {
+          $push: {
+            boostIds: { $each: Array(n).fill(userId) },
+            boostMults: { $each: Array(n).fill(multiplierOf()) },
+            creditIds: { $each: Array(n).fill(userId) },
+          },
+        }
+      )
+      if (!upd || !upd.nModified) {
+        await addCredits(userId, n, { type: 'refund', method: 'credits', raffleId })
+        return ctx.reply(errorText('raffle_over', res.language))
+      }
+      await trackBoost({ type: 'invoice', userId, raffleId, boosts: n, method: 'credits', reminded: true })
+      const used = res.used + n
+      const value = res.value + n * multiplierOf()
+      try {
+        const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
+        const raffleChat = await findChat(fresh.chatId)
+        await require('./raffle').refreshRaffleMessage(ctx.telegram, fresh, raffleChat)
+      } catch (err) {
+        // message may be unchanged or deleted
+      }
+      await notifyOwner(ctx, {
+        userId,
+        stars: n * BOOST_PRICE,
+        credits: true,
+        n,
+        chatId: res.raffle.chatId,
+        messageId: res.raffle.messageId,
+        step: stepOf(res.raffle),
+        mult: multLabel(value, 'es', entryValueOf(res.raffle)),
+        total: entryValueOf(res.raffle) + BOOST_STEP * value,
+      })
+      return ctx.reply(
+        `${loc('boost_applied', res.language)
+          .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
+          .replace('$used', `${used}`)
+          .replace('$max', `${maxBoosts()}`)}\n${loc('boost_credits_line', res.language).replace('$n', `${balance}`)}`
+      )
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // Owner: /addcredits <userId> <n> (negative n removes) to fix a balance by hand
+  bot.command('addcredits', async (ctx) => {
+    if (ctx.chat.type !== 'private') return
+    if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+    const parts = ((ctx.message as any).text || '').split(/\s+/)
+    const userId = parseInt(parts[1], 10)
+    const n = parseInt(parts[2], 10)
+    if (!userId || !n) return ctx.reply('Uso: /addcredits <userId> <n> (n negativo quita créditos)')
+    const balance = await addCredits(userId, n, { type: 'admin', method: 'admin' })
+    return ctx.reply(`✅ Usuario ${userId}: ${n > 0 ? '+' : ''}${n} créditos. Saldo: ${balance}`)
+  })
+
   // Start watching the chain for USDT payments (needs CRYPTO_WALLET)
   startCryptoWatcher((order, txHash) => applyCryptoPayment(bot.telegram, order, txHash))
   startReminders(bot.telegram)
@@ -909,6 +1185,9 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   // Validate right before Telegram charges the user
   bot.on('pre_checkout_query', async (ctx) => {
     const q = ctx.preCheckoutQuery
+    if (q.invoice_payload.startsWith(TOPUP_PREFIX)) {
+      return ctx.answerPreCheckoutQuery(true)
+    }
     if (!q.invoice_payload.startsWith(PAYLOAD_PREFIX)) {
       return ctx.answerPreCheckoutQuery(false, 'Unknown payment')
     }
@@ -923,6 +1202,24 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   // Payment received: apply the boost (refund if the raffle closed meanwhile)
   bot.on('successful_payment', async (ctx) => {
     const p = (ctx.message as any).successful_payment
+    if (p && p.invoice_payload.startsWith(TOPUP_PREFIX)) {
+      const [nStr, backId] = p.invoice_payload.substr(TOPUP_PREFIX.length).split(':')
+      const n = parseInt(nStr, 10) || 0
+      const chargeId = p.telegram_payment_charge_id
+      if (!n || (await PaymentModel.countDocuments({ chargeId }))) return
+      const u = ctx.from
+      await PaymentModel.create({
+        chargeId,
+        userId: u.id,
+        raffleId: 'topup',
+        stars: p.total_amount,
+        boosts: n,
+        userName: u.username ? `@${u.username}` : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`,
+      })
+      const balance = await addCredits(u.id, n, { type: 'topup', method: 'stars', ref: chargeId })
+      await notifyTopup(ctx.telegram, u, n, `⭐ ${p.total_amount} Stars`, balance, backId)
+      return
+    }
     if (!p || !p.invoice_payload.startsWith(PAYLOAD_PREFIX)) return
     const { raffleId, n } = parsePayload(p.invoice_payload)
     const chargeId = p.telegram_payment_charge_id
