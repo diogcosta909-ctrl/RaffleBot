@@ -5,7 +5,7 @@ import { findChat, ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { CREDIT_PACKS, getCredits, addCredits, spendCredits } from './credits'
+import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, getCredits, addCredits, spendCredits } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -75,6 +75,12 @@ export function stepOf(raffle?: any) {
 /** "1 credit" / "5 credits" */
 function creditsLabel(n: number, language = 'en') {
   return `${n} ${loc(n === 1 ? 'credit_one' : 'credit_many', language)}`
+}
+
+/** "10 credits +1 free" (pack with its bonus) */
+function packLabel(n: number, language = 'en') {
+  const bonus = bonusFor(n)
+  return bonus ? `${creditsLabel(n, language)} +${bonus} ${loc('free_word', language)}` : creditsLabel(n, language)
 }
 
 function pctLabel(n: number, language = 'en', step = BOOST_STEP) {
@@ -580,7 +586,8 @@ async function notifyTopup(telegram: any, u: any, n: number, paid: string, balan
 /** A USDT payment was matched to an order: apply the boost like a Stars payment */
 async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
   if (order.raffleId === 'topup') {
-    const balance = await addCredits(order.userId, order.boosts, {
+    const added = order.boosts + bonusFor(order.boosts)
+    const balance = await addCredits(order.userId, added, {
       type: 'topup',
       method: 'usdt',
       ref: txHash,
@@ -594,7 +601,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
     await notifyTopup(
       telegram,
       who,
-      order.boosts,
+      added,
       `🟢 ${formatUnits(order.amountUnits)} USDT`,
       balance,
       order.backRaffleId
@@ -1002,15 +1009,16 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const lang = (await findChat(ctx.from.id)).language
       const credits = await getCredits(ctx.from.id)
       const keyboard: any[] = CREDIT_PACKS.map((n) => {
+        const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
         const row: any[] = [
           {
-            text: `${creditsLabel(n, lang)} · ${n * BOOST_PRICE}⭐`,
+            text: `${hot}${packLabel(n, lang)} · ${n * BOOST_PRICE}⭐`,
             callback_data: `ts~${n}~${raffleId}`,
           },
         ]
         if (cryptoEnabled()) {
           row.push({
-            text: `${creditsLabel(n, lang)} · ${cryptoPriceLabel(n)} USDT`,
+            text: `${hot}${packLabel(n, lang)} · ${cryptoPriceLabel(n)} USDT`,
             callback_data: `tc~${n}~${raffleId}`,
           })
         }
@@ -1045,11 +1053,13 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       await (ctx.telegram as any).callApi('sendInvoice', {
         chat_id: ctx.chat.id,
         title: loc('topup_invoice_title', lang).replace('$n', `${n}`),
-        description: loc('topup_invoice_description', lang),
+        description:
+          loc('topup_invoice_description', lang) +
+          (bonusFor(n) ? loc('topup_bonus_note', lang).replace('$b', `${bonusFor(n)}`) : ''),
         payload: `${TOPUP_PREFIX}${n}:${raffleId}`,
         provider_token: '',
         currency: 'XTR',
-        prices: [{ label: creditsLabel(n, lang), amount: n * BOOST_PRICE }],
+        prices: [{ label: packLabel(n, lang), amount: n * BOOST_PRICE }],
       })
     } catch (err) {
       console.error(err)
@@ -1080,14 +1090,14 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       })
       const amount = formatUnits(order.amountUnits)
       const caption = loc('crypto_invoice_topup', lang)
-        .replace('$n', creditsLabel(n, lang))
+        .replace('$n', packLabel(n, lang))
         .replace('$amount', amount)
         .replace('$address', CRYPTO_WALLET)
         .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
       try {
         const image = await require('./boostImage').renderUsdtImage({
           amount,
-          pct: creditsLabel(n, lang),
+          pct: packLabel(n, lang),
         })
         return await ctx.replyWithPhoto({ source: image }, { caption, parse_mode: 'HTML' } as any)
       } catch (err) {
@@ -1155,12 +1165,28 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         mult: multLabel(value, 'es', entryValueOf(res.raffle)),
         total: entryValueOf(res.raffle) + BOOST_STEP * value,
       })
-      return ctx.reply(
+      await ctx.reply(
         `${loc('boost_applied', res.language)
           .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
           .replace('$used', `${used}`)
           .replace('$max', `${maxBoosts()}`)}\n${loc('boost_credits_line', res.language).replace('$n', `${balance}`)}`
       )
+      // Low balance: right moment to offer a recharge
+      if (balance <= 1) {
+        await ctx.reply(
+          balance === 0
+            ? loc('credit_out', res.language)
+            : loc('credit_low', res.language).replace('$n', creditsLabel(balance, res.language)),
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: loc('recharge_button', res.language), callback_data: `r~${raffleId}` }],
+              ],
+            },
+          } as any
+        )
+      }
+      return
     } catch (err) {
       console.error(err)
     }
@@ -1216,8 +1242,9 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         boosts: n,
         userName: u.username ? `@${u.username}` : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`,
       })
-      const balance = await addCredits(u.id, n, { type: 'topup', method: 'stars', ref: chargeId })
-      await notifyTopup(ctx.telegram, u, n, `⭐ ${p.total_amount} Stars`, balance, backId)
+      const added = n + bonusFor(n)
+      const balance = await addCredits(u.id, added, { type: 'topup', method: 'stars', ref: chargeId })
+      await notifyTopup(ctx.telegram, u, added, `⭐ ${p.total_amount} Stars`, balance, backId)
       return
     }
     if (!p || !p.invoice_payload.startsWith(PAYLOAD_PREFIX)) return

@@ -508,6 +508,22 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '✅ <b>$added added.</b>\n💰 Your credits: <b>$n</b>',
     es: '✅ <b>$added añadidos.</b>\n💰 Tus créditos: <b>$n</b>',
   },
+  free_word: {
+    en: 'free',
+    es: 'gratis',
+  },
+  topup_bonus_note: {
+    en: ' 🎁 Includes +$b free credits.',
+    es: ' 🎁 Incluye +$b créditos gratis.',
+  },
+  credit_low: {
+    en: '⚠️ You have $n left. Recharge to keep boosting in one tap 👇',
+    es: '⚠️ Te queda $n. Recarga para seguir haciendo boost con un toque 👇',
+  },
+  credit_out: {
+    en: '⚠️ You are out of credits. Recharge to keep boosting in one tap 👇',
+    es: '⚠️ Te has quedado sin créditos. Recarga para seguir haciendo boost con un toque 👇',
+  },
   topup_back: {
     en: '🚀 Back to Boost',
     es: '🚀 Volver al Boost',

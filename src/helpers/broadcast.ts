@@ -1,11 +1,24 @@
 // Dependencies
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { ChatModel } from '../models/chat'
+import { PaymentModel } from '../models/payment'
+import { CryptoOrderModel } from '../models/cryptoOrder'
+import { BoostEventModel } from '../models/boostEvent'
 
 // Pending announcements waiting for the owner's confirmation (one per owner)
-type Pending =
-  | { kind: 'copy'; fromChat: number; messageId: number; at: number }
-  | { kind: 'text'; text: string; at: number }
+type Pending = { segment: string; at: number } & (
+  | { kind: 'copy'; fromChat: number; messageId: number }
+  | { kind: 'text'; text: string }
+)
+
+// Who receives the announcement (everyone is limited to users who accepted the terms)
+const SEGMENTS: { [key: string]: string } = {
+  all: 'todos',
+  buyers: 'compradores',
+  nonbuyers: 'los que nunca compraron',
+  credits: 'con créditos',
+  inactive: 'inactivos (30 días sin usar Boost)',
+}
 const pending = new Map<number, Pending>()
 let sending = false
 
@@ -16,13 +29,25 @@ function isAdmin(ctx: any) {
   return !!admin && !!ctx.from && ctx.from.id === admin && ctx.chat.type === 'private'
 }
 
-/** Private chats of the users who accepted the terms */
-async function recipients(): Promise<number[]> {
-  const chats: any[] = await ChatModel.find({
-    termsAccepted: true,
-    chatId: { $gt: 0 },
-  }).select('chatId')
-  return chats.map((c) => c.chatId)
+/** Private chats of the users who accepted the terms, filtered by segment */
+async function recipients(segment = 'all'): Promise<number[]> {
+  const query: any = { termsAccepted: true, chatId: { $gt: 0 } }
+  if (segment === 'credits') query.credits = { $gt: 0 }
+  const chats: any[] = await ChatModel.find(query).select('chatId')
+  let ids = chats.map((c) => c.chatId as number)
+  if (segment === 'buyers' || segment === 'nonbuyers') {
+    const buyers = new Set<number>([
+      ...(await PaymentModel.distinct('userId', { status: 'applied' })),
+      ...(await CryptoOrderModel.distinct('userId', { status: 'paid' })),
+    ])
+    ids = ids.filter((id) => (segment === 'buyers' ? buyers.has(id) : !buyers.has(id)))
+  }
+  if (segment === 'inactive') {
+    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000)
+    const active = new Set<number>(await BoostEventModel.distinct('userId', { createdAt: { $gte: since } }))
+    ids = ids.filter((id) => !active.has(id))
+  }
+  return ids
 }
 
 async function deliver(telegram: any, to: number, p: Pending) {
@@ -48,15 +73,22 @@ export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
   bot.command('broadcast', async (ctx: any) => {
     if (!isAdmin(ctx)) return
     const reply = ctx.message.reply_to_message
-    const inline = (ctx.message.text || '').replace(/^\/broadcast(@\w+)?\s*/i, '').trim()
+    let inline = (ctx.message.text || '').replace(/^\/broadcast(@\w+)?\s*/i, '').trim()
+    // Optional first word: segment (all, buyers, nonbuyers, credits, inactive)
+    let segment = 'all'
+    const first = inline.split(/\s+/)[0].toLowerCase()
+    if (SEGMENTS[first]) {
+      segment = first
+      inline = inline.slice(first.length).trim()
+    }
     let p: Pending
     if (reply) {
-      p = { kind: 'copy', fromChat: ctx.chat.id, messageId: reply.message_id, at: Date.now() }
+      p = { segment, kind: 'copy', fromChat: ctx.chat.id, messageId: reply.message_id, at: Date.now() }
     } else if (inline) {
-      p = { kind: 'text', text: inline, at: Date.now() }
+      p = { segment, kind: 'text', text: inline, at: Date.now() }
     } else {
       return ctx.replyWithHTML(
-        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo) o escribe:\n<code>/broadcast tu texto</code>\n\nSe envía por privado a todos los que aceptaron los términos. Antes verás una vista previa para confirmar.'
+        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo) o escribe:\n<code>/broadcast tu texto</code>\n\nPor defecto va a todos los que aceptaron los términos. Para elegir destinatarios pon una palabra después de /broadcast:\n<code>/broadcast buyers tu texto</code>\n\n• <code>all</code> todos (por defecto)\n• <code>buyers</code> compradores\n• <code>nonbuyers</code> los que nunca compraron\n• <code>credits</code> con créditos\n• <code>inactive</code> 30 días sin usar Boost\n\nAntes verás una vista previa y el número de usuarios para confirmar.'
       )
     }
     try {
@@ -65,8 +97,8 @@ export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
       return ctx.reply(`❌ No se puede enviar ese mensaje: ${(err && err.message) || err}`)
     }
     pending.set(ctx.from.id, p)
-    const total = (await recipients()).length
-    return ctx.reply(`👆 Vista previa. ¿Enviar a ${total} usuarios?`, {
+    const total = (await recipients(segment)).length
+    return ctx.reply(`👆 Vista previa. ¿Enviar a ${total} ${total === 1 ? 'usuario' : 'usuarios'} (${SEGMENTS[segment]})?`, {
       reply_markup: {
         inline_keyboard: [
           [
@@ -101,7 +133,7 @@ export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
     const telegram = ctx.telegram
     const adminId = ctx.from.id
     ;(async () => {
-      const ids = await recipients()
+      const ids = await recipients(p.segment)
       await edit(`📤 Enviando a ${ids.length} usuarios...`)
       let sent = 0
       let failed = 0

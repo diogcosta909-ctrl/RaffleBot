@@ -8,6 +8,22 @@ export const CREDIT_PACKS = (process.env.CREDIT_PACKS || '5,10,20')
   .map((x) => parseInt(x.trim(), 10))
   .filter((x) => x > 0)
 
+/** Free credits added on top of a pack, e.g. CREDIT_BONUS=10:1,20:3 (pack:bonus) */
+const BONUS: { [pack: number]: number } = {}
+;(process.env.CREDIT_BONUS === undefined ? '10:1,20:3' : process.env.CREDIT_BONUS)
+  .split(',')
+  .forEach((pair) => {
+    const [pack, bonus] = pair.split(':').map((x) => parseInt(x.trim(), 10))
+    if (pack > 0 && bonus > 0) BONUS[pack] = bonus
+  })
+
+export function bonusFor(pack: number) {
+  return BONUS[pack] || 0
+}
+
+/** Pack marked as popular in RECHARGE (CREDIT_POPULAR, default 10; 0 = none) */
+export const CREDIT_POPULAR = parseInt(process.env.CREDIT_POPULAR || '10', 10)
+
 /** Current balance of a user (stored on their private chat) */
 export async function getCredits(userId: number) {
   const chat: any = await ChatModel.findOne({ chatId: userId }).select('credits')
