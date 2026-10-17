@@ -17,6 +17,7 @@ import {
   CRYPTO_EXPIRY_MIN,
 } from './cryptoPay'
 import { getChatIdForConfig } from './getChatIdForConfig'
+import { raffleTotals, chanceOf, pct, oddsLine, oddsChangeLine } from './odds'
 import { loc } from './locale'
 
 // Config (env overridable): 1 Star = +0.3 weight (x1.3), max 10 boosts per user per raffle
@@ -275,19 +276,28 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
   const left = maxBoosts() - res.used
   const options = BOOST_OPTIONS.filter((n) => n <= left)
   const credits = await getCredits(ctx.from.id)
+  // Chance of winning now and after each pack (same formula as the draw)
+  const base = entryValueOf(res.raffle)
+  const totals = await raffleTotals(res.raffle._id, base, BOOST_STEP)
+  const after = (n: number) =>
+    totals ? ` → ${pct(chanceOf(totals, res.value, base, BOOST_STEP, n * multiplierOf()))}` : ''
   const keyboard: any[] = options.map((n) => {
     // With enough credits only the credits button is shown for that pack
     if (credits >= n) {
       return [
         {
-          text: `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+          text: totals
+            ? `💰 ${creditsLabel(n, res.language)}${after(n)}`
+            : `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
           callback_data: `w~${raffleId}~${n}`,
         },
       ]
     }
     const row: any[] = [
       {
-        text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+        text: totals
+          ? `${n * BOOST_PRICE}⭐${after(n)}`
+          : `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
         callback_data: `b~${raffleId}~${n}`,
       },
     ]
@@ -308,7 +318,9 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
       .replace('$step', `+${entriesLabel(stepOf(res.raffle), res.language)}`)
       .replace('$mult', multLabel(res.value, res.language, entryValueOf(res.raffle)))
       .replace('$used', `${res.used}`)
-      .replace('$max', `${maxBoosts()}`)}\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}`,
+      .replace('$max', `${maxBoosts()}`)}${
+      totals ? `\n${oddsLine(res.language, chanceOf(totals, res.value, base, BOOST_STEP))}` : ''
+    }\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}`,
     { reply_markup: { inline_keyboard: keyboard } }
   )
 }
@@ -344,6 +356,18 @@ async function sendBoostInvoice(
     currency: 'XTR',
     prices: [{ label: `Boost ${pctLabel(n, language, stepOf(res.raffle))}`, amount: n * BOOST_PRICE }],
   })
+}
+
+/** "🎯 Your chance: 0.4% → 1.6%" after a purchase (empty if it can't be computed) */
+async function chanceAfterBuy(raffle: any, value: number, n: number, language: string) {
+  try {
+    const base = entryValueOf(raffle)
+    const totals = await raffleTotals(raffle._id, base, BOOST_STEP)
+    if (!totals) return ''
+    return `\n${oddsChangeLine(language, totals, value, n * multiplierOf(), base, BOOST_STEP)}`
+  } catch (err) {
+    return ''
+  }
 }
 
 const escHtml = (t: string) =>
@@ -698,7 +722,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       loc('boost_applied', language)
         .replace('$mult', multLabel(value, language, entryValueOf(res.raffle)))
         .replace('$used', `${used}`)
-        .replace('$max', `${maxBoosts()}`)
+        .replace('$max', `${maxBoosts()}`) + (await chanceAfterBuy(res.raffle, value, n, language))
     )
   } catch (err) {
     console.error('Crypto confirmation not sent', err)
@@ -1176,7 +1200,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         `${loc('boost_applied', res.language)
           .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
           .replace('$used', `${used}`)
-          .replace('$max', `${maxBoosts()}`)}\n${loc('boost_credits_line', res.language).replace('$n', `${balance}`)}`
+          .replace('$max', `${maxBoosts()}`)}${await chanceAfterBuy(res.raffle, value, n, res.language)}\n${loc('boost_credits_line', res.language).replace('$n', `${balance}`)}`
       )
       // Low balance: right moment to offer a recharge
       if (balance <= 1) {
@@ -1332,7 +1356,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       loc('boost_applied', res.language)
         .replace('$mult', multLabel(value, res.language, entryValueOf(res.raffle)))
         .replace('$used', `${used}`)
-        .replace('$max', `${maxBoosts()}`)
+        .replace('$max', `${maxBoosts()}`) + (await chanceAfterBuy(res.raffle, value, n, res.language))
     )
   })
 }

@@ -23,6 +23,7 @@ import {
   multiplierNote,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
+import { topBoostersText } from './odds'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
 import { InstanceType } from 'typegoose'
@@ -267,6 +268,8 @@ export async function refreshRaffleMessage(
     lines.push(loc('boost_first', chat.language))
   }
   const boostLine = lines.length ? `\n${lines.join('\n')}` : ''
+  // Top 3 boosters of this raffle, right below the boosts counter
+  const top = boosts > 0 ? await topBoostersText(telegram, raffle._id, chat.language) : ''
   // Custom raffle messages get the multiplier line too (the default one has it in boostNote)
   const multNote = raffle.boostEnabled ? multiplierNote(raffle, chat.language) : ''
   let text: string
@@ -277,12 +280,12 @@ export async function refreshRaffleMessage(
       const raffleMessage = raffle.raffleMessage
       text = `${(raffleMessage.text || raffleMessage.caption)
         .replace('$numberOfParticipants', `${entries}`)
-        .replace('$numberOfBoosts', `${boosts}`)}\n\n${block}`
+        .replace('$numberOfBoosts', `${boosts}`)}\n\n${block}${top}`
     } else {
       text = `${loc(
         chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
         chat.language
-      )}\n\n${loc('participants_number', chat.language)}: ${entries}\n\n${block}`
+      )}\n\n${loc('participants_number', chat.language)}: ${entries}\n\n${block}${top}`
     }
   } else if (raffle.raffleMessage) {
     const raffleMessage = raffle.raffleMessage
@@ -290,7 +293,7 @@ export async function refreshRaffleMessage(
       .replace('$numberOfParticipants', `${entries}`)
       .replace('$numberOfBoosts', `${boosts}`)}${
       multNote ? `\n${multNote}` : ''
-    }${boostLine}`
+    }${boostLine}${top}`
   } else {
     text = `${loc(
       chat.number > 1 ? 'raffle_text_multiple' : 'raffle_text',
@@ -298,7 +301,7 @@ export async function refreshRaffleMessage(
     )}${boostNote(raffle, chat.language)}\n\n${loc(
       'participants_number',
       chat.language
-    )}: ${entries}${boostLine}`
+    )}: ${entries}${boostLine}${top}`
   }
   if (!raffle.raffleMessage || raffle.raffleMessage.text) {
     await telegram.editMessageText(

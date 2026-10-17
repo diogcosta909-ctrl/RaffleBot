@@ -476,6 +476,22 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '⏳ Your USDT payment is still pending.\n\nSend exactly <i>(tap to copy)</i>:\n<code>$amount</code>\nUSDT\n\nTo this address <i>(tap to copy)</i> — <b>BNB Smart Chain, BEP20</b> only:\n<code>$address</code>\n\n⌛ Valid for $min more minutes.',
     es: '⏳ Tu pago en USDT sigue pendiente.\n\nEnvía exactamente <i>(toca para copiar)</i>:\n<code>$amount</code>\nUSDT\n\nA esta dirección <i>(toca para copiar)</i> — solo red <b>BNB Smart Chain, BEP20</b>:\n<code>$address</code>\n\n⌛ Válido $min minutos más.',
   },
+  odds_line: {
+    en: '🎯 Your chance to win now: $pct',
+    es: '🎯 Tu probabilidad de ganar ahora: $pct',
+  },
+  odds_hint: {
+    en: '👇 Each button shows your new chance',
+    es: '👇 Cada botón muestra tu nueva probabilidad',
+  },
+  odds_after: {
+    en: '🎯 Your chance: $from → $to',
+    es: '🎯 Tu probabilidad: $from → $to',
+  },
+  top_boosters: {
+    en: '🏆 Top boosters',
+    es: '🏆 Top boosters',
+  },
   boost_credits_line: {
     en: '💰 Your credits: $n',
     es: '💰 Tus créditos: $n',
