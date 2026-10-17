@@ -373,8 +373,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🎟 $total entradas',
   },
   boost_header: {
-    en: '🚀 Boost your odds:',
-    es: '🚀 Mejora tus opciones:',
+    en: '🚀 Increase your chances:',
+    es: '🚀 Aumenta tus posibilidades:',
   },
   boost_rate_one: {
     en: '1 Boost = +$n extra entry',
