@@ -77,6 +77,12 @@ function creditsLabel(n: number, language = 'en') {
   return `${n} ${loc(n === 1 ? 'credit_one' : 'credit_many', language)}`
 }
 
+/** Short button label: "10+1" (pack + free bonus), "5" without bonus */
+function shortPack(n: number) {
+  const bonus = bonusFor(n)
+  return `${n}${bonus ? `+${bonus}` : ''}`
+}
+
 /** "10 credits +1 free" (pack with its bonus) */
 function packLabel(n: number, language = 'en') {
   const bonus = bonusFor(n)
@@ -1012,13 +1018,13 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
         const row: any[] = [
           {
-            text: `${hot}${packLabel(n, lang)} · ${n * BOOST_PRICE}⭐`,
+            text: `${hot}${shortPack(n)} · ${n * BOOST_PRICE}⭐`,
             callback_data: `ts~${n}~${raffleId}`,
           },
         ]
         if (cryptoEnabled()) {
           row.push({
-            text: `${hot}${packLabel(n, lang)} · ${cryptoPriceLabel(n)} USDT`,
+            text: `${hot}${shortPack(n)} · ${cryptoPriceLabel(n)} USDT`,
             callback_data: `tc~${n}~${raffleId}`,
           })
         }
@@ -1030,6 +1036,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       return ctx.replyWithHTML(
         loc('recharge_text', lang)
           .replace('$pct', pctLabel(1, lang))
+          .replace('$bonus', CREDIT_PACKS.some((n) => bonusFor(n)) ? loc('recharge_bonus_note', lang) : '')
           .replace('$n', `${credits}`),
         { reply_markup: { inline_keyboard: keyboard } } as any
       )
