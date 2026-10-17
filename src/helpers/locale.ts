@@ -377,12 +377,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 Mejora tus opciones:',
   },
   boost_rate_one: {
-    en: '$price⭐ = +$n extra entry',
-    es: '$price⭐ = +$n entrada extra',
+    en: '1 Boost = +$n extra entry',
+    es: '1 Boost = +$n entrada extra',
   },
   boost_rate_many: {
-    en: '$price⭐ = +$n extra entries',
-    es: '$price⭐ = +$n entradas extra',
+    en: '1 Boost = +$n extra entries',
+    es: '1 Boost = +$n entradas extra',
   },
   boost_mult_tag: {
     en: '🔥 x$mult today!',
@@ -457,16 +457,16 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 = usó Boost · $k de $total ganadores hicieron boost',
   },
   boost_choose: {
-    en: '🚀 Boost this giveaway\nEach boost = $step\n🎟 You have: $mult · boosts used $used/$max',
-    es: '🚀 Boost de este sorteo\nCada boost = $step\n🎟 Tienes: $mult · boosts usados $used/$max',
+    en: '🚀 Boost this giveaway\nEach boost = $step\n🎟 You have: $mult',
+    es: '🚀 Boost de este sorteo\nCada boost = $step\n🎟 Tienes: $mult',
   },
   boost_applied: {
-    en: '✅ Boost applied!\n🎟 You now have $mult · boosts used $used/$max',
-    es: '✅ ¡Boost aplicado!\n🎟 Ahora tienes $mult · boosts usados $used/$max',
+    en: '✅ Boost applied!\n🎟 You now have $mult',
+    es: '✅ ¡Boost aplicado!\n🎟 Ahora tienes $mult',
   },
   crypto_invoice: {
-    en: '🟢 <b>Pay with USDT</b> · $pct\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · applied automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
-    es: '🟢 <b>Pagar con USDT</b> · $pct\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⏳ Válido $min min · se aplica solo en 1–2 min\n⚠️ Envía el importe exacto, solo por $network.',
+    en: '🪙 <b>Pay with USDT</b> · $pct\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · applied automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
+    es: '🪙 <b>Pagar con USDT</b> · $pct\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⏳ Válido $min min · se aplica solo en 1–2 min\n⚠️ Envía el importe exacto, solo por $network.',
   },
   remind_stars: {
     en: '👋 You left a boost waiting: <b>$pct</b>.\nFinish it now, before the giveaway ends 👇',
@@ -477,8 +477,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '⏳ <b>Tu pago en USDT sigue pendiente</b>\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⌛ Válido $min min más',
   },
   crypto_network: {
-    en: '🟢 <b>Pay with USDT</b>\n\nChoose the network you will send from:',
-    es: '🟢 <b>Pagar con USDT</b>\n\nElige la red desde la que vas a enviar:',
+    en: '🪙 <b>Pay with USDT</b>\n\nChoose the network you will send from:',
+    es: '🪙 <b>Pagar con USDT</b>\n\nElige la red desde la que vas a enviar:',
   },
   odds_line: {
     en: '🎯 Your chance to win now: $pct',
@@ -495,6 +495,10 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
   top_boosters: {
     en: '🏆 Top boosters',
     es: '🏆 Top boosters',
+  },
+  recharge_cta: {
+    en: '🎁 Recharge $pack credits and get $bonus free',
+    es: '🎁 Recarga $pack créditos y llévate $bonus gratis',
   },
   boost_credits_line: {
     en: '💰 Your credits: $n',
@@ -589,8 +593,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '💰 No tienes créditos suficientes. Pulsa Recharge Credits.',
   },
   crypto_invoice_topup: {
-    en: '🟢 <b>Recharge with USDT</b> · $n\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · credits added automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
-    es: '🟢 <b>Recarga con USDT</b> · $n\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⏳ Válido $min min · los créditos se añaden solos en 1–2 min\n⚠️ Envía el importe exacto, solo por $network.',
+    en: '🪙 <b>Recharge with USDT</b> · $n\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · credits added automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
+    es: '🪙 <b>Recarga con USDT</b> · $n\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⏳ Válido $min min · los créditos se añaden solos en 1–2 min\n⚠️ Envía el importe exacto, solo por $network.',
   },
   crypto_failed: {
     en: 'We received your crypto payment but could not apply the boost. Contact $contact and send this transaction hash:\n<code>$hash</code>',

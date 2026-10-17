@@ -75,7 +75,7 @@ export function setupStatus(bot: Telegraf<ContextMessageUpdate>) {
       if (tonEnabled()) nets.push({ name: 'TON', wallet: TON_WALLET, st: getTonStatus(), label: 'Red TON' })
       lines.push('')
       for (const net of nets) {
-        lines.push(`🟢 <b>USDT (${net.name})</b> · wallet ${short(net.wallet)}`)
+        lines.push(`🪙 <b>USDT (${net.name})</b> · wallet ${short(net.wallet)}`)
         if (!net.st.lastOkAt) {
           lines.push('⏳ Aún no ha hecho la primera comprobación')
         } else if (now - net.st.lastOkAt > 3 * 60000) {

@@ -5,7 +5,7 @@ import { findChat, ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, getCredits, addCredits, spendCredits } from './credits'
+import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, bestBonus, getCredits, addCredits, spendCredits } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -197,9 +197,7 @@ export function boostNote(raffle: Raffle, language: string) {
  */
 export function boostBlock(language: string, extra: number) {
   const n = Math.round(stepOf())
-  const rate = loc(n === 1 ? 'boost_rate_one' : 'boost_rate_many', language)
-    .replace('$price⭐', priceTag())
-    .replace('$n', `${n}`)
+  const rate = loc(n === 1 ? 'boost_rate_one' : 'boost_rate_many', language).replace('$n', `${n}`)
   const tag =
     multiplierOf() > 1
       ? ` ${loc('boost_mult_tag', language).replace('$mult', `${+multiplierOf().toFixed(2)}`)}`
@@ -215,7 +213,7 @@ export function boostBlock(language: string, extra: number) {
 export function boostButton(raffle: Raffle & { id?: string }, language: string) {
   return [
     {
-      text: cryptoEnabled() ? 'Boost ⭐️ or USDT' : `${loc('boost_button', language)} ⭐`,
+      text: loc('boost_button', language),
       callback_data: `b~${raffle.id}`,
     },
   ]
@@ -301,7 +299,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
     ]
     if (cryptoEnabled()) {
       row.push({
-        text: `🟢 ${cryptoPriceLabel(n)} USDT`,
+        text: `🪙 ${cryptoPriceLabel(n)} USDT`,
         callback_data: `c~${raffleId}~${n}`,
       })
     }
@@ -318,7 +316,13 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
       .replace('$used', `${res.used}`)
       .replace('$max', `${maxBoosts()}`)}${
       totals ? `\n${oddsLine(res.language, chanceOf(totals, res.value, base, BOOST_STEP))}` : ''
-    }\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}`,
+    }\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}${
+      credits === 0 && bestBonus()
+        ? `\n${loc('recharge_cta', res.language)
+            .replace('$pack', `${bestBonus().pack}`)
+            .replace('$bonus', `${bestBonus().bonus}`)}`
+        : ''
+    }`,
     { reply_markup: { inline_keyboard: keyboard } }
   )
 }
@@ -400,7 +404,7 @@ export async function notifyBoostWin(
       : `<a href="tg://user?id=${winner.id}">${escHtml(winner.name)}</a>`
     const text =
       `🏆 <b>${who} won a giveaway with a Boost!</b>\n` +
-      `${info.credits ? '💰 Paid with credits' : info.crypto ? '🟢 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
+      `${info.credits ? '💰 Paid with credits' : info.crypto ? '🪙 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
       (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
     let sent = false
     try {
@@ -487,7 +491,7 @@ async function notifyOwner(
               info.credits
                 ? `💰 ${creditsLabel(info.n, 'es')}`
                 : info.crypto
-                ? `🟢 ${info.crypto} USDT (${networkShort(info.network || 'bsc')})`
+                ? `🪙 ${info.crypto} USDT (${networkShort(info.network || 'bsc')})`
                 : `⭐ ${info.stars} Stars`
             } · ${pctLabel(info.n, 'es', step)}\n` +
             `📢 ${escHtml(where)}\n` +
@@ -508,7 +512,7 @@ async function notifyOwner(
         const mult = info.boostMult || multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-          `${info.credits ? '💰 Credits' : info.crypto ? '🟢 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
+          `${info.credits ? '💰 Credits' : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
@@ -634,7 +638,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       telegram,
       who,
       added,
-      `🟢 ${formatUnits(order.amountUnits)} USDT`,
+      `🪙 ${formatUnits(order.amountUnits)} USDT`,
       balance,
       order.backRaffleId
     )
@@ -665,7 +669,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
         await telegram.sendMessage(
           admin,
           `⚠️ Pago crypto NO aplicado (${key})\n` +
-            `👤 ${userId}\n🟢 ${amount} USDT\n🔗 https://bscscan.com/tx/${txHash}\n` +
+            `👤 ${userId}\n🪙 ${amount} USDT\n🔗 https://bscscan.com/tx/${txHash}\n` +
             `Hay que devolverlo a mano.`,
           { disable_web_page_preview: true }
         )
@@ -907,7 +911,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
       `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n` +
       (cryptoEnabled()
-        ? `🟢 Crypto: <b>${formatUnits(cryptoTotal.units)} USDT</b> (${cryptoTotal.count} pagos)\n`
+        ? `🪙 Crypto: <b>${formatUnits(cryptoTotal.units)} USDT</b> (${cryptoTotal.count} pagos)\n`
         : '') +
       `\n` +
       funnelText +
@@ -1286,7 +1290,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
           await bot.telegram.sendMessage(
             admin,
             `⚠️ <b>Pago USDT recibido pero NO aplicado</b> (error interno)\n` +
-              `👤 <code>${order.userId}</code>\n🟢 ${formatUnits(order.amountUnits)} USDT (${networkShort(order.network || 'bsc')})\n` +
+              `👤 <code>${order.userId}</code>\n🪙 ${formatUnits(order.amountUnits)} USDT (${networkShort(order.network || 'bsc')})\n` +
               `🧾 ${what}\n🔗 <code>${txHash}</code>\nAplícalo a mano o devuélvelo.`,
             { parse_mode: 'HTML' }
           )
@@ -1494,7 +1498,7 @@ export async function remindOnce(telegram: any) {
         },
       ]
       if (cryptoEnabled()) {
-        row.push({ text: `🟢 ${cryptoPriceLabel(n)} USDT`, callback_data: `c~${e.raffleId}~${n}` })
+        row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `c~${e.raffleId}~${n}` })
       }
       await telegram.sendMessage(
         e.userId,

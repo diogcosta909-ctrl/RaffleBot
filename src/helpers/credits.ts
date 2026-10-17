@@ -21,6 +21,16 @@ export function bonusFor(pack: number) {
   return BONUS[pack] || 0
 }
 
+/** Largest pack that comes with free bonus credits (null when no pack has a bonus) */
+export function bestBonus() {
+  let best: { pack: number; bonus: number } = null
+  for (const pack of CREDIT_PACKS) {
+    const bonus = BONUS[pack] || 0
+    if (bonus > 0 && (!best || pack > best.pack)) best = { pack, bonus }
+  }
+  return best
+}
+
 /** Pack marked as popular in RECHARGE (CREDIT_POPULAR, default 10; 0 = none) */
 export const CREDIT_POPULAR = parseInt(process.env.CREDIT_POPULAR || '10', 10)
 
