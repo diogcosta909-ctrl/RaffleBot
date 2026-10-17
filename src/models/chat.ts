@@ -24,6 +24,9 @@ export class Chat extends Typegoose {
   // Owner's chat only: day (Andorra time) the weekly Top Boosters post was sent
   @prop()
   topPostedDay?: string
+  // Group chats: pinned /winners message that updates after every draw
+  @prop()
+  hofMessageId?: number
   @prop({ required: true, default: false })
   boost: boolean
   // Boost credits (private chats): 1 credit = 1 boost

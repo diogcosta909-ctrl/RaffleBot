@@ -24,7 +24,7 @@ import {
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { topBoostersText } from './odds'
-import { logWinners } from './winners'
+import { logWinners, updateHallOfFame } from './winners'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
 import { InstanceType } from 'typegoose'
@@ -534,6 +534,8 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     }),
     idsOriginalLength
   )
+  // The pinned hall of fame of this chat (if any) updates itself
+  await updateHallOfFame(ctx.telegram, raffle.chatId)
   // Tell the public boost feed when the (first) winner had bought a Boost
   if (raffle.boostEnabled && winners.length > 0) {
     const w = winners[0].winner.user
