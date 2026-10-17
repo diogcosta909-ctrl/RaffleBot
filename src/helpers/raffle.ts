@@ -409,8 +409,26 @@ function paidWith(raffle: any, userId: number, n: number) {
   return { crypto: false, credits: false }
 }
 
+/** Runs a Telegram call again after the wait Telegram asks for when it answers "Too Many Requests" */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn()
+    } catch (err) {
+      const wait = err && err.parameters && err.parameters.retry_after
+      if (!wait || i >= 6) throw err
+      await new Promise((resolve) => setTimeout(resolve, (wait + 1) * 1000))
+    }
+  }
+}
+
 export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, defaultChat?: Chat) {
   console.log(`Finishing raffle for chat ${raffle.chatId}`)
+  // Telegram calls wait and retry when Telegram says "Too Many Requests"
+  const tg: any = {}
+  ;['getChatMember', 'editMessageText', 'editMessageCaption', 'sendMessage'].forEach((m) => {
+    tg[m] = (...args: any[]) => withRetry(() => (<any>ctx.telegram)[m](...args))
+  })
   // Get participants ids
   // One entry per person (also cleans duplicates saved by older versions)
   let ids = Array.from(new Set(raffle.participantsIds))
@@ -423,7 +441,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     const text = loc('no_participants', chat.language)
     if (!nodelete) {
       if (!raffle.raffleMessage || raffle.raffleMessage.text) {
-        await ctx.telegram.editMessageText(
+        await tg.editMessageText(
           raffle.chatId,
           raffle.messageId,
           undefined,
@@ -431,7 +449,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           { disable_web_page_preview: true, parse_mode: 'HTML' }
         )
       } else {
-        await ctx.telegram.editMessageCaption(
+        await tg.editMessageCaption(
           raffle.chatId,
           raffle.messageId,
           undefined,
@@ -440,7 +458,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         )
       }
     } else {
-      await ctx.telegram.sendMessage(raffle.chatId, text, {
+      await tg.sendMessage(raffle.chatId, text, {
         parse_mode: 'HTML',
         disable_web_page_preview: true,
       })
@@ -464,7 +482,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       const text = loc('not_enough_participants', chat.language)
       if (!nodelete) {
         if (!raffle.raffleMessage || raffle.raffleMessage.text) {
-          await ctx.telegram.editMessageText(
+          await tg.editMessageText(
             raffle.chatId,
             raffle.messageId,
             undefined,
@@ -472,7 +490,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
             { disable_web_page_preview: true, parse_mode: 'HTML' }
           )
         } else {
-          await ctx.telegram.editMessageCaption(
+          await tg.editMessageCaption(
             raffle.chatId,
             raffle.messageId,
             undefined,
@@ -481,7 +499,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           )
         }
       } else {
-        await ctx.telegram.sendMessage(raffle.chatId, text, {
+        await tg.sendMessage(raffle.chatId, text, {
           parse_mode: 'HTML',
           disable_web_page_preview: true,
         })
@@ -492,7 +510,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     const winnerId = ids.splice(winnerIndex, 1)[0]
     weights.splice(winnerIndex, 1)
     try {
-      const winner = await ctx.telegram.getChatMember(raffle.chatId, winnerId)
+      const winner = await tg.getChatMember(raffle.chatId, winnerId)
       if (
         !['administrator', 'creator', 'member', 'restricted'].includes(
           winner.status
@@ -601,7 +619,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     }
     if (!nodelete) {
       if (!raffle.raffleMessage || raffle.raffleMessage.text) {
-        await ctx.telegram.editMessageText(
+        await tg.editMessageText(
           raffle.chatId,
           raffle.messageId,
           undefined,
@@ -612,7 +630,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           }
         )
       } else {
-        await ctx.telegram.editMessageCaption(
+        await tg.editMessageCaption(
           raffle.chatId,
           raffle.messageId,
           undefined,
@@ -624,7 +642,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
         )
       }
     } else {
-      await ctx.telegram.sendMessage(raffle.chatId, text, {
+      await tg.sendMessage(raffle.chatId, text, {
         parse_mode: 'HTML',
         disable_web_page_preview: true,
       })
@@ -660,7 +678,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       }
       if (!nodelete) {
         if (!raffle.raffleMessage || raffle.raffleMessage.text) {
-          await ctx.telegram.editMessageText(
+          await tg.editMessageText(
             raffle.chatId,
             raffle.messageId,
             undefined,
@@ -671,7 +689,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
             }
           )
         } else {
-          await ctx.telegram.editMessageCaption(
+          await tg.editMessageCaption(
             raffle.chatId,
             raffle.messageId,
             undefined,
@@ -683,7 +701,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           )
         }
       } else {
-        await ctx.telegram.sendMessage(raffle.chatId, text, {
+        await tg.sendMessage(raffle.chatId, text, {
           parse_mode: 'HTML',
           disable_web_page_preview: true,
         })
@@ -704,7 +722,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       console.log(`Announcing winners for ${raffle.chatId}`, raffle.messageId)
       if (!nodelete) {
         if (!raffle.raffleMessage || raffle.raffleMessage.text) {
-          await ctx.telegram.editMessageText(
+          await tg.editMessageText(
             raffle.chatId,
             raffle.messageId,
             undefined,
@@ -715,7 +733,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
             }
           )
         } else {
-          await ctx.telegram.editMessageCaption(
+          await tg.editMessageCaption(
             raffle.chatId,
             raffle.messageId,
             undefined,
@@ -727,7 +745,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           )
         }
       } else {
-        await ctx.telegram.sendMessage(raffle.chatId, text, {
+        await tg.sendMessage(raffle.chatId, text, {
           parse_mode: 'HTML',
           disable_web_page_preview: true,
         })
@@ -740,7 +758,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           commonI++
           text = `${text}\n${commonI}. <a href="tg://user?id=${nextWinners[i].winner.user.id}">${nextNames[i]}</a>${boostedMark(nextWinners[i].winner.user.id)}`
         }
-        await ctx.telegram.sendMessage(raffle.chatId, text, {
+        await tg.sendMessage(raffle.chatId, text, {
           parse_mode: 'HTML',
           disable_web_page_preview: true,
         })

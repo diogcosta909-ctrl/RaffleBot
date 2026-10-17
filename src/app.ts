@@ -116,6 +116,7 @@ bot.on('message', async (ctx) => {
       } catch (e) {
         console.log(e)
         numberOfTries++
+        await new Promise((resolve) => setTimeout(resolve, 3000))
         if (numberOfTries === 100) {
           throw e
         }
