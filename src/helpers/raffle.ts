@@ -269,7 +269,7 @@ export async function refreshRaffleMessage(
   }
   const boostLine = lines.length ? `\n${lines.join('\n')}` : ''
   // Top 3 boosters of this raffle, right below the boosts counter
-  const top = boosts > 0 ? await topBoostersText(telegram, raffle._id, chat.language) : ''
+  const top = boosts > 0 ? await topBoostersText(telegram, raffle._id, chat.language, BOOST_STEP) : ''
   // Custom raffle messages get the multiplier line too (the default one has it in boostNote)
   const multNote = raffle.boostEnabled ? multiplierNote(raffle, chat.language) : ''
   let text: string

@@ -112,20 +112,34 @@ async function nameOf(telegram: any, id: number) {
  * "\n🏆 Top boosters\n🥇 Ana · 5 boosts…" for the raffle message
  * (starts with a line break; empty when nobody has boosted)
  */
-export async function topBoostersText(telegram: any, raffleId: any, language: string) {
+export async function topBoostersText(
+  telegram: any,
+  raffleId: any,
+  language: string,
+  step: number
+) {
   try {
-    const top: any[] = await RaffleModel.aggregate([
-      { $match: { _id: raffleId } },
-      { $unwind: '$boostIds' },
-      { $group: { _id: '$boostIds', n: { $sum: 1 } } },
-      { $sort: { n: -1, _id: 1 } },
-      { $limit: 3 },
-    ])
+    const r: any = await RaffleModel.findById(raffleId).select('boostIds boostMults')
+    const ids: number[] = (r && r.boostIds) || []
+    const mults: number[] = (r && r.boostMults) || []
+    // boostMults lines up with the END of boostIds; older boosts count as x1
+    const offset = Math.max(0, ids.length - mults.length)
+    const values = new Map<number, number>()
+    ids.forEach((id, i) => {
+      const m = i >= offset ? mults[i - offset] : 1
+      values.set(id, (values.get(id) || 0) + (m >= 1 ? m : 1))
+    })
+    const top = Array.from(values.entries())
+      .sort((a, b) => b[1] - a[1] || a[0] - b[0])
+      .slice(0, 3)
     if (!top.length) return ''
     const lines: string[] = []
     for (let i = 0; i < top.length; i++) {
-      const name = await nameOf(telegram, top[i]._id)
-      lines.push(`${MEDALS[i]} ${esc(name)} · ${top[i].n} ${top[i].n === 1 ? 'boost' : 'boosts'}`)
+      const name = await nameOf(telegram, top[i][0])
+      const extra = Math.round(top[i][1] * step)
+      lines.push(
+        `${MEDALS[i]} ${esc(name)} · ${loc('top_entries', language).replace('$n', `${extra}`)}`
+      )
     }
     return `\n${loc('top_boosters', language)}\n${lines.join('\n')}`
   } catch (err) {

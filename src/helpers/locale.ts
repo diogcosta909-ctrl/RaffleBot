@@ -480,6 +480,10 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '🎯 Your chance to win now: $pct',
     es: '🎯 Tu probabilidad de ganar ahora: $pct',
   },
+  top_entries: {
+    en: '+$n extra entries',
+    es: '+$n entradas extra',
+  },
   odds_after: {
     en: '🎯 Your chance: $from → $to',
     es: '🎯 Tu probabilidad: $from → $to',
