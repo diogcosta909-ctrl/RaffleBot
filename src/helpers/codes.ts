@@ -20,8 +20,9 @@ function isAdmin(ctx: any) {
   return !!admin && ctx.from.id === admin && ctx.chat.type === 'private'
 }
 
-// Anti-abuse: max code redemptions per person in 24 h (free credits attract fake accounts)
-const DAILY_LIMIT = Math.max(1, parseInt(process.env.CODE_DAILY_LIMIT || '2', 10) || 2)
+// Optional extra limit: max code redemptions per person in 24 h (0 = off, the default).
+// Each account can always redeem each code only once.
+const DAILY_LIMIT = Math.max(0, parseInt(process.env.CODE_DAILY_LIMIT || '0', 10) || 0)
 // Same code redeemed this many times within 10 minutes → alert the owner
 const BURST_ALERT = 5
 // Alerts already sent (so each one reaches the owner only once)
@@ -75,7 +76,7 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
         '🎁 <b>Códigos de créditos</b>\n\n' +
           '<code>/code 5</code> → 5 créditos para 1 persona\n' +
           '<code>/code 5 5</code> → 5 créditos para cada una de 5 personas\n\n' +
-          `Cada persona solo puede canjear un código una vez (máx. ${DAILY_LIMIT} códigos por persona al día), y cada canje sale en el feed.\n` +
+          'Cada cuenta solo puede canjear cada código una vez, y cada canje sale en el feed.\n' +
           '/codes ver los códigos · <code>/delcode CODIGO</code> desactivar'
       )
     }
@@ -140,12 +141,14 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
       return ctx.reply(loc('code_blocked', lang))
     }
     // Daily limit per person
-    const recent = await CreditTxModel.countDocuments({
-      userId,
-      type: 'code',
-      createdAt: { $gte: new Date(Date.now() - 24 * 3600 * 1000) },
-    })
-    if (recent >= DAILY_LIMIT) {
+    const recent = DAILY_LIMIT
+      ? await CreditTxModel.countDocuments({
+          userId,
+          type: 'code',
+          createdAt: { $gte: new Date(Date.now() - 24 * 3600 * 1000) },
+        })
+      : 0
+    if (DAILY_LIMIT && recent >= DAILY_LIMIT) {
       await alertOwner(
         ctx.telegram,
         `limit:${userId}:${today()}`,
