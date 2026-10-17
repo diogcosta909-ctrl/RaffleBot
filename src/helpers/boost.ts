@@ -1031,7 +1031,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const caption = loc('crypto_invoice', res.language)
         .replace('$pct', pct)
         .replace('$amount', amount)
-        .replace('$network', networkLabel(network))
+        .replace(/\$network/g, networkLabel(network))
         .replace('$address', walletOf(network))
         .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
       try {
@@ -1145,7 +1145,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const caption = loc('crypto_invoice_topup', lang)
         .replace('$n', packLabel(n, lang))
         .replace('$amount', amount)
-        .replace('$network', networkLabel(network))
+        .replace(/\$network/g, networkLabel(network))
         .replace('$address', walletOf(network))
         .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
       try {
@@ -1180,6 +1180,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       if (res.error) return ctx.reply(errorText(res.error, res.language))
       const balance = await spendCredits(userId, n, {
         raffleId,
+        chatId: res.raffle.chatId,
         name: ctx.from.username
           ? `@${ctx.from.username}`
           : `${ctx.from.first_name}${ctx.from.last_name ? ` ${ctx.from.last_name}` : ''}`,
@@ -1260,7 +1261,33 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   })
 
   // Start watching the chain for USDT payments (needs CRYPTO_WALLET)
-  startCryptoWatcher((order, txHash) => applyCryptoPayment(bot.telegram, order, txHash))
+  startCryptoWatcher(async (order, txHash) => {
+    try {
+      await applyCryptoPayment(bot.telegram, order, txHash)
+    } catch (err) {
+      // The money arrived but the database failed: the owner must know right away
+      console.error('USDT payment not applied', txHash, err)
+      const admin = parseInt(process.env.ADMIN, 10)
+      if (admin) {
+        try {
+          const what =
+            order.raffleId === 'topup'
+              ? `recarga de ${order.boosts + bonusFor(order.boosts)} créditos (/addcredits ${order.userId} ${order.boosts + bonusFor(order.boosts)})`
+              : `${order.boosts} boosts`
+          await bot.telegram.sendMessage(
+            admin,
+            `⚠️ <b>Pago USDT recibido pero NO aplicado</b> (error interno)\n` +
+              `👤 <code>${order.userId}</code>\n🟢 ${formatUnits(order.amountUnits)} USDT (${networkShort(order.network || 'bsc')})\n` +
+              `🧾 ${what}\n🔗 <code>${txHash}</code>\nAplícalo a mano o devuélvelo.`,
+            { parse_mode: 'HTML' }
+          )
+        } catch {
+          // nothing else to do
+        }
+      }
+      throw err
+    }
+  })
   startReminders(bot.telegram)
 
   // Validate right before Telegram charges the user
@@ -1298,7 +1325,27 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         userName: u.username ? `@${u.username}` : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`,
       })
       const added = n + bonusFor(n)
-      const balance = await addCredits(u.id, added, { type: 'topup', method: 'stars', ref: chargeId })
+      let balance: number
+      try {
+        balance = await addCredits(u.id, added, { type: 'topup', method: 'stars', ref: chargeId })
+      } catch (err) {
+        // Paid but the credits could not be saved: give the Stars back and tell the owner
+        console.error('Topup credits not saved', chargeId, err)
+        const ok = await refund(ctx, u.id, chargeId)
+        const admin = parseInt(process.env.ADMIN, 10)
+        if (admin) {
+          try {
+            await ctx.telegram.sendMessage(
+              admin,
+              `⚠️ Recarga con Stars sin aplicar (error interno)\n👤 <code>${u.id}</code> · ${p.total_amount}⭐\n🔗 <code>${chargeId}</code>\n${ok ? '✅ Devueltas automáticamente' : '❌ No se pudo devolver: hazlo a mano'}`,
+              { parse_mode: 'HTML' }
+            )
+          } catch {
+            // nothing else to do
+          }
+        }
+        return ctx.reply(`${loc('please_retry', 'en')}\n\n${loc(ok ? 'boost_refunded' : 'boost_refund_failed', 'en')}`)
+      }
       await notifyTopup(ctx.telegram, u, added, `⭐ ${p.total_amount} Stars`, balance, backId)
       return
     }
@@ -1464,7 +1511,7 @@ export async function remindOnce(telegram: any) {
         o.userId,
         loc('remind_crypto', lang)
           .replace('$amount', formatUnits(o.amountUnits))
-          .replace('$network', networkLabel(o.network || 'bsc'))
+          .replace(/\$network/g, networkLabel(o.network || 'bsc'))
           .replace('$address', walletOf(o.network || 'bsc'))
           .replace('$min', `${left}`),
         { parse_mode: 'HTML', disable_web_page_preview: true }

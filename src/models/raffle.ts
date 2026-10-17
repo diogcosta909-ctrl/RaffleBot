@@ -13,6 +13,9 @@ export class Raffle extends Typegoose {
 
   @prop()
   winners?: string
+  // The wins of this raffle were added to the permanent ranking (WinCount)
+  @prop()
+  winsRecorded?: boolean
 
   // Stars boost: snapshot of the chat setting when the raffle started
   @prop({ default: false })

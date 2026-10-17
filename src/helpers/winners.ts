@@ -4,7 +4,8 @@ import { RaffleModel } from '../models'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { CreditTxModel } from '../models/creditTx'
-import { findChat } from '../models/chat'
+import { WinCountModel } from '../models/winCount'
+import { findChat, ChatModel } from '../models/chat'
 import { checkIfAdmin } from './checkAdmin'
 
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -36,20 +37,58 @@ async function nameOf(telegram: any, chatId: number | undefined, id: number) {
   return name || 'Anonymous'
 }
 
+/** Adds the wins of a finished giveaway to the permanent ranking (only once per giveaway) */
+export async function recordRaffleWins(raffle: any) {
+  try {
+    if (!raffle || !raffle.winners) return
+    // Claim it first so a giveaway is never counted twice
+    const claimed: any = await RaffleModel.updateOne(
+      { _id: raffle._id, winsRecorded: { $ne: true } },
+      { $set: { winsRecorded: true } }
+    )
+    if (!claimed || !claimed.nModified) return
+    for (const id of `${raffle.winners}`.split(',')) {
+      const userId = parseInt(id, 10)
+      if (!userId) continue
+      await WinCountModel.updateOne({ chatId: raffle.chatId, userId }, { $inc: { wins: 1 } }, { upsert: true })
+    }
+    await ChatModel.updateOne({ chatId: raffle.chatId }, { $inc: { giveawaysDone: 1 } }, { upsert: true })
+  } catch (err) {
+    console.error('Wins not recorded', err)
+  }
+}
+
+/** Counts giveaways that finished before the permanent ranking existed (still stored, < 18 days old) */
+async function backfillWins() {
+  try {
+    const old: any[] = await RaffleModel.find({
+      winners: { $exists: true, $ne: '' },
+      winsRecorded: { $ne: true },
+    }).select('chatId winners')
+    for (const r of old) await recordRaffleWins(r)
+    if (old.length) console.log(`Hall of fame: ${old.length} finished giveaways counted`)
+  } catch (err) {
+    console.error('Hall of fame backfill failed', err)
+  }
+}
+
 /**
- * All-time ranking: raffles won and boosts bought in total (Stars + USDT + credits).
+ * All-time ranking: giveaways won and boosts bought in total (Stars + USDT + credits).
  * chatId = only that chat; undefined = every chat.
  */
 async function ranking(chatId?: number) {
-  const where: any = { winners: { $exists: true, $ne: '' } }
-  if (chatId) where.chatId = chatId
-  const raffles: any[] = await RaffleModel.find(where).select('chatId winners')
+  const rows: any[] = await WinCountModel.find(chatId ? { chatId } : {}).select('userId wins')
   const wins = new Map<number, number>()
-  for (const r of raffles) {
-    for (const id of `${r.winners}`.split(',')) {
-      const n = parseInt(id, 10)
-      if (n) wins.set(n, (wins.get(n) || 0) + 1)
-    }
+  for (const r of rows) wins.set(r.userId, (wins.get(r.userId) || 0) + (r.wins || 0))
+  let giveaways = 0
+  if (chatId) {
+    const c: any = await ChatModel.findOne({ chatId }).select('giveawaysDone')
+    giveaways = (c && c.giveawaysDone) || 0
+  } else {
+    const t: any[] = await ChatModel.aggregate([
+      { $group: { _id: null, n: { $sum: { $ifNull: ['$giveawaysDone', 0] } } } },
+    ])
+    giveaways = (t[0] && t[0].n) || 0
   }
   const ids = Array.from(wins.keys())
   const boosts = new Map<number, number>()
@@ -70,21 +109,23 @@ async function ranking(chatId?: number) {
       raffleId: { $ne: 'topup' },
     }).select('userId boosts')
     for (const o of usdt) add(o.userId, o.boosts || 1)
-    // Credit spends only know the raffle, so look the chat's raffles up
-    const raffleIds = chatId
-      ? (await RaffleModel.find({ chatId }).select('_id')).map((r: any) => `${r._id}`)
-      : undefined
+    // Credit spends carry the chat; older ones only know the raffle (look it up while it still exists)
+    let spendScope: any = {}
+    if (chatId) {
+      const raffleIds = (await RaffleModel.find({ chatId }).select('_id')).map((r: any) => `${r._id}`)
+      spendScope = { $or: [{ chatId }, { chatId: { $exists: false }, raffleId: { $in: raffleIds } }] }
+    }
     const spends: any[] = await CreditTxModel.find({
       type: 'spend',
       userId: { $in: ids },
-      ...(raffleIds ? { raffleId: { $in: raffleIds } } : {}),
+      ...spendScope,
     }).select('userId delta')
     for (const t of spends) add(t.userId, -t.delta)
   }
   const list = ids
     .map((id) => ({ id, wins: wins.get(id) || 0, boosts: boosts.get(id) || 0 }))
     .sort((a, b) => b.wins - a.wins || b.boosts - a.boosts || a.id - b.id)
-  return { list: list.slice(0, TOP), raffles: raffles.length, winners: ids.length }
+  return { list: list.slice(0, TOP), giveaways, winners: ids.length }
 }
 
 async function hallText(telegram: any, chatId?: number) {
@@ -103,7 +144,7 @@ async function hallText(telegram: any, chatId?: number) {
   }
   return (
     `🏆 <b>Top 10 winners</b> · all time\n\n${lines.join('\n')}\n\n` +
-    `📊 ${r.raffles} ${r.raffles === 1 ? 'giveaway' : 'giveaways'} · ${r.winners} different ${r.winners === 1 ? 'winner' : 'winners'}`
+    `📊 ${r.giveaways} ${r.giveaways === 1 ? 'giveaway' : 'giveaways'} · ${r.winners} different ${r.winners === 1 ? 'winner' : 'winners'}`
   )
 }
 
@@ -140,6 +181,8 @@ export async function updateHallOfFame(telegram: any, chatId: number) {
  *  - private: ranking of every chat together
  */
 export function setupWinners(bot: Telegraf<ContextMessageUpdate>) {
+  // Count the giveaways already finished (once, in the background)
+  backfillWins()
   bot.command('winners', async (ctx) => {
     try {
       if (ctx.chat.type === 'private') {

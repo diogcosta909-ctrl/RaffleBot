@@ -27,6 +27,9 @@ export class Chat extends Typegoose {
   // Group chats: pinned /winners message that updates after every draw
   @prop()
   hofMessageId?: number
+  // Giveaways finished in this chat (kept forever, for the /winners ranking)
+  @prop({ default: 0 })
+  giveawaysDone?: number
   @prop({ required: true, default: false })
   boost: boolean
   // Boost credits (private chats): 1 credit = 1 boost

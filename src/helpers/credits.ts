@@ -58,7 +58,7 @@ export async function addCredits(
 export async function spendCredits(
   userId: number,
   n: number,
-  tx: { raffleId?: string; method?: string; name?: string }
+  tx: { raffleId?: string; method?: string; name?: string; chatId?: number }
 ) {
   const chat: any = await ChatModel.findOneAndUpdate(
     { chatId: userId, credits: { $gte: n } },

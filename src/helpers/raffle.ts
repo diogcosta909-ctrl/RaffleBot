@@ -24,7 +24,7 @@ import {
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
 import { topBoostersText } from './odds'
-import { updateHallOfFame } from './winners'
+import { updateHallOfFame, recordRaffleWins } from './winners'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
 import { InstanceType } from 'typegoose'
@@ -103,7 +103,9 @@ export function setupCallback(bot: Telegraf<ContextMessageUpdate>) {
   ;(<any>bot).action(async (data: string, ctx: ContextMessageUpdate) => {
     // Get raffle
     const datas = data.split('~')
-    if (['l', 'n', 'c', 'b', 't'].indexOf(datas[0]) > -1) return
+    // Participation buttons start with the chat id (a number); every other button
+    // (boost, credits, codes, broadcast, config...) belongs to another handler
+    if (!/^-?\d+$/.test(datas[0])) return
     const chatId = Number(datas[0])
     let raffle = await getRaffleWithoutParticipantIds(chatId, datas[1])
     // Get chat
@@ -303,6 +305,10 @@ export async function refreshRaffleMessage(
       'participants_number',
       chat.language
     )}: ${entries}${boostLine}${top}`
+  }
+  // Captions are limited to 1024 characters: drop the top boosters before the counters stop updating
+  if (raffle.raffleMessage && !raffle.raffleMessage.text && top && text.length > 1024) {
+    text = text.slice(0, text.length - top.length)
   }
   if (!raffle.raffleMessage || raffle.raffleMessage.text) {
     await telegram.editMessageText(
@@ -518,7 +524,8 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     { _id: (<any>raffle)._id },
     { $set: { participantsIds: [], boostIds: [], cryptoIds: [], creditIds: [] } }
   )
-  // The pinned hall of fame of this chat (if any) updates itself
+  // Wins are counted forever (raffles are deleted after 18 days); then the pinned ranking updates
+  await recordRaffleWins(raffle)
   await updateHallOfFame(ctx.telegram, raffle.chatId)
   // Tell the public boost feed when the (first) winner had bought a Boost
   if (raffle.boostEnabled && winners.length > 0) {
