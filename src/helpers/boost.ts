@@ -382,10 +382,12 @@ const escHtml = (t: string) =>
 export async function notifyWinnerPrivate(
   telegram: any,
   raffle: { chatId: number; messageId?: number },
-  userId: number,
-  boosts: number,
+  winner: { id: number; username?: string; name: string },
+  info: { stars: number; entries: number; boosts: number; crypto?: boolean; credits?: boolean },
   extraEntries: number
 ) {
+  const userId = winner.id
+  const boosts = info.boosts
   try {
     let link = ''
     try {
@@ -406,6 +408,22 @@ export async function notifyWinnerPrivate(
       .replace('$boosts', `${boosts} Boost${boosts === 1 ? '' : 's'}`)
       .replace('$extra', `${Math.max(0, Math.round(extraEntries))}`)
       .replace('$link', link ? `\n\n👉 <a href="${link}">${loc('winner_private_link', lang)}</a>` : '')
+    // Same image as the public feed; plain text if it cannot be drawn
+    try {
+      const image = await require('./boostImage').renderBoostImage({
+        name: winner.username ? `@${winner.username}` : winner.name,
+        stars: info.stars,
+        entries: info.entries,
+        boosts: info.boosts,
+        winner: true,
+        crypto: !!info.crypto,
+        credits: !!info.credits,
+      })
+      await telegram.sendPhoto(userId, { source: image }, { caption: text, parse_mode: 'HTML' })
+      return
+    } catch (err) {
+      // fall through to text
+    }
     await telegram.sendMessage(userId, text, { parse_mode: 'HTML', disable_web_page_preview: true })
   } catch (err) {
     // The winner may have blocked the bot: nothing to do

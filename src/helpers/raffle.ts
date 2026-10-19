@@ -578,7 +578,22 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
           }
         ).catch(() => undefined)
         // And a private "You won!" to the winner (only reaches people who opened the bot, like buyers)
-        notifyWinnerPrivate(ctx.telegram, raffle, w.id, n, weightFor(values, w.id, base) - base).catch(() => undefined)
+        notifyWinnerPrivate(
+          ctx.telegram,
+          raffle,
+          {
+            id: w.id,
+            username: w.username,
+            name: `${w.first_name}${w.last_name ? ` ${w.last_name}` : ''}`,
+          },
+          {
+            stars: n * BOOST_PRICE,
+            boosts: n,
+            entries: Math.round(weightFor(values, w.id, base)),
+            ...paidWith(raffle, w.id, n),
+          },
+          weightFor(values, w.id, base) - base
+        ).catch(() => undefined)
       }
     }
   }
@@ -830,7 +845,22 @@ export function setupTestWin(bot: Telegraf<ContextMessageUpdate>) {
             ...paidWith(raffle, first, n),
           }
         )
-        await notifyWinnerPrivate(ctx.telegram, raffle, first, n, weightFor(boostValues(raffle), first, base) - base)
+        await notifyWinnerPrivate(
+          ctx.telegram,
+          raffle,
+          {
+            id: first,
+            username: user.username,
+            name: `${user.first_name}${user.last_name ? ` ${user.last_name}` : ''}`,
+          },
+          {
+            stars: n * BOOST_PRICE,
+            boosts: n,
+            entries: Math.round(weightFor(boostValues(raffle), first, base)),
+            ...paidWith(raffle, first, n),
+          },
+          weightFor(boostValues(raffle), first, base) - base
+        )
         sent = `feed notice + private message sent (${n} boosts)`
       }
       return ctx.reply(`✅ Winners: ${raffle.winners}\n${sent}`)
