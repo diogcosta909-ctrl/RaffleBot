@@ -813,40 +813,77 @@ function bestBonusNote(lang: string) {
     .replace('$total', `${b.pack + b.bonus}`)
 }
 
-/** The recharge screen (credit packs); raffleId = giveaway to come back to, or '0' */
-async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string) {
+/** "5 credits" or "10 +1 free" (pack with its free bonus) */
+function packText(n: number, lang: string) {
+  const bonus = bonusFor(n)
+  return bonus ? `${n} +${bonus} ${loc('free_word', lang)}` : creditsLabel(n, lang)
+}
+
+/** Packs as a list with both prices, shown in the recharge text */
+function packList(lang: string) {
+  const lines = CREDIT_PACKS.map((n) => {
+    const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
+    const usdt = cryptoEnabled() ? ` ${loc('or_word', lang)} ${cryptoPriceLabel(n)} USDT` : ''
+    return `• ${hot}${packText(n, lang)} — ${n * BOOST_PRICE}⭐${usdt}`
+  })
+  return `${loc('packs_header', lang)}\n${lines.join('\n')}`
+}
+
+/** Edits the message the button was pressed on (sends a new one if it cannot be edited) */
+async function showScreen(ctx: ContextMessageUpdate, text: string, keyboard: any[], edit: boolean) {
+  const extra: any = { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
+  if (edit) {
     try {
-      const lang = (await findChat(ctx.from.id)).language
-      const credits = await getCredits(ctx.from.id)
-      const keyboard: any[] = CREDIT_PACKS.map((n) => {
-        const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
-        const row: any[] = [
-          {
-            text: `${hot}${shortPack(n)} = ${n * BOOST_PRICE}⭐`,
-            callback_data: `ts~${n}~${raffleId}`,
-          },
-        ]
-        if (cryptoEnabled()) {
-          row.push({
-            text: `${hot}${shortPack(n)} = ${cryptoPriceLabel(n)} USDT`,
-            callback_data: `tc~${n}~${raffleId}`,
-          })
-        }
-        return row
-      })
-      if (raffleId !== '0') {
-        keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
-      }
-      return ctx.replyWithHTML(
-        loc('recharge_text', lang)
-          .replace('$pct', pctLabel(1, lang))
-          .replace('$bonus', bestBonusNote(lang))
-          .replace('$n', `${credits}`),
-        { reply_markup: { inline_keyboard: keyboard } } as any
-      )
+      await ctx.editMessageText(text, extra)
+      return
     } catch (err) {
-      console.error(err)
+      const msg = `${(err && (err.description || err.message)) || ''}`
+      if (/not modified/i.test(msg)) return
     }
+  }
+  await ctx.replyWithHTML(text, { reply_markup: { inline_keyboard: keyboard } } as any)
+}
+
+/** Buttons with the packs of one payment method: 's' = Stars, 'c' = USDT (one pack per row) */
+function packKeyboard(method: 's' | 'c', lang: string, raffleId: string, withBack: boolean) {
+  const keyboard: any[] = CREDIT_PACKS.map((n) => {
+    const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
+    const price = method === 's' ? `${n * BOOST_PRICE}⭐` : `${cryptoPriceLabel(n)} USDT`
+    return [{ text: `${hot}${packText(n, lang)} · ${price}`, callback_data: `t${method}~${n}~${raffleId}` }]
+  })
+  if (withBack) keyboard.push([{ text: loc('back_btn', lang), callback_data: `rb~${raffleId}` }])
+  return keyboard
+}
+
+/**
+ * The recharge screen. With USDT on: packs listed in the text + "Pay with Stars / USDT" buttons
+ * (the packs to tap come next). With Stars only: the packs to tap right away.
+ * raffleId = giveaway to come back to, or '0'
+ */
+async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = false) {
+  try {
+    const lang = (await findChat(ctx.from.id)).language
+    const credits = await getCredits(ctx.from.id)
+    const both = cryptoEnabled()
+    const text = loc('recharge_text', lang)
+      .replace('$pct', pctLabel(1, lang))
+      .replace('$bonus', bestBonusNote(lang))
+      .replace('$packs', packList(lang))
+      .replace('$n', `${credits}`)
+      .replace('$choose', loc(both ? 'pay_how' : 'choose_pack', lang))
+    const keyboard: any[] = both
+      ? [
+          [{ text: loc('pay_stars', lang), callback_data: `rm~s~${raffleId}` }],
+          [{ text: loc('pay_usdt', lang), callback_data: `rm~c~${raffleId}` }],
+        ]
+      : packKeyboard('s', lang, raffleId, false)
+    if (raffleId !== '0') {
+      keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
+    }
+    await showScreen(ctx, text, keyboard, edit)
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
@@ -1161,13 +1198,41 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
 
   // RECHARGE: credit packs paid with Stars or USDT (id = raffle to come back to, or 0)
   bot.action(/^r~([a-f0-9]{24}|0)$/, async (ctx) => {
-    const raffleId = (ctx as any).match[1]
     try {
       await ctx.answerCbQuery()
     } catch {
       // do nothing
     }
-    return sendRecharge(ctx, raffleId)
+    return sendRecharge(ctx, (ctx as any).match[1])
+  })
+
+  // "Back" from the packs: the recharge screen again, in the same message
+  bot.action(/^rb~([a-f0-9]{24}|0)$/, async (ctx) => {
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    return sendRecharge(ctx, (ctx as any).match[1], true)
+  })
+
+  // Payment method chosen: show the packs to tap
+  bot.action(/^rm~(s|c)~([a-f0-9]{24}|0)$/, async (ctx) => {
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    try {
+      const method = (ctx as any).match[1] as 's' | 'c'
+      const raffleId = (ctx as any).match[2]
+      if (method === 'c' && !cryptoEnabled()) return
+      const lang = (await findChat(ctx.from.id)).language
+      const text = `${loc(method === 's' ? 'pack_stars_title' : 'pack_usdt_title', lang)}\n\n${loc('choose_pack', lang)}`
+      await showScreen(ctx, text, packKeyboard(method, lang, raffleId, true), true)
+    } catch (err) {
+      console.error(err)
+    }
   })
 
   // Stars invoice for a credit pack
