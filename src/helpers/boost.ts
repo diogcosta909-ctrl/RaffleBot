@@ -803,6 +803,42 @@ async function pickNetwork(ctx: ContextMessageUpdate, picked: string | undefined
  * Setting up the Stars boost: /boost toggle, boost button, invoice and payments
  * @param bot Bot to setup
  */
+/** The recharge screen (credit packs); raffleId = giveaway to come back to, or '0' */
+async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string) {
+    try {
+      const lang = (await findChat(ctx.from.id)).language
+      const credits = await getCredits(ctx.from.id)
+      const keyboard: any[] = CREDIT_PACKS.map((n) => {
+        const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
+        const row: any[] = [
+          {
+            text: `${hot}${shortPack(n)} = ${n * BOOST_PRICE}⭐`,
+            callback_data: `ts~${n}~${raffleId}`,
+          },
+        ]
+        if (cryptoEnabled()) {
+          row.push({
+            text: `${hot}${shortPack(n)} = ${cryptoPriceLabel(n)} USDT`,
+            callback_data: `tc~${n}~${raffleId}`,
+          })
+        }
+        return row
+      })
+      if (raffleId !== '0') {
+        keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
+      }
+      return ctx.replyWithHTML(
+        loc('recharge_text', lang)
+          .replace('$pct', pctLabel(1, lang))
+          .replace('$bonus', CREDIT_PACKS.some((n) => bonusFor(n)) ? loc('recharge_bonus_note', lang) : '')
+          .replace('$n', `${credits}`),
+        { reply_markup: { inline_keyboard: keyboard } } as any
+      )
+    } catch (err) {
+      console.error(err)
+    }
+}
+
 export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   loadMultiplier()
   // Admin toggles boost for the chat (works in chat or via /configRaffle)
@@ -975,6 +1011,17 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     return ctx.reply('✅ /stars reset to 0. Counting from now.')
   })
 
+  // Deep link from the ranking button: /start recharge
+  bot.use(async (ctx, next) => {
+    const text = ctx.message && ctx.message.text
+    if (!text || !/^\/start recharge$/.test(text) || ctx.chat.type !== 'private') return next()
+    try {
+      await sendRecharge(ctx, '0')
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
   // Deep link from the boost button: /start boost_<raffleId>
   bot.use(async (ctx, next) => {
     const text = ctx.message && ctx.message.text
@@ -1110,38 +1157,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     } catch {
       // do nothing
     }
-    try {
-      const lang = (await findChat(ctx.from.id)).language
-      const credits = await getCredits(ctx.from.id)
-      const keyboard: any[] = CREDIT_PACKS.map((n) => {
-        const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
-        const row: any[] = [
-          {
-            text: `${hot}${shortPack(n)} = ${n * BOOST_PRICE}⭐`,
-            callback_data: `ts~${n}~${raffleId}`,
-          },
-        ]
-        if (cryptoEnabled()) {
-          row.push({
-            text: `${hot}${shortPack(n)} = ${cryptoPriceLabel(n)} USDT`,
-            callback_data: `tc~${n}~${raffleId}`,
-          })
-        }
-        return row
-      })
-      if (raffleId !== '0') {
-        keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
-      }
-      return ctx.replyWithHTML(
-        loc('recharge_text', lang)
-          .replace('$pct', pctLabel(1, lang))
-          .replace('$bonus', CREDIT_PACKS.some((n) => bonusFor(n)) ? loc('recharge_bonus_note', lang) : '')
-          .replace('$n', `${credits}`),
-        { reply_markup: { inline_keyboard: keyboard } } as any
-      )
-    } catch (err) {
-      console.error(err)
-    }
+    return sendRecharge(ctx, raffleId)
   })
 
   // Stars invoice for a credit pack

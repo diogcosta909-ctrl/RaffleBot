@@ -169,11 +169,19 @@ async function hallText(telegram: any, chatId?: number) {
   )
 }
 
+/** "Buy Boosts" button under the ranking: opens the recharge screen in the bot's private chat */
+function hallButtons() {
+  return {
+    inline_keyboard: [[{ text: '🚀 Buy Boosts', url: `https://t.me/${process.env.USERNAME}?start=recharge` }]],
+  }
+}
+
 /** Sends the ranking to the chat, remembers it and pins it (when the bot may pin) */
 async function createHallOfFame(telegram: any, chat: any, chatId: number) {
   const sent = await telegram.sendMessage(chatId, await hallText(telegram, chatId), {
     parse_mode: 'HTML',
     disable_web_page_preview: true,
+    reply_markup: hallButtons(),
   })
   chat.hofMessageId = sent.message_id
   await chat.save()
@@ -200,6 +208,7 @@ export async function updateHallOfFame(telegram: any, chatId: number) {
         await telegram.editMessageText(chatId, chat.hofMessageId, undefined, await hallText(telegram, chatId), {
           parse_mode: 'HTML',
           disable_web_page_preview: true,
+    reply_markup: hallButtons(),
         })
         return
       } catch (err) {
@@ -230,13 +239,13 @@ export function setupWinners(bot: Telegraf<ContextMessageUpdate>) {
   bot.command('winners', async (ctx) => {
     try {
       if (ctx.chat.type === 'private') {
-        return ctx.replyWithHTML(await hallText(ctx.telegram), { disable_web_page_preview: true } as any)
+        return ctx.replyWithHTML(await hallText(ctx.telegram), { disable_web_page_preview: true, reply_markup: hallButtons() } as any)
       }
       const chatId = ctx.chat.id
       const isAdmin = await checkIfAdmin(ctx, false)
       const text = await hallText(ctx.telegram, chatId)
       if (!isAdmin) {
-        return ctx.replyWithHTML(text, { disable_web_page_preview: true } as any)
+        return ctx.replyWithHTML(text, { disable_web_page_preview: true, reply_markup: hallButtons() } as any)
       }
       const chat = await findChat(chatId)
       const upToDate = '✅ The pinned ranking is up to date. It updates itself after every draw.'
@@ -245,6 +254,7 @@ export function setupWinners(bot: Telegraf<ContextMessageUpdate>) {
           await ctx.telegram.editMessageText(chatId, chat.hofMessageId, undefined, text, {
             parse_mode: 'HTML',
             disable_web_page_preview: true,
+    reply_markup: hallButtons(),
           })
           return ctx.reply(upToDate)
         } catch (err) {
@@ -253,7 +263,7 @@ export function setupWinners(bot: Telegraf<ContextMessageUpdate>) {
           // Deleted or missing: create a new one below
         }
       }
-      const sent = await ctx.replyWithHTML(text, { disable_web_page_preview: true } as any)
+      const sent = await ctx.replyWithHTML(text, { disable_web_page_preview: true, reply_markup: hallButtons() } as any)
       chat.hofMessageId = sent.message_id
       await chat.save()
       try {
