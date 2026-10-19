@@ -6,13 +6,14 @@ import { CryptoOrderModel } from '../models/cryptoOrder'
 import { BoostEventModel } from '../models/boostEvent'
 
 // Pending announcements waiting for the owner's confirmation (one per owner)
-type Pending = { segment: string; at: number } & (
+type Pending = { segment: string; button?: boolean; at: number } & (
   | { kind: 'copy'; fromChat: number; messageId: number }
   | { kind: 'text'; text: string }
 )
 
 // Who receives the announcement (everyone is limited to users who accepted the terms)
 const SEGMENTS: { [key: string]: string } = {
+  me: 'solo tú (prueba)',
   all: 'todos',
   buyers: 'compradores',
   nonbuyers: 'los que nunca compraron',
@@ -31,6 +32,7 @@ function isAdmin(ctx: any) {
 
 /** Private chats of the users who accepted the terms, filtered by segment */
 async function recipients(segment = 'all'): Promise<number[]> {
+  if (segment === 'me') return [parseInt(process.env.ADMIN, 10)]
   const query: any = { termsAccepted: true, chatId: { $gt: 0 } }
   if (segment === 'credits') query.credits = { $gt: 0 }
   const chats: any[] = await ChatModel.find(query).select('chatId')
@@ -50,17 +52,26 @@ async function recipients(segment = 'all'): Promise<number[]> {
   return ids
 }
 
+/** Optional button under the announcement: opens the recharge screen in the bot */
+function buttonOf(p: Pending) {
+  return p.button
+    ? { inline_keyboard: [[{ text: '🚀 Buy Boosts', callback_data: 'r~0' }]] }
+    : undefined
+}
+
 async function deliver(telegram: any, to: number, p: Pending) {
   if (p.kind === 'copy') {
     return telegram.callApi('copyMessage', {
       chat_id: to,
       from_chat_id: p.fromChat,
       message_id: p.messageId,
+      reply_markup: buttonOf(p),
     })
   }
   return telegram.sendMessage(to, p.text, {
     parse_mode: 'HTML',
     disable_web_page_preview: true,
+    reply_markup: buttonOf(p),
   })
 }
 
@@ -81,14 +92,20 @@ export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
       segment = first
       inline = inline.slice(first.length).trim()
     }
+    // Optional next word "boost": adds a "Buy Boosts" button that opens the recharge screen
+    let button = false
+    if (inline.split(/\s+/)[0].toLowerCase() === 'boost') {
+      button = true
+      inline = inline.slice(5).trim()
+    }
     let p: Pending
     if (reply) {
-      p = { segment, kind: 'copy', fromChat: ctx.chat.id, messageId: reply.message_id, at: Date.now() }
+      p = { segment, button, kind: 'copy', fromChat: ctx.chat.id, messageId: reply.message_id, at: Date.now() }
     } else if (inline) {
-      p = { segment, kind: 'text', text: inline, at: Date.now() }
+      p = { segment, button, kind: 'text', text: inline, at: Date.now() }
     } else {
       return ctx.replyWithHTML(
-        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo) o escribe:\n<code>/broadcast tu texto</code>\n\nPor defecto va a todos los que aceptaron los términos. Para elegir destinatarios pon una palabra después de /broadcast:\n<code>/broadcast buyers tu texto</code>\n\n• <code>all</code> todos (por defecto)\n• <code>buyers</code> compradores\n• <code>nonbuyers</code> los que nunca compraron\n• <code>credits</code> con créditos\n• <code>inactive</code> 30 días sin usar Boost\n\nAntes verás una vista previa y el número de usuarios para confirmar.'
+        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo) o escribe:\n<code>/broadcast tu texto</code>\n\nPor defecto va a todos los que aceptaron los términos. Para elegir destinatarios pon una palabra después de /broadcast:\n<code>/broadcast buyers tu texto</code>\n\n• <code>me</code> solo tú (para probar)\n• <code>all</code> todos (por defecto)\n• <code>buyers</code> compradores\n• <code>nonbuyers</code> los que nunca compraron\n• <code>credits</code> con créditos\n• <code>inactive</code> 30 días sin usar Boost\n\nPara añadir un botón <b>🚀 Buy Boosts</b> (abre la recarga) pon <code>boost</code> después del destinatario:\n<code>/broadcast me boost tu texto</code>\n\nAntes verás una vista previa y el número de usuarios para confirmar.'
       )
     }
     try {
