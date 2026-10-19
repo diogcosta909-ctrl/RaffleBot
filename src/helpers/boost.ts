@@ -375,6 +375,43 @@ async function chanceAfterBuy(raffle: any, value: number, n: number, language: s
 const escHtml = (t: string) =>
   t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
+/**
+ * Private "You won!" message to a winner who had bought Boosts (they opened the bot to pay,
+ * so it can reach them). Best effort: errors are ignored.
+ */
+export async function notifyWinnerPrivate(
+  telegram: any,
+  raffle: { chatId: number; messageId?: number },
+  userId: number,
+  boosts: number,
+  extraEntries: number
+) {
+  try {
+    let link = ''
+    try {
+      const c: any = await telegram.getChat(raffle.chatId)
+      if (raffle.messageId) {
+        const internal = `${raffle.chatId}`.replace(/^-100/, '')
+        link = c.username
+          ? `https://t.me/${c.username}/${raffle.messageId}`
+          : `${raffle.chatId}`.startsWith('-100')
+          ? `https://t.me/c/${internal}/${raffle.messageId}`
+          : ''
+      }
+    } catch {
+      // no link
+    }
+    const lang = (await findChat(userId)).language
+    const text = loc('winner_private', lang)
+      .replace('$boosts', `${boosts} Boost${boosts === 1 ? '' : 's'}`)
+      .replace('$extra', `${Math.max(0, Math.round(extraEntries))}`)
+      .replace('$link', link ? `\n\n👉 <a href="${link}">${loc('winner_private_link', lang)}</a>` : '')
+    await telegram.sendMessage(userId, text, { parse_mode: 'HTML', disable_web_page_preview: true })
+  } catch (err) {
+    // The winner may have blocked the bot: nothing to do
+  }
+}
+
 /** Public feed message when the (first) winner of a giveaway had bought a Boost */
 export async function notifyBoostWin(
   telegram: any,

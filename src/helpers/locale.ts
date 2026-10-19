@@ -458,6 +458,14 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '🚀 Winner used $n for $extra extra $entries',
     es: '🚀 El ganador usó $n por $extra $entries extra',
   },
+  winner_private: {
+    en: '🎉 <b>You won!</b>\n\nYour Boost paid off: you had $boosts (+$extra extra entries) in this giveaway.$link',
+    es: '🎉 <b>¡Has ganado!</b>\n\nTu Boost valió la pena: tenías $boosts (+$extra entradas extra) en este sorteo.$link',
+  },
+  winner_private_link: {
+    en: 'See the giveaway',
+    es: 'Ver el sorteo',
+  },
   winner_free: {
     en: '🎟 The winner didn\'t use Boost',
     es: '🎟 El ganador no usó Boost',

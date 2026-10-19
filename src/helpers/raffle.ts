@@ -17,6 +17,7 @@ import {
   BOOST_STEP,
   entriesLabel,
   notifyBoostWin,
+  notifyWinnerPrivate,
   entryValueOf,
   boostValues,
   boostBlock,
@@ -576,6 +577,8 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
             ...paidWith(raffle, w.id, n),
           }
         ).catch(() => undefined)
+        // And a private "You won!" to the winner (only reaches people who opened the bot, like buyers)
+        notifyWinnerPrivate(ctx.telegram, raffle, w.id, n, weightFor(values, w.id, base) - base).catch(() => undefined)
       }
     }
   }
@@ -827,7 +830,8 @@ export function setupTestWin(bot: Telegraf<ContextMessageUpdate>) {
             ...paidWith(raffle, first, n),
           }
         )
-        sent = `feed notice sent (${n} boosts)`
+        await notifyWinnerPrivate(ctx.telegram, raffle, first, n, weightFor(boostValues(raffle), first, base) - base)
+        sent = `feed notice + private message sent (${n} boosts)`
       }
       return ctx.reply(`✅ Winners: ${raffle.winners}\n${sent}`)
     } catch (err) {
