@@ -398,6 +398,15 @@ function getButtons(raffle: InstanceType<Raffle>, language: string) {
  * @param raffle Raffle to finish
  * @param ctx Context of message that finished raffle
  */
+/** "🚀 Winner used 1 Boost for 3 extra entries" */
+function winnerBoostedText(language: string, boosts: number, extra: number) {
+  const e = Math.max(0, Math.round(extra))
+  return loc('winner_boosted', language)
+    .replace('$n', `${boosts} Boost${boosts === 1 ? '' : 's'}`)
+    .replace('$extra', `${e}`)
+    .replace('$entries', loc(e === 1 ? 'entry_one' : 'entry_many', language))
+}
+
 /** How the winner paid most of their boosts: Stars (default on ties), USDT or credits */
 function paidWith(raffle: any, userId: number, n: number) {
   const count = (list?: number[]) => (list || []).filter((id) => id === userId).length
@@ -579,9 +588,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
     const n = counts.get(firstId) || 0
     boostSummary = `\n\n${
       n > 0
-        ? loc('winner_boosted', chat.language)
-            .replace('$n', `${n}`)
-            .replace('$mult', entriesLabel(weightFor(values, firstId, base), chat.language))
+        ? winnerBoostedText(chat.language, n, weightFor(values, firstId, base) - base)
         : loc('winner_free', chat.language)
     }`
   }
@@ -609,9 +616,7 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
       const n = counts.get(winner.user.id) || 0
       text = `${text}\n\n${
         n > 0
-          ? loc('winner_boosted', chat.language)
-              .replace('$n', `${n}`)
-              .replace('$mult', entriesLabel(weightFor(values, winner.user.id, base), chat.language))
+          ? winnerBoostedText(chat.language, n, weightFor(values, winner.user.id, base) - base)
           : loc('winner_free', chat.language)
       }`
     }

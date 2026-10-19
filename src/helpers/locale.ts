@@ -445,8 +445,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🎟 $n entradas con boost',
   },
   winner_boosted: {
-    en: '🚀 The winner used Boost · boosts: $n ($mult).',
-    es: '🚀 El ganador usó Boost · boosts: $n ($mult).',
+    en: '🚀 Winner used $n for $extra extra $entries',
+    es: '🚀 El ganador usó $n por $extra $entries extra',
   },
   winner_free: {
     en: '🎟 The winner didn\'t use Boost',
