@@ -96,7 +96,7 @@ async function backfillWins() {
  * chatId = only that chat; undefined = every chat.
  */
 async function ranking(chatId?: number) {
-  const rows: any[] = await WinCountModel.find(chatId ? { chatId, userId: { $gt: 0 } } : { userId: { $gt: 0 } }).select('userId wins')
+  const rows: any[] = await WinCountModel.find(chatId ? { chatId, userId: { $gt: 0 }, wins: { $gt: 0 } } : { userId: { $gt: 0 }, wins: { $gt: 0 } }).select('userId wins')
   const wins = new Map<number, number>()
   for (const r of rows) wins.set(r.userId, (wins.get(r.userId) || 0) + (r.wins || 0))
   let giveaways = 0
