@@ -19,17 +19,9 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
   },
   start_text: {
     en:
-      "👋 Hi! I run giveaways in Telegram groups and channels.\n\n🎁 Fair random winners\n🚀 Boosts: buy extra entries with Stars, USDT or credits\n🏆 Live ranking of winners\n\nTo run your own giveaway:\n1. Add me as an admin to your group or channel\n2. Send /start there\n\nAll commands: /help",
+      "👋 Hi! I run giveaways in Telegram groups and channels.\n\n🎁 Fair random winners\n🚀 Boosts: buy extra entries with Stars, USDT or credits\n🏆 Live ranking of winners\n\nTo run your own giveaway:\n1. Add me as an admin to your group or channel\n2. Send /start there",
     es:
-      "👋 ¡Hola! Hago sorteos en grupos y canales de Telegram.\n\n🎁 Ganadores al azar, sin trampas\n🚀 Boosts: compra entradas extra con Stars, USDT o créditos\n🏆 Ranking de ganadores en vivo\n\nPara hacer tu propio sorteo:\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start allí\n\nTodos los comandos: /help",
-  },
-  start_group_btn: {
-    en: '➕ Add to group',
-    es: '➕ Añadir a grupo',
-  },
-  start_channel_btn: {
-    en: '➕ Add to channel',
-    es: '➕ Añadir a canal',
+      "👋 ¡Hola! Hago sorteos en grupos y canales de Telegram.\n\n🎁 Ganadores al azar, sin trampas\n🚀 Boosts: compra entradas extra con Stars, USDT o créditos\n🏆 Ranking de ganadores en vivo\n\nPara hacer tu propio sorteo:\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start allí",
   },
   start_boost_btn: {
     en: '🚀 Buy Boosts',

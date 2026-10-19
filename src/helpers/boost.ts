@@ -824,7 +824,7 @@ function packList(lang: string) {
   const lines = CREDIT_PACKS.map((n) => {
     const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
     const usdt = cryptoEnabled() ? ` ${loc('or_word', lang)} ${cryptoPriceLabel(n)} USDT` : ''
-    return `• ${hot}${packText(n, lang)} — ${n * BOOST_PRICE}⭐${usdt}`
+    return `• ${hot}<b>${packText(n, lang)}</b> — ${n * BOOST_PRICE} ⭐${usdt}`
   })
   return `${loc('packs_header', lang)}\n${lines.join('\n')}`
 }
@@ -848,7 +848,7 @@ async function showScreen(ctx: ContextMessageUpdate, text: string, keyboard: any
 function packKeyboard(method: 's' | 'c', lang: string, raffleId: string, withBack: boolean) {
   const keyboard: any[] = CREDIT_PACKS.map((n) => {
     const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
-    const price = method === 's' ? `${n * BOOST_PRICE}⭐` : `${cryptoPriceLabel(n)} USDT`
+    const price = method === 's' ? `${n * BOOST_PRICE} ⭐` : `${cryptoPriceLabel(n)} USDT`
     return [{ text: `${hot}${packText(n, lang)} · ${price}`, callback_data: `t${method}~${n}~${raffleId}` }]
   })
   if (withBack) keyboard.push([{ text: loc('back_btn', lang), callback_data: `rb~${raffleId}` }])
