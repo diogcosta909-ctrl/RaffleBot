@@ -125,8 +125,9 @@ bot.on('message', async (ctx) => {
     withRetry(() => ctx.reply(text, { reply_to_message_id: ctx.message.message_id })).catch(
       () => undefined
     )
-  // Already finished, or being finished right now: never draw it twice
-  if ((raffle as any).winners || finishing.has(key)) {
+  // Being finished right now, or finished by an older version that did not keep the participants
+  // (nothing to draw from): leave it as it is. Otherwise a finished giveaway is drawn again.
+  if (finishing.has(key) || ((raffle as any).winners && !((raffle as any).participantsIds || []).length)) {
     await reply('👍')
     return
   }

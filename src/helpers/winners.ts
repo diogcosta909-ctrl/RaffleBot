@@ -37,18 +37,28 @@ async function nameOf(telegram: any, chatId: number | undefined, id: number) {
   return name || 'Anonymous'
 }
 
-/** Adds the wins of a finished giveaway to the permanent ranking (only once per giveaway) */
-export async function recordRaffleWins(raffle: any) {
+/**
+ * Adds the win of a finished giveaway to the permanent ranking (once per giveaway).
+ * When the giveaway is drawn again, the win moves from the old first winner to the new one.
+ */
+export async function recordRaffleWins(raffle: any, previousFirst = 0) {
   try {
     if (!raffle || !raffle.winners) return
+    // Only the first winner counts; the others are substitutes
+    const userId = parseInt(`${raffle.winners}`.split(',')[0], 10)
     // Claim it first so a giveaway is never counted twice
     const claimed: any = await RaffleModel.updateOne(
       { _id: raffle._id, winsRecorded: { $ne: true } },
       { $set: { winsRecorded: true } }
     )
-    if (!claimed || !claimed.nModified) return
-    // Only the first winner counts; the others are substitutes
-    const userId = parseInt(`${raffle.winners}`.split(',')[0], 10)
+    if (!claimed || !claimed.nModified) {
+      // Already counted: a new draw replaces the previous first winner
+      if (userId && previousFirst && previousFirst !== userId) {
+        await WinCountModel.updateOne({ chatId: raffle.chatId, userId: previousFirst, wins: { $gt: 0 } }, { $inc: { wins: -1 } })
+        await WinCountModel.updateOne({ chatId: raffle.chatId, userId }, { $inc: { wins: 1 } }, { upsert: true })
+      }
+      return
+    }
     if (userId) {
       await WinCountModel.updateOne({ chatId: raffle.chatId, userId }, { $inc: { wins: 1 } }, { upsert: true })
     }

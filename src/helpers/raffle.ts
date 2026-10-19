@@ -424,6 +424,8 @@ export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 
 export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, defaultChat?: Chat) {
   console.log(`Finishing raffle for chat ${raffle.chatId}`)
+  // Winner of a previous draw of this same giveaway (when it is drawn again)
+  const previousFirst = raffle.winners ? parseInt(`${raffle.winners}`.split(',')[0], 10) || 0 : 0
   // Telegram calls wait and retry when Telegram says "Too Many Requests"
   const tg: any = {}
   ;['getChatMember', 'editMessageText', 'editMessageCaption', 'sendMessage'].forEach((m) => {
@@ -537,17 +539,13 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   // Save winners
   raffle.winners = winners.map((w) => w.winner.user.id).join(',')
   await (<any>raffle).save()
-  // The winners are saved, so the participants and boosts are no longer needed
-  await RaffleModel.updateOne(
-    { _id: (<any>raffle)._id },
-    { $set: { participantsIds: [], boostIds: [], cryptoIds: [], creditIds: [] } }
-  )
+  // Participants and boosts stay saved so the giveaway can be drawn again (they go with the giveaway after 18 days)
   // Everything below only runs once the winners are announced: if the announcement fails the
   // draw is retried with new winners, and the wins and the feed notice must belong to the final draw
   const firstWinner = winners.length > 0 ? winners[0] : undefined
   const afterAnnounce = async () => {
     // Wins are counted forever (raffles are deleted after 18 days); then the pinned ranking updates
-    await recordRaffleWins(raffle)
+    await recordRaffleWins(raffle, previousFirst)
     await updateHallOfFame(ctx.telegram, raffle.chatId)
     // Tell the public boost feed when the (first) winner had bought a Boost
     if (raffle.boostEnabled && firstWinner) {
