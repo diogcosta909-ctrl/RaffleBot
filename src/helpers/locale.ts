@@ -517,8 +517,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'créditos',
   },
   recharge_text: {
-    en: '💳 <b>Recharge your credits</b>\n\n1 credit = 1 boost ($pct). Credits never expire and are used in one tap, no payment needed each time.$bonus\n\n💰 Your credits: <b>$n</b>\n\nChoose a pack:',
-    es: '💳 <b>Recarga tus créditos</b>\n\n1 crédito = 1 boost ($pct). Los créditos no caducan y se usan con un toque, sin pagar cada vez.$bonus\n\n💰 Tus créditos: <b>$n</b>\n\nElige un pack:',
+    en: '💳 <b>Recharge credits</b>\n\n✅ 1 credit = 1 Boost ($pct)\n✅ Credits never expire\n✅ One tap to boost, no payment each time$bonus\n\n🪙 Your credits: <b>$n</b>\n\nChoose a pack 👇',
+    es: '💳 <b>Recarga créditos</b>\n\n✅ 1 crédito = 1 Boost ($pct)\n✅ Los créditos no caducan\n✅ Un toque para hacer boost, sin pagar cada vez$bonus\n\n🪙 Tus créditos: <b>$n</b>\n\nElige un pack 👇',
   },
   topup_invoice_title: {
     en: 'Recharge $n credits',
@@ -549,8 +549,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '⚠️ Te has quedado sin créditos. Recarga para seguir haciendo boost con un toque 👇',
   },
   recharge_bonus_note: {
-    en: '\n🎁 A pack like <b>10+1</b> = 10 credits + 1 free.',
-    es: '\n🎁 Un pack como <b>10+1</b> = 10 créditos + 1 gratis.',
+    en: '\n🔥 Best deal: <b>$pack+$bonus</b> = $total credits ($bonus free)',
+    es: '\n🔥 Mejor oferta: <b>$pack+$bonus</b> = $total créditos ($bonus gratis)',
   },
   code_usage: {
     en: '🎁 Send your code like this:\n/redeem YOURCODE',

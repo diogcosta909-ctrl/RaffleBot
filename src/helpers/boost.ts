@@ -803,6 +803,16 @@ async function pickNetwork(ctx: ContextMessageUpdate, picked: string | undefined
  * Setting up the Stars boost: /boost toggle, boost button, invoice and payments
  * @param bot Bot to setup
  */
+/** "Best deal: 50+7 = 57 credits" for the largest pack that has free credits ('' when none) */
+function bestBonusNote(lang: string) {
+  const b = bestBonus()
+  if (!b) return ''
+  return loc('recharge_bonus_note', lang)
+    .replace(/\$pack/g, `${b.pack}`)
+    .replace(/\$bonus/g, `${b.bonus}`)
+    .replace('$total', `${b.pack + b.bonus}`)
+}
+
 /** The recharge screen (credit packs); raffleId = giveaway to come back to, or '0' */
 async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string) {
     try {
@@ -830,7 +840,7 @@ async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string) {
       return ctx.replyWithHTML(
         loc('recharge_text', lang)
           .replace('$pct', pctLabel(1, lang))
-          .replace('$bonus', CREDIT_PACKS.some((n) => bonusFor(n)) ? loc('recharge_bonus_note', lang) : '')
+          .replace('$bonus', bestBonusNote(lang))
           .replace('$n', `${credits}`),
         { reply_markup: { inline_keyboard: keyboard } } as any
       )
