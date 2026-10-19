@@ -168,27 +168,50 @@ async function hallText(telegram: any, chatId?: number) {
   )
 }
 
-/** Refreshes the pinned ranking of a chat (called after every draw) */
+/** Sends the ranking to the chat, remembers it and pins it (when the bot may pin) */
+async function createHallOfFame(telegram: any, chat: any, chatId: number) {
+  const sent = await telegram.sendMessage(chatId, await hallText(telegram, chatId), {
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+  })
+  chat.hofMessageId = sent.message_id
+  await chat.save()
+  try {
+    await telegram.callApi('pinChatMessage', {
+      chat_id: chatId,
+      message_id: sent.message_id,
+      disable_notification: true,
+    })
+  } catch (err) {
+    // No "Pin messages" permission: the ranking is still posted and keeps updating
+  }
+}
+
+/**
+ * Refreshes the ranking of a chat after every draw. The first time (or if the message was
+ * deleted) it posts and pins a new one, so nobody has to send /winners.
+ */
 export async function updateHallOfFame(telegram: any, chatId: number) {
   try {
     const chat = await findChat(chatId)
-    if (!chat.hofMessageId) return
-    try {
-      await telegram.editMessageText(chatId, chat.hofMessageId, undefined, await hallText(telegram, chatId), {
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      })
-    } catch (err) {
-      const msg = `${(err && (err.description || err.message)) || ''}`
-      if (/not modified/i.test(msg)) return
-      // The message was deleted: stop updating it (/winners creates a new one)
-      if (/not found|MESSAGE_ID_INVALID|can't be edited/i.test(msg)) {
-        chat.hofMessageId = undefined
-        await chat.save()
+    if (chat.hofMessageId) {
+      try {
+        await telegram.editMessageText(chatId, chat.hofMessageId, undefined, await hallText(telegram, chatId), {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        })
         return
+      } catch (err) {
+        const msg = `${(err && (err.description || err.message)) || ''}`
+        if (/not modified/i.test(msg)) return
+        if (!/not found|MESSAGE_ID_INVALID|can't be edited/i.test(msg)) {
+          console.error('Hall of fame not updated', msg)
+          return
+        }
+        // The message was deleted: post a new one below
       }
-      console.error('Hall of fame not updated', msg)
     }
+    await createHallOfFame(telegram, chat, chatId)
   } catch (err) {
     console.error('Hall of fame failed', err)
   }
