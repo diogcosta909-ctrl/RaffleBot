@@ -14,9 +14,34 @@ export function setupStartAndHelp(bot: Telegraf<ContextMessageUpdate>) {
     if (ctx.chat.type !== 'private' && START_COMMAND === 'start') {
       return next()
     }
-    return sendHelp(ctx)
+    return sendStart(ctx)
   })
   bot.command('help', sendHelp)
+}
+
+/** Short presentation for everybody who opens the bot (buttons add it to a group/channel or buy boosts) */
+async function sendStart(ctx: ContextMessageUpdate) {
+  const chat = await findChat(ctx.chat.id)
+  const bot = process.env.USERNAME
+  return ctx.reply(loc('start_text', chat.language), {
+    disable_notification: true,
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: loc('start_group_btn', chat.language),
+            url: `https://t.me/${bot}?startgroup=true&admin=delete_messages+pin_messages+invite_users`,
+          },
+          {
+            text: loc('start_channel_btn', chat.language),
+            url: `https://t.me/${bot}?startchannel=true&admin=post_messages+edit_messages+delete_messages`,
+          },
+        ],
+        [{ text: loc('start_boost_btn', chat.language), callback_data: 'r~0' }],
+      ],
+    },
+  } as any)
 }
 
 async function sendHelp(ctx: ContextMessageUpdate) {
@@ -26,11 +51,7 @@ async function sendHelp(ctx: ContextMessageUpdate) {
   // Get chat
   const chat = await findChat(ctx.chat.id)
   // Reply
-  const text = `${loc('public_help_start', chat.language)}\n\n${loc(
-    'boost_help',
-    chat.language
-  )}`
-  ctx.replyWithMarkdown(text, {
+  ctx.replyWithMarkdown(loc('public_help_start', chat.language), {
     disable_notification: true,
     disable_web_page_preview: true,
   })

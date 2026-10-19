@@ -13,9 +13,27 @@ export function loc(text: string, language: string) {
 export const localizations: { [index: string]: { [index: string]: string } } = {
   public_help_start: {
     en:
-      "Hi! I pick random winners among the people who press the \"Participate\" button in a group or a channel.\n\n1. Add me to your group or channel as an admin and send /start to start a giveaway.\n2. Reply with any message to the giveaway message to finish it and pick the winner.\n\n*Settings:*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription to participate (e.g. `/subscribe @channel`); /nosubscribe turns it off\n/raffleMessage and /noRaffleMessage — custom or default giveaway message\n/winnerMessage and /noWinnerMessage — custom or default winner message\n/nodelete — keep the original giveaway message instead of editing it\n/setentryvalue — value of each entry for special days (e.g. `/setentryvalue 1.5`)\n\n*Configure from private messages:* forward me a message from your group or channel (or use `/addChat @channel`), choose it with /configRaffle and send the settings here.\n\n/terms · /support · /paysupport",
+      "👋 Hi! I pick random winners among the people who tap \"Participate\" in your group or channel.\n\n🚀 *Quick start*\n1. Add me as an admin to your group or channel\n2. Send /start to start a giveaway\n3. Reply to the giveaway message to finish it and pick the winner\n\n⚙️ *Settings*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription (e.g. `/subscribe @channel`)\n/nosubscribe — turn it off\n/raffleMessage · /noRaffleMessage — custom or default giveaway message\n/winnerMessage · /noWinnerMessage — custom or default winner message\n/nodelete — keep the original giveaway message\n/setentryvalue — value of each entry (e.g. `/setentryvalue 1.5`)\n\n🚀 *Boosts*\n/boost — let participants buy extra entries with Stars, USDT or credits. The giveaway shows a Boost button. Send /boost again to turn it off.\n\n🏆 /winners — all-time ranking of winners\n\n📩 *Configure from private chat*\nForward me a message from your group or channel (or use `/addChat @channel`), pick it with /configRaffle and send the settings here.\n\nℹ️ /terms · /support · /paysupport",
     es:
-      "¡Hola! Elijo ganadores al azar entre quienes pulsan el botón \"Participar\" en un grupo o canal.\n\n1. Añádeme como admin a tu grupo o canal y envía /start para empezar un sorteo.\n2. Responde con cualquier mensaje al mensaje del sorteo para cerrarlo y elegir al ganador.\n\n*Ajustes:*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal para participar (ej. `/subscribe @canal`); /nosubscribe lo desactiva\n/raffleMessage y /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage y /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo en vez de editarlo\n/setentryvalue — valor de cada entrada para días especiales (ej. `/setentryvalue 1.5`)\n\n*Configurar desde privado:* reenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.\n\n/terms · /support · /paysupport",
+      "👋 ¡Hola! Elijo ganadores al azar entre quienes pulsan \"Participar\" en tu grupo o canal.\n\n🚀 *Inicio rápido*\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start para empezar un sorteo\n3. Responde al mensaje del sorteo para cerrarlo y elegir al ganador\n\n⚙️ *Ajustes*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal (ej. `/subscribe @canal`)\n/nosubscribe — desactivarlo\n/raffleMessage · /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage · /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo\n/setentryvalue — valor de cada entrada (ej. `/setentryvalue 1.5`)\n\n🚀 *Boosts*\n/boost — deja que los participantes compren entradas extra con Stars, USDT o créditos. El sorteo muestra un botón Boost. Envía /boost otra vez para desactivarlo.\n\n🏆 /winners — ranking de ganadores de todos los tiempos\n\n📩 *Configurar desde privado*\nReenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.\n\nℹ️ /terms · /support · /paysupport",
+  },
+  start_text: {
+    en:
+      "👋 Hi! I run giveaways in Telegram groups and channels.\n\n🎁 Fair random winners\n🚀 Boosts: buy extra entries with Stars, USDT or credits\n🏆 Live ranking of winners\n\nTo run your own giveaway:\n1. Add me as an admin to your group or channel\n2. Send /start there\n\nAll commands: /help",
+    es:
+      "👋 ¡Hola! Hago sorteos en grupos y canales de Telegram.\n\n🎁 Ganadores al azar, sin trampas\n🚀 Boosts: compra entradas extra con Stars, USDT o créditos\n🏆 Ranking de ganadores en vivo\n\nPara hacer tu propio sorteo:\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start allí\n\nTodos los comandos: /help",
+  },
+  start_group_btn: {
+    en: '➕ Add to group',
+    es: '➕ Añadir a grupo',
+  },
+  start_channel_btn: {
+    en: '➕ Add to channel',
+    es: '➕ Añadir a canal',
+  },
+  start_boost_btn: {
+    en: '🚀 Buy Boosts',
+    es: '🚀 Comprar Boosts',
   },
   no_work_private: {
     ru: 'Простите, но эта команда не работает в личке с ботом.',
