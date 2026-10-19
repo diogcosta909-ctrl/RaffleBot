@@ -6,7 +6,7 @@ dotenv.config({ path: `${__dirname}/../.env` })
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { setupStartAndHelp } from './commands/startAndHelp'
 import { setupStartRaffle } from './commands/startRaffle'
-import { finishRaffle, setupCallback, setupListener, withRetry } from './helpers/raffle'
+import { finishRaffle, setupCallback, setupListener, withRetry, setupTestWin } from './helpers/raffle'
 import { setupLanguage, setupLanguageCallback } from './commands/language'
 import { setupNumberCallback, setupNumber } from './commands/number'
 import { setupTestLocale } from './commands/testLocales'
@@ -56,6 +56,7 @@ setupClientStats(bot)
 setupCodes(bot)
 setupStatus(bot)
 setupWinners(bot)
+setupTestWin(bot)
 setupCleanup()
 
 // Setup commands

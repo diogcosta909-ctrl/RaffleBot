@@ -765,3 +765,68 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   }
   await afterAnnounce()
 }
+
+/**
+ * Admin-only test tool: /testwin RAFFLE_ID USER_ID [USER_ID ...]
+ * Puts those users first in the winners of a finished giveaway (the rest stay behind them),
+ * moves the win in the ranking, refreshes the pinned /winners and sends the boost-win feed notice.
+ */
+export function setupTestWin(bot: Telegraf<ContextMessageUpdate>) {
+  bot.command('testwin', async (ctx) => {
+    try {
+      if (!ctx.from || ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+      const args = ((ctx.message && ctx.message.text) || '').split(/\s+/).slice(1)
+      const raffleId = args[0]
+      const newIds = args
+        .slice(1)
+        .map((a) => parseInt(a, 10))
+        .filter((n) => !isNaN(n))
+      if (!raffleId || !newIds.length) {
+        return ctx.reply('Usage: /testwin RAFFLE_ID USER_ID [USER_ID ...]')
+      }
+      const raffle: any = await RaffleModel.findById(raffleId)
+      if (!raffle || !raffle.winners) return ctx.reply('Raffle not found or not finished')
+      const old = `${raffle.winners}`
+        .split(',')
+        .map((s) => parseInt(s, 10))
+        .filter((n) => !isNaN(n))
+      const previousFirst = old[0] || 0
+      const list = newIds.concat(old.filter((id) => newIds.indexOf(id) < 0))
+      raffle.winners = list.join(',')
+      await raffle.save()
+      await recordRaffleWins(raffle, previousFirst)
+      await updateHallOfFame(ctx.telegram, raffle.chatId)
+      const first = list[0]
+      const n = raffle.boostEnabled ? boostCounts(raffle).get(first) || 0 : 0
+      let sent = 'no boosts, no feed notice'
+      if (n > 0) {
+        let user: any = { id: first, first_name: `${first}` }
+        try {
+          user = (await ctx.telegram.getChatMember(raffle.chatId, first)).user
+        } catch {
+          // keep the id as name
+        }
+        const base = entryValueOf(raffle)
+        await notifyBoostWin(
+          ctx.telegram,
+          raffle,
+          {
+            id: first,
+            username: user.username,
+            name: `${user.first_name}${user.last_name ? ` ${user.last_name}` : ''}`,
+          },
+          {
+            stars: n * BOOST_PRICE,
+            boosts: n,
+            entries: Math.round(weightFor(boostValues(raffle), first, base)),
+            ...paidWith(raffle, first, n),
+          }
+        )
+        sent = `feed notice sent (${n} boosts)`
+      }
+      return ctx.reply(`✅ Winners: ${raffle.winners}\n${sent}`)
+    } catch (err) {
+      return ctx.reply(`Error: ${err && (<any>err).message}`).catch(() => undefined)
+    }
+  })
+}
