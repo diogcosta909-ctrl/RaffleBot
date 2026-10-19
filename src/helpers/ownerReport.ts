@@ -7,7 +7,7 @@ import { CreditTxModel } from '../models/creditTx'
 import { getCryptoStatus, getTonStatus, bscEnabled, tonEnabled } from './cryptoPay'
 
 const TZ = 'Europe/Andorra'
-const HOUR = 9 // the daily summary is sent from this hour (Andorra time)
+const SUMMARY_AT = 1 // the daily summary is sent from 00:01 (Andorra time): minutes after midnight
 
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -22,11 +22,15 @@ function localNow() {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
+    minute: '2-digit',
     hourCycle: 'h23',
   } as any)
     .formatToParts(new Date())
     .forEach((p) => (parts[p.type] = p.value))
-  return { hour: parseInt(parts.hour, 10), day: `${parts.year}-${parts.month}-${parts.day}` }
+  return {
+    minutes: parseInt(parts.hour, 10) * 60 + parseInt(parts.minute, 10),
+    day: `${parts.year}-${parts.month}-${parts.day}`,
+  }
 }
 
 /**
@@ -138,7 +142,7 @@ async function sendSummary(telegram: any, admin: number, saveMarker: boolean) {
 }
 
 /**
- * Owner tools: a daily summary (sent every morning, Andorra time), /resumen to get it now,
+ * Owner tools: a daily summary (sent every day at 00:01, Andorra time), /resumen to get it now,
  * and alerts when something breaks (USDT/TON watcher down, uncaught errors, giveaways that cannot be finished).
  */
 export function setupOwnerReport(bot: Telegraf<ContextMessageUpdate>) {
@@ -161,7 +165,7 @@ export function setupOwnerReport(bot: Telegraf<ContextMessageUpdate>) {
   setInterval(async () => {
     try {
       const now = localNow()
-      if (now.hour < HOUR) return
+      if (now.minutes < SUMMARY_AT) return
       const owner: any = await findChat(admin)
       if (owner.reportDay === now.day) return
       // Mark first inside sendSummary's save; a failed send is not retried until tomorrow
@@ -169,7 +173,7 @@ export function setupOwnerReport(bot: Telegraf<ContextMessageUpdate>) {
     } catch (err) {
       console.error('Daily summary failed', err)
     }
-  }, 10 * 60 * 1000)
+  }, 60 * 1000)
 
   // USDT / TON watchers failing for a while
   setInterval(() => {
