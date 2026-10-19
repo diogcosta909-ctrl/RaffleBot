@@ -28,6 +28,7 @@ import { setupClientStats } from './helpers/clientStats'
 import { setupCodes } from './helpers/codes'
 import { setupStatus } from './helpers/status'
 import { setupWinners } from './helpers/winners'
+import { setupOwnerReport, alertOwner } from './helpers/ownerReport'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -57,6 +58,7 @@ setupCodes(bot)
 setupStatus(bot)
 setupWinners(bot)
 setupTestWin(bot)
+setupOwnerReport(bot)
 setupCleanup()
 
 // Setup commands
@@ -152,8 +154,20 @@ bot.on('message', async (ctx) => {
       } catch (e) {
         console.log(e)
         numberOfTries++
+        if (numberOfTries === 5) {
+          alertOwner(
+            `Un sorteo no se puede terminar (5 intentos fallidos, sigue reintentando).\nChat: <code>${raffle.chatId}</code>\n<code>${`${(e && e.message) || e}`.slice(0, 200).replace(/</g, '&lt;')}</code>`,
+            `finish-${key}`,
+            3600 * 1000
+          )
+        }
         await new Promise((resolve) => setTimeout(resolve, 3000))
         if (numberOfTries === 100) {
+          alertOwner(
+            `Un sorteo NO se pudo terminar tras 100 intentos.\nChat: <code>${raffle.chatId}</code>\n<code>${`${(e && e.message) || e}`.slice(0, 200).replace(/</g, '&lt;')}</code>`,
+            `finish-failed-${key}`,
+            3600 * 1000
+          )
           throw e
         }
       }
@@ -176,8 +190,18 @@ bot.catch(console.error)
 
 process.on('unhandledRejection', (reason) => {
   console.log('Unhandled Rejection at:', reason)
+  alertOwner(
+    `Error sin controlar (unhandledRejection):\n<code>${`${(reason && (<any>reason).message) || reason}`.slice(0, 300).replace(/</g, '&lt;')}</code>`,
+    'unhandled',
+    30 * 60000
+  )
 })
 
 process.on('uncaughtException', (err) => {
   console.error('💥 Uncaught exception:', err)
+  alertOwner(
+    `Excepción no controlada:\n<code>${`${(err && err.message) || err}`.slice(0, 300).replace(/</g, '&lt;')}</code>`,
+    'uncaught',
+    30 * 60000
+  )
 })
