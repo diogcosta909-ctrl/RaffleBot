@@ -14,9 +14,10 @@ interface Row {
   manual: number // given or corrected by the owner (/addcredits) and refunds
   spent: number
   left: number // free credits still in the balance
+  inferred: number // free credits left, worked out from history (gifts are spent first)
 }
 
-const empty = (): Row => ({ balance: 0, bought: 0, bonus: 0, codes: 0, manual: 0, spent: 0, left: 0 })
+const empty = (): Row => ({ balance: 0, bought: 0, bonus: 0, codes: 0, manual: 0, spent: 0, left: 0, inferred: 0 })
 
 /** Free credits inside a topup row: saved with the row, or worked out from the pack size for older rows */
 function bonusOfTopup(delta: number, saved: number | undefined) {
@@ -71,6 +72,7 @@ async function collect(userId?: number) {
     const r = get(c.chatId)
     r.balance = c.credits || 0
     r.left = Math.min(c.freeCredits || 0, r.balance)
+    r.inferred = Math.max(0, Math.min(r.balance, r.bonus + r.codes - r.spent))
   }
   return rows
 }
@@ -87,15 +89,30 @@ async function nameOf(telegram: any, id: number) {
 
 const line = (r: Row) => `💰 ${r.balance} · 🎁 ${r.left} · 💳 ${r.bought} · 🚀 ${r.spent}`
 
+/** Sets each balance's free part from the credit history (fixes credits received before this was tracked). Safe to repeat */
+export async function syncFreeCredits() {
+  const rows = await collect()
+  let fixed = 0
+  for (const [id, r] of Array.from(rows.entries())) {
+    if (r.balance > 0 && r.inferred !== r.left) {
+      await ChatModel.updateOne({ chatId: id }, { $set: { freeCredits: r.inferred } })
+      fixed++
+    }
+  }
+  return fixed
+}
+
 /**
  * /saldos (owner, private): who has credits and where they came from.
  * /saldos USER_ID: the detail of one person.
  */
 export function setupBalances(bot: Telegraf<ContextMessageUpdate>) {
+  setTimeout(() => syncFreeCredits().catch((err) => console.error('Free credits sync failed', err)), 20000)
   bot.command('saldos', async (ctx: any) => {
     const admin = parseInt(process.env.ADMIN, 10)
     if (!admin || ctx.chat.type !== 'private' || ctx.from.id !== admin) return
     try {
+      await syncFreeCredits()
       const arg = (ctx.message.text || '').split(/\s+/)[1]
       if (arg && /^\d+$/.test(arg)) {
         const id = parseInt(arg, 10)
