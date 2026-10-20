@@ -112,7 +112,7 @@ export function setupBalances(bot: Telegraf<ContextMessageUpdate>) {
       for (const [id, r] of list.slice(0, 15)) {
         lines.push(`${await nameOf(ctx.telegram, id)}\n${line(r)}`)
       }
-      return ctx.replyWithHTML(`💰 <b>Saldos</b> · ${list.length} · ${total}\n\n${lines.join('\n\n')}${list.length > 15 ? `\n\n… +${list.length - 15}` : ''}`)
+      return ctx.replyWithHTML(`💰 <b>Saldos</b> · 👥 ${list.length} · ${total} Créditos\n\n${lines.join('\n\n')}${list.length > 15 ? `\n\n… +${list.length - 15}` : ''}`)
     } catch (err) {
       console.error('Balances failed', err)
       return ctx.reply('❌ No se pudo calcular los saldos.')
