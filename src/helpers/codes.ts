@@ -194,17 +194,29 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
         console.error('Code owner notice failed', err)
       }
     }
-    // Every redemption is announced in the public boost feed
+    // Every redemption is announced in the public boost feed, with an image
     const feed = (process.env.BOOST_FEED_CHAT || '').trim()
     if (feed) {
+      const left = Math.max(0, doc.maxUses - doc.uses)
+      const caption =
+        `🎁 <b>${esc(name)}</b> redeemed a free code!\n` +
+        `<b>+${doc.credits} credits</b> · 🎟 ${left === 0 ? 'all codes claimed' : `${left} ${left === 1 ? 'code' : 'codes'} left`}`
       try {
-        await ctx.telegram.sendMessage(
-          feed,
-          `🎁 <b>${esc(name)}</b> redeemed a code · +${doc.credits} credits\n` +
-            `🎟 Codes left: ${Math.max(0, doc.maxUses - doc.uses)}\n` +
-            `💡 Got a code? Send /redeem YOURCODE to @${process.env.USERNAME}`,
-          { parse_mode: 'HTML', disable_notification: true }
-        )
+        let sent = false
+        try {
+          const image = await require('./boostImage').renderCodeImage({ name, credits: doc.credits, left })
+          await ctx.telegram.sendPhoto(
+            feed,
+            { source: image },
+            { caption, parse_mode: 'HTML', disable_notification: true }
+          )
+          sent = true
+        } catch (err) {
+          console.error('Code image failed, sending text', err)
+        }
+        if (!sent) {
+          await ctx.telegram.sendMessage(feed, caption, { parse_mode: 'HTML', disable_notification: true })
+        }
       } catch (err) {
         console.error('Code feed notice failed', err)
       }

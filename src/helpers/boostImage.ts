@@ -853,3 +853,95 @@ export async function renderRechargeImage(info: {
   text(bonus > 0 ? `${info.credits} + ${bonus} free` : info.paid, 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
   return canvas.toBuffer('image/png')
 }
+
+/** Feed image when someone redeems a credit code: name, free credits and how many codes are left */
+export async function renderCodeImage(info: { name: string; credits: number; left: number }): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const S = 2
+  const canvas = createCanvas(372 * S, 300 * S)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(S, S)
+  const G = '#4f7cff'
+  const L = '#a9c4ff'
+  const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
+    ctx.font = font
+    ctx.fillStyle = color
+    ctx.textAlign = align
+    ;(ctx as any).letterSpacing = ls
+    ctx.fillText(s, x, y)
+    ;(ctx as any).letterSpacing = '0px'
+  }
+  const dark = '#050914'
+  ctx.fillStyle = dark
+  ctx.fillRect(0, 0, 372, 300)
+  const bg = ctx.createRadialGradient(186, 112, 10, 186, 112, 230)
+  bg.addColorStop(0, '#12245a')
+  bg.addColorStop(1, dark)
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, 372, 300)
+  ctx.strokeStyle = 'rgba(79,124,255,0.10)'
+  ctx.lineWidth = 1
+  for (let k = -300; k < 400; k += 22) {
+    ctx.beginPath()
+    ctx.moveTo(k, 0)
+    ctx.lineTo(k + 300, 300)
+    ctx.stroke()
+  }
+  const h = ctx.createRadialGradient(186, 108, 0, 186, 108, 120)
+  h.addColorStop(0, 'rgba(79,124,255,0.38)')
+  h.addColorStop(1, 'rgba(79,124,255,0)')
+  ctx.fillStyle = h
+  ctx.fillRect(0, 0, 372, 300)
+
+  const name = drawableName(info.name)
+  if (name) {
+    let size = 22
+    ctx.font = `800 ${size}px InterX`
+    while (ctx.measureText(name).width > 300 && size > 14) {
+      size -= 2
+      ctx.font = `800 ${size}px InterX`
+    }
+    text(name, 186, 36, ctx.font, '#ffffff', 'center')
+  }
+  text('redeemed a code', 186, 54, '700 12px InterB', L, 'center', '1px')
+
+  for (const [rad, alpha] of [[78, 0.08], [60, 0.12]]) {
+    ctx.beginPath()
+    ctx.arc(186, 108, rad, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(169,196,255,${alpha * 2})`
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+  }
+  drawCreditCoin(ctx, 186, 108, 46)
+
+  ctx.fillStyle = G
+  ctx.globalAlpha = 0.4
+  ctx.fillRect(36, 172, 300, 1)
+  ctx.globalAlpha = 1
+  roundRect(ctx, 36, 184, 300, 70, 16)
+  const bx = ctx.createLinearGradient(0, 184, 0, 254)
+  bx.addColorStop(0, G + '40')
+  bx.addColorStop(1, G + '0d')
+  ctx.fillStyle = bx
+  ctx.fill()
+  ctx.lineWidth = 1.2
+  ctx.strokeStyle = G
+  ctx.stroke()
+  const big = `+${info.credits}`
+  ctx.font = '800 50px InterX'
+  const ew = ctx.measureText(big).width
+  const x0 = 186 - (ew + 96) / 2
+  text(big, x0, 234, '800 50px InterX', '#ffffff')
+  text('FREE', x0 + ew + 10, 214, '800 13px InterX', '#ffd24a', 'left', '2px')
+  text('CREDITS', x0 + ew + 10, 234, '800 13px InterX', L, 'left', '2px')
+
+  // How many codes are still available
+  const label = info.left <= 0 ? 'ALL CLAIMED' : info.left === 1 ? 'LAST ONE LEFT!' : `${info.left} CODES LEFT`
+  ctx.font = '800 13px InterX'
+  const bw = ctx.measureText(label).width + 28
+  roundRect(ctx, 186 - bw / 2, 266, bw, 26, 13)
+  ctx.fillStyle = info.left <= 0 ? 'rgba(255,255,255,0.18)' : '#ffd24a'
+  ctx.fill()
+  text(label, 186, 284, '800 13px InterX', info.left <= 0 ? '#ffffff' : '#2a1b00', 'center')
+  return canvas.toBuffer('image/png')
+}
