@@ -13,9 +13,10 @@ interface Row {
   codes: number // free credits from codes
   manual: number // given or corrected by the owner (/addcredits) and refunds
   spent: number
+  left: number // free credits still in the balance
 }
 
-const empty = (): Row => ({ balance: 0, bought: 0, bonus: 0, codes: 0, manual: 0, spent: 0 })
+const empty = (): Row => ({ balance: 0, bought: 0, bonus: 0, codes: 0, manual: 0, spent: 0, left: 0 })
 
 /** Free credits inside a topup row: saved with the row, or worked out from the pack size for older rows */
 function bonusOfTopup(delta: number, saved: number | undefined) {
@@ -64,9 +65,13 @@ async function collect(userId?: number) {
     }
   }
   const chats: any[] = await ChatModel.find(userId ? { chatId: userId } : { chatId: { $gt: 0 }, credits: { $gt: 0 } }).select(
-    'chatId credits'
+    'chatId credits freeCredits'
   )
-  for (const c of chats) get(c.chatId).balance = c.credits || 0
+  for (const c of chats) {
+    const r = get(c.chatId)
+    r.balance = c.credits || 0
+    r.left = Math.min(c.freeCredits || 0, r.balance)
+  }
   return rows
 }
 
@@ -80,8 +85,7 @@ async function nameOf(telegram: any, id: number) {
   }
 }
 
-const line = (r: Row) =>
-  `💰 <b>${r.balance}</b> · 💳 compró ${r.bought} · 🎁 gratis ${r.bonus + r.codes + (r.manual > 0 ? r.manual : 0)} · 🚀 gastó ${r.spent}`
+const line = (r: Row) => `💰 ${r.balance} · 🎁 ${r.left} · 💳 ${r.bought} · 🚀 ${r.spent}`
 
 /**
  * /saldos (owner, private): who has credits and where they came from.
@@ -96,35 +100,19 @@ export function setupBalances(bot: Telegraf<ContextMessageUpdate>) {
       if (arg && /^\d+$/.test(arg)) {
         const id = parseInt(arg, 10)
         const r = (await collect(id)).get(id) || empty()
-        return ctx.replyWithHTML(
-          `👤 ${await nameOf(ctx.telegram, id)} (<code>${id}</code>)\n\n` +
-            `💰 Saldo: <b>${r.balance}</b>\n` +
-            `💳 Compró (pagado): ${r.bought}\n` +
-            `🎁 Gratis: ${r.bonus + r.codes}  (bonus de packs ${r.bonus} · códigos ${r.codes})\n` +
-            `🛠 Manual / reembolsos: ${r.manual}\n` +
-            `🚀 Gastó en boosts: ${r.spent}`
-        )
+        return ctx.replyWithHTML(`${await nameOf(ctx.telegram, id)}\n${line(r)}`)
       }
       const rows = await collect()
       const list = Array.from(rows.entries())
         .filter(([, r]) => r.balance > 0)
         .sort((a, b) => b[1].balance - a[1].balance)
       if (!list.length) return ctx.reply('Nadie tiene créditos ahora mismo.')
-      const total = list.reduce((s, [, r]) => s + r.balance, 0)
-      const paid = list.reduce((s, [, r]) => s + r.bought, 0)
-      const free = list.reduce((s, [, r]) => s + r.bonus + r.codes, 0)
+      const total = list.reduce((sum, [, r]) => sum + r.balance, 0)
       const lines: string[] = []
       for (const [id, r] of list.slice(0, 15)) {
-        lines.push(`${await nameOf(ctx.telegram, id)} (<code>${id}</code>)\n${line(r)}`)
+        lines.push(`${await nameOf(ctx.telegram, id)}\n${line(r)}`)
       }
-      return ctx.replyWithHTML(
-        `💰 <b>Saldos</b> · ${list.length} ${list.length === 1 ? 'persona' : 'personas'} · ${total} créditos en total\n` +
-          `💳 comprados por ellos: ${paid} · 🎁 gratis recibidos: ${free}\n\n` +
-          `${lines.join('\n\n')}\n\n` +
-          (list.length > 15 ? `… y ${list.length - 15} más. ` : '') +
-          `Detalle de uno: <code>/saldos ID</code>\n` +
-          `<i>El saldo no distingue cuál se gasta primero, así que "comprado" y "gratis" son lo recibido en total, no lo que queda.</i>`
-      )
+      return ctx.replyWithHTML(`💰 <b>Saldos</b> · ${list.length} · ${total}\n\n${lines.join('\n\n')}${list.length > 15 ? `\n\n… +${list.length - 15}` : ''}`)
     } catch (err) {
       console.error('Balances failed', err)
       return ctx.reply('❌ No se pudo calcular los saldos.')
