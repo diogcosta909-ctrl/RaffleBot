@@ -16,7 +16,7 @@ export class CreditTx extends Typegoose {
   method?: string
   @prop({ index: true })
   raffleId?: string
-  // Chat of the giveaway (set when credits are spent; raffles are deleted after 18 days)
+  // Chat of the giveaway (set when credits are spent; raffles are deleted 1 hour after the draw)
   @prop({ index: true })
   chatId?: number
   // Stars chargeId or USDT txHash that produced the topup

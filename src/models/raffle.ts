@@ -13,6 +13,9 @@ export class Raffle extends Typegoose {
 
   @prop()
   winners?: string
+  // When the winners were drawn (a new draw updates it); finished giveaways are deleted 1 hour later
+  @prop({ index: true })
+  finishedAt?: Date
   // The wins of this raffle were added to the permanent ranking (WinCount)
   @prop()
   winsRecorded?: boolean

@@ -548,13 +548,14 @@ export async function finishRaffle(raffle: Raffle, ctx: ContextMessageUpdate, de
   )
   // Save winners
   raffle.winners = winners.map((w) => w.winner.user.id).join(',')
+  raffle.finishedAt = new Date()
   await (<any>raffle).save()
-  // Participants and boosts stay saved so the giveaway can be drawn again (they go with the giveaway after 18 days)
+  // Participants and boosts stay saved so the giveaway can be drawn again (they go with the giveaway 1 hour after the draw)
   // Everything below only runs once the winners are announced: if the announcement fails the
   // draw is retried with new winners, and the wins and the feed notice must belong to the final draw
   const firstWinner = winners.length > 0 ? winners[0] : undefined
   const afterAnnounce = async () => {
-    // Wins are counted forever (raffles are deleted after 18 days); then the pinned ranking updates
+    // Wins are counted forever (raffles are deleted 1 hour after the draw); then the pinned ranking updates
     await recordRaffleWins(raffle, previousFirst)
     await updateHallOfFame(ctx.telegram, raffle.chatId)
     // Tell the public boost feed when the (first) winner had bought a Boost

@@ -1,7 +1,7 @@
 // Dependencies
 import { prop, Typegoose } from 'typegoose'
 
-// Giveaways won by a person in a chat, kept forever (raffles are deleted after 18 days)
+// Giveaways won by a person in a chat, kept forever (raffles are deleted 1 hour after the draw)
 export class WinCount extends Typegoose {
   @prop({ required: true, index: true })
   chatId: number

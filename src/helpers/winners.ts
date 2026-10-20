@@ -68,7 +68,7 @@ export async function recordRaffleWins(raffle: any, previousFirst = 0) {
   }
 }
 
-/** Counts giveaways that finished before the permanent ranking existed (still stored, < 18 days old) */
+/** Counts giveaways that finished before the permanent ranking existed (still stored) */
 async function backfillWins() {
   try {
     // One-time reset: earlier versions also counted substitutes, so recount from scratch
