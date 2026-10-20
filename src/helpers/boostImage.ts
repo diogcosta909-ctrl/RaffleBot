@@ -854,15 +854,19 @@ export async function renderRechargeImage(info: {
   return canvas.toBuffer('image/png')
 }
 
-/** Feed image when someone redeems a credit code: name, free credits and how many codes are left */
+/** Feed image when someone redeems a credit code: purple gift box, free credits and codes left */
 export async function renderCodeImage(info: { name: string; credits: number; left: number }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const S = 2
-  const canvas = createCanvas(372 * S, 300 * S)
+  const W = 372
+  const H = 300
+  const canvas = createCanvas(W * S, H * S)
   const ctx = canvas.getContext('2d')
   ctx.scale(S, S)
-  const G = '#4f7cff'
-  const L = '#a9c4ff'
+  const dark = '#0d0414'
+  const mid = '#3b0f4f'
+  const acc = '#d946ef'
+  const light = '#f0abfc'
   const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
     ctx.font = font
     ctx.fillStyle = color
@@ -871,27 +875,38 @@ export async function renderCodeImage(info: { name: string; credits: number; lef
     ctx.fillText(s, x, y)
     ;(ctx as any).letterSpacing = '0px'
   }
-  const dark = '#050914'
   ctx.fillStyle = dark
-  ctx.fillRect(0, 0, 372, 300)
-  const bg = ctx.createRadialGradient(186, 112, 10, 186, 112, 230)
-  bg.addColorStop(0, '#12245a')
+  ctx.fillRect(0, 0, W, H)
+  const bg = ctx.createRadialGradient(186, 100, 10, 186, 100, 240)
+  bg.addColorStop(0, mid)
   bg.addColorStop(1, dark)
   ctx.fillStyle = bg
-  ctx.fillRect(0, 0, 372, 300)
-  ctx.strokeStyle = 'rgba(79,124,255,0.10)'
+  ctx.fillRect(0, 0, W, H)
+  ctx.strokeStyle = 'rgba(217,70,239,0.10)'
   ctx.lineWidth = 1
   for (let k = -300; k < 400; k += 22) {
     ctx.beginPath()
     ctx.moveTo(k, 0)
-    ctx.lineTo(k + 300, 300)
+    ctx.lineTo(k + 300, H)
     ctx.stroke()
   }
-  const h = ctx.createRadialGradient(186, 108, 0, 186, 108, 120)
-  h.addColorStop(0, 'rgba(79,124,255,0.38)')
-  h.addColorStop(1, 'rgba(79,124,255,0)')
-  ctx.fillStyle = h
-  ctx.fillRect(0, 0, 372, 300)
+  // Confetti (fixed pattern)
+  let seed = 7
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+  const colors = ['#ffd24a', light, '#ffffff', acc]
+  for (let i = 0; i < 46; i++) {
+    const x = rnd() * W
+    const y = rnd() * 170
+    const rot = rnd() * 6
+    if (Math.hypot(x - 186, y - 110) < 62) continue
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(rot)
+    ctx.fillStyle = colors[i % 4]
+    ctx.globalAlpha = 0.85
+    ctx.fillRect(-3, -1.5, 6, 3)
+    ctx.restore()
+  }
 
   const name = drawableName(info.name)
   if (name) {
@@ -901,47 +916,61 @@ export async function renderCodeImage(info: { name: string; credits: number; lef
       size -= 2
       ctx.font = `800 ${size}px InterX`
     }
-    text(name, 186, 36, ctx.font, '#ffffff', 'center')
+    text(name, 186, 34, ctx.font, '#ffffff', 'center')
   }
-  text('redeemed a code', 186, 54, '700 12px InterB', L, 'center', '1px')
+  text('CLAIMED A GIFT CODE', 186, 52, '800 11px InterB', light, 'center', '2px')
 
-  for (const [rad, alpha] of [[78, 0.08], [60, 0.12]]) {
-    ctx.beginPath()
-    ctx.arc(186, 108, rad, 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(169,196,255,${alpha * 2})`
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-  }
-  drawCreditCoin(ctx, 186, 108, 46)
+  // Gift box with bow
+  const gx = 186
+  const gy = 112
+  roundRect(ctx, gx - 40, gy - 8, 80, 52, 6)
+  const g1 = ctx.createLinearGradient(0, gy - 8, 0, gy + 44)
+  g1.addColorStop(0, light)
+  g1.addColorStop(1, acc)
+  ctx.fillStyle = g1
+  ctx.fill()
+  roundRect(ctx, gx - 46, gy - 24, 92, 22, 6)
+  ctx.fillStyle = light
+  ctx.fill()
+  ctx.fillStyle = '#ffd24a'
+  ctx.fillRect(gx - 7, gy - 24, 14, 68)
+  ctx.strokeStyle = '#ffd24a'
+  ctx.lineWidth = 6
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.ellipse(gx - 15, gy - 36, 14, 10, -0.5, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.ellipse(gx + 15, gy - 36, 14, 10, 0.5, 0, Math.PI * 2)
+  ctx.stroke()
 
-  ctx.fillStyle = G
-  ctx.globalAlpha = 0.4
-  ctx.fillRect(36, 172, 300, 1)
-  ctx.globalAlpha = 1
-  roundRect(ctx, 36, 184, 300, 70, 16)
-  const bx = ctx.createLinearGradient(0, 184, 0, 254)
-  bx.addColorStop(0, G + '40')
-  bx.addColorStop(1, G + '0d')
+  // Coupon-style dashed box
+  ctx.setLineDash([6, 4])
+  roundRect(ctx, 36, 170, 300, 78, 16)
+  const bx = ctx.createLinearGradient(0, 170, 0, 248)
+  bx.addColorStop(0, acc + '55')
+  bx.addColorStop(1, acc + '12')
   ctx.fillStyle = bx
   ctx.fill()
-  ctx.lineWidth = 1.2
-  ctx.strokeStyle = G
+  ctx.lineWidth = 1.6
+  ctx.strokeStyle = light
   ctx.stroke()
+  ctx.setLineDash([])
   const big = `+${info.credits}`
-  ctx.font = '800 50px InterX'
+  ctx.font = '800 54px InterX'
   const ew = ctx.measureText(big).width
-  const x0 = 186 - (ew + 96) / 2
-  text(big, x0, 234, '800 50px InterX', '#ffffff')
-  text('FREE', x0 + ew + 10, 214, '800 13px InterX', '#ffd24a', 'left', '2px')
-  text('CREDITS', x0 + ew + 10, 234, '800 13px InterX', L, 'left', '2px')
+  const x0 = 186 - (ew + 100) / 2
+  text(big, x0, 227, '800 54px InterX', '#ffffff')
+  text('FREE', x0 + ew + 10, 206, '800 14px InterX', '#ffd24a', 'left', '2px')
+  text('CREDITS', x0 + ew + 10, 227, '800 14px InterX', light, 'left', '2px')
 
   // How many codes are still available
   const label = info.left <= 0 ? 'ALL CLAIMED' : info.left === 1 ? 'LAST ONE LEFT!' : `${info.left} CODES LEFT`
   ctx.font = '800 13px InterX'
   const bw = ctx.measureText(label).width + 28
-  roundRect(ctx, 186 - bw / 2, 266, bw, 26, 13)
+  roundRect(ctx, 186 - bw / 2, 262, bw, 26, 13)
   ctx.fillStyle = info.left <= 0 ? 'rgba(255,255,255,0.18)' : '#ffd24a'
   ctx.fill()
-  text(label, 186, 284, '800 13px InterX', info.left <= 0 ? '#ffffff' : '#2a1b00', 'center')
+  text(label, 186, 280, '800 13px InterX', info.left <= 0 ? '#ffffff' : '#2a1b00', 'center')
   return canvas.toBuffer('image/png')
 }
