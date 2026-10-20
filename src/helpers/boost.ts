@@ -5,7 +5,7 @@ import { findChat, ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, bestBonus, getCredits, addCredits, spendCredits } from './credits'
+import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, bestBonus, getCredits, addCredits, spendCreditsSplit } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -500,6 +500,7 @@ async function notifyOwner(
     crypto?: string
     network?: string
     credits?: boolean
+    gift?: boolean
     userId: number
     stars: number
     n: number
@@ -544,7 +545,7 @@ async function notifyOwner(
             `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
             `${
               info.credits
-                ? `💰 ${creditsLabel(info.n, 'es')}`
+                ? `${info.gift ? '🎁' : '💰'} ${creditsLabel(info.n, 'es')}${info.gift ? ' (gift)' : ''}`
                 : info.crypto
                 ? `🪙 ${info.crypto} USDT (${networkShort(info.network || 'bsc')})`
                 : `⭐ ${info.stars} Stars`
@@ -567,7 +568,7 @@ async function notifyOwner(
         const mult = info.boostMult || multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-          `${info.credits ? '💰 Credits' : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
+          `${info.credits ? (info.gift ? '🎁 Gift credits' : '💰 Credits') : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
@@ -588,6 +589,7 @@ async function notifyOwner(
             crypto: !!info.crypto,
             usdt: info.crypto,
             credits: !!info.credits,
+            gift: !!info.gift,
           })
           await ctx.telegram.sendPhoto(
             feed,
@@ -1382,13 +1384,14 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const res: any = await validateBoost(raffleId, userId, n)
       if (res.error) return ctx.reply(errorText(res.error, res.language))
       const mult = multiplierOf()
-      const balance = await spendCredits(userId, n, {
+      const spent = await spendCreditsSplit(userId, n, {
         raffleId,
         chatId: res.raffle.chatId,
         name: ctx.from.username
           ? `@${ctx.from.username}`
           : `${ctx.from.first_name}${ctx.from.last_name ? ` ${ctx.from.last_name}` : ''}`,
       })
+      const balance = spent.balance
       if (balance < 0) return ctx.reply(loc('credit_not_enough', res.language))
       const upd: any = await RaffleModel.updateOne(
         { _id: res.raffle._id, winners: { $exists: false } },
@@ -1401,7 +1404,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         }
       )
       if (!upd || !upd.nModified) {
-        await addCredits(userId, n, { type: 'refund', method: 'credits', raffleId })
+        await addCredits(userId, n, { type: 'refund', method: 'credits', raffleId, free: spent.free })
         return ctx.reply(errorText('raffle_over', res.language))
       }
       await trackBoost({ type: 'invoice', userId, raffleId, boosts: n, method: 'credits', reminded: true })
@@ -1418,6 +1421,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         userId,
         stars: n * BOOST_PRICE,
         credits: true,
+        gift: spent.free >= n,
         n,
         chatId: res.raffle.chatId,
         messageId: res.raffle.messageId,

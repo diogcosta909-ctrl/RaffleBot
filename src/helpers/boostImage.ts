@@ -251,9 +251,11 @@ export async function renderBoostImage(info: {
   winner?: boolean
   crypto?: boolean
   credits?: boolean
+  gift?: boolean
   usdt?: string
 }): Promise<Buffer> {
   if (info.winner) return renderWinImage(info)
+  if (info.credits && info.gift) return renderCryptoImage({ ...info, theme: 'gift' })
   if (info.credits) return renderCryptoImage({ ...info, theme: 'credits' })
   if (info.crypto) return renderCryptoImage(info)
   const { createCanvas } = loadCanvas()
@@ -596,10 +598,10 @@ async function usdtLogo() {
 }
 
 /** Generic credit coin (blue, lightning bolt) used for boosts paid with credits */
-function drawCreditCoin(ctx: any, x: number, y: number, r: number) {
+function drawCreditCoin(ctx: any, x: number, y: number, r: number, gift?: boolean) {
   const g = ctx.createLinearGradient(0, y - r, 0, y + r)
-  g.addColorStop(0, '#9db8ff')
-  g.addColorStop(1, '#3556d8')
+  g.addColorStop(0, gift ? '#c9a6ff' : '#9db8ff')
+  g.addColorStop(1, gift ? '#7a3ae0' : '#3556d8')
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
   ctx.fillStyle = g
@@ -657,14 +659,15 @@ export async function renderUsdtImage(info: { amount: string; pct: string; netwo
 /** Feed card for purchases paid in USDT: green Tether look, one coin (logo) per pack unit */
 async function renderCryptoImage(info: { name: string; entries: number; mult?: number; boosts?: number; stars: number; usdt?: string; theme?: string }) {
   const { createCanvas } = loadCanvas()
-  const credits = info.theme === 'credits'
+  const gift = info.theme === 'gift'
+  const credits = info.theme === 'credits' || gift
   const logo = credits ? null : await usdtLogo()
   const S = 2
   const canvas = createCanvas(372 * S, 300 * S)
   const ctx = canvas.getContext('2d')
   ctx.scale(S, S)
-  const G = credits ? '#4f7cff' : '#26a17b'
-  const L = credits ? '#a9c4ff' : '#7fe0bf'
+  const G = gift ? '#9b5cff' : credits ? '#4f7cff' : '#26a17b'
+  const L = gift ? '#d8c0ff' : credits ? '#a9c4ff' : '#7fe0bf'
   const n = Math.max(1, Math.round(info.boosts || info.stars || 1))
   const t = TIERS[tierFor(n)]
   const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
@@ -675,16 +678,16 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     ctx.fillText(s, x, y)
     ;(ctx as any).letterSpacing = '0px'
   }
-  const dark = credits ? '#050914' : '#05100c'
+  const dark = gift ? '#0c0618' : credits ? '#050914' : '#05100c'
   ctx.fillStyle = dark
   ctx.fillRect(0, 0, 372, 300)
   const bg = ctx.createRadialGradient(186, 112, 10, 186, 112, 230)
-  bg.addColorStop(0, credits ? '#12245a' : '#0f3a2e')
+  bg.addColorStop(0, gift ? '#3a1470' : credits ? '#12245a' : '#0f3a2e')
   bg.addColorStop(1, dark)
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, 372, 300)
   // Circuit-like diagonal lines instead of rays
-  ctx.strokeStyle = credits ? 'rgba(79,124,255,0.10)' : 'rgba(38,161,123,0.10)'
+  ctx.strokeStyle = gift ? 'rgba(155,92,255,0.12)' : credits ? 'rgba(79,124,255,0.10)' : 'rgba(38,161,123,0.10)'
   ctx.lineWidth = 1
   for (let k = -300; k < 400; k += 22) {
     ctx.beginPath()
@@ -693,8 +696,8 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     ctx.stroke()
   }
   const h = ctx.createRadialGradient(186, 118, 0, 186, 118, 120)
-  h.addColorStop(0, credits ? 'rgba(79,124,255,0.38)' : 'rgba(38,161,123,0.38)')
-  h.addColorStop(1, credits ? 'rgba(79,124,255,0)' : 'rgba(38,161,123,0)')
+  h.addColorStop(0, gift ? 'rgba(155,92,255,0.38)' : credits ? 'rgba(79,124,255,0.38)' : 'rgba(38,161,123,0.38)')
+  h.addColorStop(1, gift ? 'rgba(155,92,255,0)' : credits ? 'rgba(79,124,255,0)' : 'rgba(38,161,123,0)')
   ctx.fillStyle = h
   ctx.fillRect(0, 0, 372, 300)
 
@@ -708,11 +711,11 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     }
     text(name, 186, 36, ctx.font, '#ffffff', 'center')
   }
-  text(`bought a ${t.title.toLowerCase()} with ${credits ? 'credits' : 'USDT'}`, 186, 54, '700 12px InterB', L, 'center', '1px')
+  text(`${gift ? `used a gift for a ${t.title.toLowerCase()}` : `bought a ${t.title.toLowerCase()} with ${credits ? 'credits' : 'USDT'}`}`, 186, 54, '700 12px InterB', L, 'center', '1px')
 
   for (const [x, y, r] of pyramid(n, 186, 126, 260, 108)) {
     if (credits) {
-      drawCreditCoin(ctx, x, y, r)
+      drawCreditCoin(ctx, x, y, r, gift)
       continue
     }
     ctx.drawImage(logo, x - r, y - r, r * 2, r * 2)
@@ -741,7 +744,7 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
   ctx.font = '800 54px InterX'
   const ew = ctx.measureText(entText).width
   text('ENTRIES NOW', 80 + ew, 238, '800 13px InterX', L, 'left', '2px')
-  text(credits ? `paid with ${n} ${n === 1 ? 'credit' : 'credits'}` : info.usdt ? `for ${info.usdt} USDT` : 'paid in USDT', 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
+  text(gift ? `${n} gift ${n === 1 ? 'credit' : 'credits'}` : credits ? `paid with ${n} ${n === 1 ? 'credit' : 'credits'}` : info.usdt ? `for ${info.usdt} USDT` : 'paid in USDT', 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
 
   if (info.mult && info.mult > 1) {
     const label = `x${+info.mult.toFixed(2)} TODAY`
@@ -751,6 +754,30 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     ctx.fillStyle = G
     ctx.fill()
     text(label, 356 - w / 2, 28, '800 12px InterX', '#04130e', 'center')
+  }
+  if (gift) {
+    // Golden banner: this boost came from free gift credits
+    const gr = ctx.createLinearGradient(0, 0, 372, 0)
+    gr.addColorStop(0, '#ffb300')
+    gr.addColorStop(0.5, '#ffe27a')
+    gr.addColorStop(1, '#ffb300')
+    ctx.fillStyle = gr
+    ctx.fillRect(0, 278, 372, 22)
+    text('GIFT CREDITS', 186, 293, '800 12px InterX', '#2a1800', 'center', '3px')
+    for (const cx of [75, 297]) {
+      ctx.fillStyle = '#7a3ae0'
+      ctx.fillRect(cx - 6, 284, 12, 9)
+      ctx.fillStyle = '#9b5cff'
+      ctx.fillRect(cx - 7, 281, 14, 4)
+      ctx.fillStyle = '#ffd54a'
+      ctx.fillRect(cx - 1, 281, 2, 12)
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    for (const [px, py, r] of [[30, 75, 2], [345, 85, 2.5], [55, 165, 1.5], [325, 165, 2], [20, 210, 1.5], [350, 225, 1.5]]) {
+      ctx.beginPath()
+      ctx.arc(px, py, r, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
   return canvas.toBuffer('image/png')
 }

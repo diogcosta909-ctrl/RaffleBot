@@ -40,6 +40,9 @@ export class Chat extends Typegoose {
   // Boost credits (private chats): 1 credit = 1 boost
   @prop({ default: 0 })
   credits?: number
+  // Part of the credits balance that came free (gift codes, pack bonus); spent first
+  @prop({ default: 0 })
+  freeCredits?: number
   // Value of each entry (1 normally, 1.5 or 2 on special days)
   @prop({ default: 1 })
   entryValue?: number

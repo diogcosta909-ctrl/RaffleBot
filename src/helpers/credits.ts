@@ -56,7 +56,7 @@ export async function addCredits(
 ) {
   const chat: any = await ChatModel.findOneAndUpdate(
     { chatId: userId },
-    { $inc: { credits: n } },
+    { $inc: { credits: n, freeCredits: tx.free && tx.free > 0 ? tx.free : 0 } },
     { new: true, upsert: true, setDefaultsOnInsert: true }
   )
   const balance = chat.credits || 0
@@ -64,18 +64,30 @@ export async function addCredits(
   return balance
 }
 
-/** Spends credits atomically. Returns the new balance, or -1 when there are not enough */
+/** Spends credits atomically, free (gift) credits first. Returns the new balance (-1 when there are not enough) and how many were free */
+export async function spendCreditsSplit(
+  userId: number,
+  n: number,
+  tx: { raffleId?: string; method?: string; name?: string; chatId?: number }
+) {
+  const old: any = await ChatModel.findOneAndUpdate(
+    { chatId: userId, credits: { $gte: n } },
+    { $inc: { credits: -n } },
+    { new: false }
+  )
+  if (!old) return { balance: -1, free: 0 }
+  const free = Math.max(0, Math.min(old.freeCredits || 0, n))
+  if (free > 0) await ChatModel.updateOne({ chatId: userId }, { $inc: { freeCredits: -free } })
+  const balance = (old.credits || 0) - n
+  await log(userId, -n, balance, { type: 'spend', method: 'credits', ...tx })
+  return { balance, free }
+}
+
+/** Same as spendCreditsSplit, returning only the balance */
 export async function spendCredits(
   userId: number,
   n: number,
   tx: { raffleId?: string; method?: string; name?: string; chatId?: number }
 ) {
-  const chat: any = await ChatModel.findOneAndUpdate(
-    { chatId: userId, credits: { $gte: n } },
-    { $inc: { credits: -n } },
-    { new: true }
-  )
-  if (!chat) return -1
-  await log(userId, -n, chat.credits, { type: 'spend', method: 'credits', ...tx })
-  return chat.credits as number
+  return (await spendCreditsSplit(userId, n, tx)).balance
 }
