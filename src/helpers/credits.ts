@@ -52,7 +52,7 @@ async function log(userId: number, delta: number, balance: number, tx: any) {
 export async function addCredits(
   userId: number,
   n: number,
-  tx: { type: string; method?: string; ref?: string; raffleId?: string }
+  tx: { type: string; method?: string; ref?: string; raffleId?: string; free?: number }
 ) {
   const chat: any = await ChatModel.findOneAndUpdate(
     { chatId: userId },

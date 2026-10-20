@@ -25,6 +25,9 @@ export class CreditTx extends Typegoose {
   // Display name when credits are spent (used by rankings)
   @prop()
   name?: string
+  // How many of the added credits were free (pack bonus). Rows saved before this field have none
+  @prop()
+  free?: number
   @prop()
   balanceAfter?: number
 }

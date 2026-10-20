@@ -5,6 +5,7 @@ import { findChat } from '../models/chat'
 import { CreditTxModel } from '../models/creditTx'
 import { addCredits } from './credits'
 import { loc } from './locale'
+import { BOOST_STEP, multiplierOf } from './boost'
 
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I to avoid typos
@@ -91,14 +92,18 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
     }
     if (!created) return ctx.reply('❌ No se pudo crear el código, inténtalo otra vez.')
     const bot = process.env.USERNAME
+    const extra = BOOST_STEP * multiplierOf()
+    const who =
+      maxUses === 1
+        ? `The first person to tap gets **${credits} ${credits === 1 ? 'credit' : 'credits'}**`
+        : `The first **${maxUses} people** get **${credits} ${credits === 1 ? 'credit' : 'credits'}** each`
     const share =
-      `🎁 Free credits!\n` +
-      `Tap to redeem: https://t.me/${bot}?start=redeem_${code}\n` +
-      `or send /redeem ${code} to @${bot}`
+      `🎁 **Free Boosts!**\n\n` +
+      `${who} (+${extra} extra entries per Boost) 🚀\n\n` +
+      `👉 Tap to redeem: https://t.me/${bot}?start=redeem_${code}`
     return ctx.replyWithHTML(
       `✅ <b>Código creado</b>\n\n<code>${code}</code>\n` +
-        `🎁 ${credits} créditos por persona\n` +
-        `👥 Hasta ${maxUses} ${maxUses === 1 ? 'persona' : 'personas'}\n\n` +
+        `🎁 ${credits} créditos por persona · 👥 hasta ${maxUses} ${maxUses === 1 ? 'persona' : 'personas'}\n\n` +
         `📤 <b>Mensaje para compartir</b> (toca para copiar):\n<code>${esc(share)}</code>`,
       { disable_web_page_preview: true }
     )
@@ -174,7 +179,7 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
       }
       return ctx.reply(loc(key, lang))
     }
-    const balance = await addCredits(userId, doc.credits, { type: 'code', method: 'code', ref: doc.code })
+    const balance = await addCredits(userId, doc.credits, { type: 'code', method: 'code', ref: doc.code, free: doc.credits })
     await ctx.replyWithHTML(
       loc('code_ok', lang).replace('$n', `${doc.credits}`).replace('$bal', `${balance}`)
     )

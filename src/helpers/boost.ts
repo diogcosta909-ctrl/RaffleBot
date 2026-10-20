@@ -722,6 +722,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
       type: 'topup',
       method: 'usdt',
       ref: txHash,
+      free: bonusFor(order.boosts),
     })
     const who = {
       id: order.userId,
@@ -1531,7 +1532,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const added = n + bonusFor(n)
       let balance: number
       try {
-        balance = await addCredits(u.id, added, { type: 'topup', method: 'stars', ref: chargeId })
+        balance = await addCredits(u.id, added, { type: 'topup', method: 'stars', ref: chargeId, free: bonusFor(n) })
       } catch (err) {
         // Paid but the credits could not be saved: give the Stars back and tell the owner
         console.error('Topup credits not saved', chargeId, err)
