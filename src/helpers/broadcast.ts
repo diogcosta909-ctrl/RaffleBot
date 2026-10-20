@@ -7,7 +7,7 @@ import { BoostEventModel } from '../models/boostEvent'
 
 // Pending announcements waiting for the owner's confirmation (one per owner)
 type Pending = { segment: string; button?: boolean; at: number } & (
-  | { kind: 'copy'; fromChat: number; messageId: number }
+  | { kind: 'copy'; fromChat: number; messageId: number; caption?: string }
   | { kind: 'text'; text: string }
 )
 
@@ -79,6 +79,8 @@ async function deliver(telegram: any, to: number, p: Pending) {
       from_chat_id: p.fromChat,
       message_id: p.messageId,
       reply_markup: buttonOf(p),
+      // Text typed after /broadcast replaces the caption of the photo/video (HTML allowed)
+      ...(p.caption ? { caption: p.caption, parse_mode: 'HTML' } : {}),
     })
   }
   return telegram.sendMessage(to, p.text, {
@@ -113,12 +115,21 @@ export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
     }
     let p: Pending
     if (reply) {
-      p = { segment, button, kind: 'copy', fromChat: ctx.chat.id, messageId: reply.message_id, at: Date.now() }
+      const media = !!(reply.photo || reply.video || reply.animation || reply.document)
+      p = {
+        segment,
+        button,
+        kind: 'copy',
+        fromChat: ctx.chat.id,
+        messageId: reply.message_id,
+        caption: media && inline ? inline : undefined,
+        at: Date.now(),
+      }
     } else if (inline) {
       p = { segment, button, kind: 'text', text: inline, at: Date.now() }
     } else {
       return ctx.replyWithHTML(
-        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo) o escribe:\n<code>/broadcast tu texto</code>\n\nPor defecto va a todos los que aceptaron los términos. Para elegir destinatarios pon una palabra después de /broadcast:\n<code>/broadcast buyers tu texto</code>\n\n• <code>me</code> solo tú (para probar)\n• <code>all</code> los que aceptaron los términos (por defecto)\n• <code>everyone</code> todos los que han interactuado con el bot (aunque no aceptaran los términos)\n• <code>noterms</code> solo los que interactuaron y NO aceptaron los términos\n• <code>buyers</code> compradores\n• <code>nonbuyers</code> los que nunca compraron\n• <code>credits</code> con créditos\n• <code>inactive</code> 30 días sin usar Boost\n\nPara añadir un botón <b>🚀 Buy Boosts</b> (abre la recarga) pon <code>boost</code> después del destinatario:\n<code>/broadcast me boost tu texto</code>\n\nAntes verás una vista previa y el número de usuarios para confirmar.'
+        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo). Si respondes a una foto o vídeo y escribes texto después, ese texto será el pie de foto (admite HTML). O escribe:\n<code>/broadcast tu texto</code>\n\nPor defecto va a todos los que aceptaron los términos. Para elegir destinatarios pon una palabra después de /broadcast:\n<code>/broadcast buyers tu texto</code>\n\n• <code>me</code> solo tú (para probar)\n• <code>all</code> los que aceptaron los términos (por defecto)\n• <code>everyone</code> todos los que han interactuado con el bot (aunque no aceptaran los términos)\n• <code>noterms</code> solo los que interactuaron y NO aceptaron los términos\n• <code>buyers</code> compradores\n• <code>nonbuyers</code> los que nunca compraron\n• <code>credits</code> con créditos\n• <code>inactive</code> 30 días sin usar Boost\n\nPara añadir un botón <b>🚀 Buy Boosts</b> (abre la recarga) pon <code>boost</code> después del destinatario:\n<code>/broadcast me boost tu texto</code>\n\nAntes verás una vista previa y el número de usuarios para confirmar.'
       )
     }
     try {
