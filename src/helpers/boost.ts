@@ -1030,7 +1030,7 @@ async function showMulti(ctx: ContextMessageUpdate, edit = false) {
   const keyboard: any[] = [
     [{ text: loc('multi_btn_all', lang).replace('$n', `${list.length}`), callback_data: 'ba~a' }],
   ]
-  if (fresh > 0 && fresh < list.length) {
+  if (list.length > 1 && fresh > 0) {
     keyboard.push([{ text: loc('multi_btn_new', lang).replace('$n', `${fresh}`), callback_data: 'ba~f' }])
   }
   const text = loc('multi_menu', lang).replace('$n', `${list.length}`)
