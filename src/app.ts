@@ -31,6 +31,7 @@ import { setupWinners } from './helpers/winners'
 import { setupOwnerReport, alertOwner } from './helpers/ownerReport'
 import { setupBalances } from './helpers/balances'
 import { setupPostButton } from './helpers/postButton'
+import { setupUserLookup } from './helpers/userLookup'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -44,6 +45,8 @@ const bot: Telegraf<ContextMessageUpdate> = new telegraf(process.env.TOKEN, {
 bot.startPolling()
 console.log('Bot is up and running · build boostall-2 · ' + (require('./helpers/locale').localizations.multi_pick_one ? 'locale OK' : 'locale OLD'))
 
+// Remember @usernames (must run before the other handlers)
+setupUserLookup(bot)
 // Setup callback
 setupCallback(bot)
 // Setup listeners

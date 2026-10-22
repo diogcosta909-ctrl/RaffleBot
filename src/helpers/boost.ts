@@ -24,6 +24,7 @@ import {
 import { getChatIdForConfig } from './getChatIdForConfig'
 import { raffleTotals, chanceOf, oddsLine, oddsChangeLine } from './odds'
 import { loc } from './locale'
+import { resolveUser } from './userLookup'
 
 // Config (env overridable): 1 Star = +0.3 weight (x1.3), max 10 boosts per user per raffle
 export const BOOST_PRICE = Math.max(1, parseInt(process.env.BOOST_PRICE || '1', 10))
@@ -1909,11 +1910,14 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     if (ctx.chat.type !== 'private') return
     if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
     const parts = ((ctx.message as any).text || '').split(/\s+/)
-    const userId = parseInt(parts[1], 10)
     const n = parseInt(parts[2], 10)
-    if (!userId || !n) return ctx.reply('Uso: /addcredits <userId> <n> (n negativo quita créditos)')
+    if (!parts[1] || !n) return ctx.reply('Uso: /addcredits @usuario 5  (o el ID) · n negativo quita créditos')
+    const userId = await resolveUser(parts[1])
+    if (!userId) {
+      return ctx.reply(`No encuentro a ${parts[1]}. Tiene que haber escrito al bot alguna vez; si no, usa su ID.`)
+    }
     const balance = await addCredits(userId, n, { type: 'admin', method: 'admin' })
-    return ctx.reply(`✅ Usuario ${userId}: ${n > 0 ? '+' : ''}${n} créditos. Saldo: ${balance}`)
+    return ctx.reply(`✅ ${parts[1]}: ${n > 0 ? '+' : ''}${n} créditos. Saldo: ${balance}`)
   })
 
   // Start watching the chain for USDT payments (needs CRYPTO_WALLET)

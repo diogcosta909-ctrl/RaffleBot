@@ -3,6 +3,7 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { ChatModel } from '../models/chat'
 import { CreditTxModel } from '../models/creditTx'
 import { CREDIT_PACKS, bonusFor } from './credits'
+import { resolveUser } from './userLookup'
 
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -114,8 +115,9 @@ export function setupBalances(bot: Telegraf<ContextMessageUpdate>) {
     try {
       await syncFreeCredits()
       const arg = (ctx.message.text || '').split(/\s+/)[1]
-      if (arg && /^\d+$/.test(arg)) {
-        const id = parseInt(arg, 10)
+      if (arg) {
+        const id = await resolveUser(arg)
+        if (!id) return ctx.reply(`No encuentro a ${arg}. Tiene que haber escrito al bot alguna vez; si no, usa su ID.`)
         const r = (await collect(id)).get(id) || empty()
         return ctx.replyWithHTML(`${await nameOf(ctx.telegram, id)}\n${line(r)}`)
       }

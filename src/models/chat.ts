@@ -43,6 +43,9 @@ export class Chat extends Typegoose {
   // Part of the credits balance that came free (gift codes, pack bonus); spent first
   @prop({ default: 0 })
   freeCredits?: number
+  // Telegram @username in lowercase (saved when the person writes to the bot)
+  @prop({ index: true })
+  username?: string
   // Value of each entry (1 normally, 1.5 or 2 on special days)
   @prop({ default: 1 })
   entryValue?: number
