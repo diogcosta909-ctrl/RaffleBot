@@ -380,7 +380,7 @@ export function setupListener(bot: Telegraf<ContextMessageUpdate>) {
  * @returns buttons for a raffle
  */
 function getButtons(raffle: InstanceType<Raffle>, language: string) {
-  const keyboard = [
+  const keyboard: any[] = [
     [
       {
         text: loc('participate_button', language),

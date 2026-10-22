@@ -217,6 +217,10 @@ export function boostButton(raffle: Raffle & { id?: string }, language: string) 
       text: loc('boost_button', language),
       callback_data: `b~${raffle.id}`,
     },
+    {
+      text: loc('boost_all_button', language),
+      url: `https://t.me/${process.env.USERNAME}?start=boostall`,
+    },
   ]
 }
 
@@ -979,6 +983,17 @@ async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = 
 
 // ---------- Boost all giveaways: the same boosts in every active giveaway of the user, paid once ----------
 
+/** Plural words for the multi-boost texts */
+function boostWord(n: number) {
+  return n === 1 ? 'Boost' : 'Boosts'
+}
+function giveawayWord(k: number, lang: string) {
+  return lang === 'es' ? (k === 1 ? 'sorteo' : 'sorteos') : k === 1 ? 'giveaway' : 'giveaways'
+}
+function creditWord(n: number, lang: string) {
+  return lang === 'es' ? (n === 1 ? 'crédito' : 'créditos') : n === 1 ? 'credit' : 'credits'
+}
+
 /** Open giveaways (with Boosts on) where the user takes part and can still boost */
 async function activeRafflesOf(userId: number) {
   const list: any[] = await RaffleModel.find({
@@ -1072,8 +1087,10 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
   keyboard.push([{ text: loc('multi_btn_back', lang), callback_data: `ba~${scope}` }])
   const text = loc(k === 1 ? 'multi_pay_one' : 'multi_pay', lang)
     .replace('$n', `${n}`)
-    .replace('$b', 'Boost' + (n === 1 ? '' : 's'))
+    .replace('$b', boostWord(n))
     .replace('$k', `${k}`)
+    .replace('$g', giveawayWord(k, lang))
+    .replace('$tb', boostWord(total))
     .replace('$t', `${total}`)
     .replace('$c', `${credits}`)
   return showScreen(ctx, text, keyboard, edit)
@@ -1218,11 +1235,24 @@ async function applyMulti(
   }
   const balance = await getCredits(userId)
   const lines: string[] = []
-  if (ok > 0) lines.push(loc('multi_done', lang).replace('$k', `${ok}`).replace('$t', `${ok * n}`))
-  if (failed > 0) {
+  if (ok > 0) {
     lines.push(
-      (ok > 0 || pay.method === 'credits' ? loc('multi_failed', lang) : loc('multi_all_failed', lang))
+      loc('multi_done', lang)
+        .replace('$tb', boostWord(ok * n))
+        .replace('$t', `${ok * n}`)
+        .replace('$k', `${ok}`)
+        .replace('$g', giveawayWord(ok, lang))
+        .replace('$n', `${n}`)
+        .replace('$b', boostWord(n))
+    )
+  }
+  if (failed > 0) {
+    const key = pay.method === 'credits' ? 'multi_skipped' : ok > 0 ? 'multi_failed' : 'multi_all_failed'
+    lines.push(
+      loc(key, lang)
         .replace('$f', `${failed}`)
+        .replace('$g', giveawayWord(failed, lang))
+        .replace('$rc', creditWord(returned, lang))
         .replace('$r', `${returned}`)
     )
   }
@@ -1734,18 +1764,17 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       if (method === 's') {
         await (ctx.telegram as any).callApi('sendInvoice', {
           chat_id: ctx.chat.id,
-          title: loc('multi_invoice_title', lang).replace('$k', `${k}`),
-          description: loc('multi_invoice_description', lang)
+          title: k === 1 ? loc('multi_invoice_title_one', lang) : loc('multi_invoice_title', lang).replace('$k', `${k}`),
+          description: loc(k === 1 ? 'multi_invoice_description_one' : 'multi_invoice_description', lang)
             .replace('$n', `${multi.n}`)
-            .replace('$b', 'Boost' + (multi.n === 1 ? '' : 's'))
+            .replace('$b', boostWord(multi.n))
             .replace('$k', `${k}`)
-            .replace('$g', lang === 'es' ? (k === 1 ? 'sorteo' : 'sorteos') : k === 1 ? 'giveaway' : 'giveaways')
-            .replace('$t', `${total}`)
-            .replace('$tb', 'Boost' + (total === 1 ? '' : 's')),
+            .replace('$tb', boostWord(total))
+            .replace('$t', `${total}`),
           payload: `${MULTI_PREFIX}${id}`,
           provider_token: '',
           currency: 'XTR',
-          prices: [{ label: `Boosts × ${total}`, amount: total * BOOST_PRICE }],
+          prices: [{ label: `${total} ${boostWord(total)}`, amount: total * BOOST_PRICE }],
         })
         return
       }

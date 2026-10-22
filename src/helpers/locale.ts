@@ -40,8 +40,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🆕 Solo donde aún no he boosteado ($n)',
   },
   multi_pick: {
-    en: '🚀 <b>Boost your giveaways</b>\n\nYou are in <b>$k active giveaways</b>.\nHow many Boosts per giveaway?',
-    es: '🚀 <b>Boost a tus sorteos</b>\n\nParticipas en <b>$k sorteos activos</b>.\n¿Cuántos Boosts por sorteo?',
+    en: '🚀 <b>Boost your giveaways</b>\n\nYou are in <b>$k active giveaways</b>.\nEach Boost you pick is added to every one of them 🎯\n\nHow many Boosts per giveaway?',
+    es: '🚀 <b>Boost a tus sorteos</b>\n\nParticipas en <b>$k sorteos activos</b>.\nCada Boost que elijas se suma en todos ellos 🎯\n\n¿Cuántos Boosts por sorteo?',
   },
   multi_btn_n: {
     en: '🚀 $n $b · $k giveaways',
@@ -52,36 +52,52 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 <b>Boost a tu sorteo</b>\n\nParticipas en <b>1 sorteo activo</b>. ¿Cuántos Boosts?',
   },
   multi_pay_one: {
-    en: '🚀 <b>$t Boosts</b> in your giveaway\n\n💰 Your credits: $c\nChoose how to pay:',
-    es: '🚀 <b>$t Boosts</b> en tu sorteo\n\n💰 Tus créditos: $c\nElige cómo pagar:',
+    en: '🚀 <b>Your order</b>\n\n🎁 Your giveaway\n⚡ $n $b\n\n💰 Your credits: $c\nChoose how to pay:',
+    es: '🚀 <b>Tu pedido</b>\n\n🎁 Tu sorteo\n⚡ $n $b\n\n💰 Tus créditos: $c\nElige cómo pagar:',
   },
   multi_pay: {
-    en: '🚀 <b>$n $b × $k giveaways</b>\n\n$t Boosts in total\n💰 Your credits: $c\nChoose how to pay:',
-    es: '🚀 <b>$n $b × $k sorteos</b>\n\n$t Boosts en total\n💰 Tus créditos: $c\nElige cómo pagar:',
+    en: '🚀 <b>Your order</b>\n\n🎁 $k $g\n⚡ $n $b in each one\n📦 $t $tb in total\n\n💰 Your credits: $c\nChoose how to pay:',
+    es: '🚀 <b>Tu pedido</b>\n\n🎁 $k $g\n⚡ $n $b en cada uno\n📦 $t $tb en total\n\n💰 Tus créditos: $c\nElige cómo pagar:',
+  },
+  multi_skipped: {
+    en: '⚠️ $f $g had ended or reached the Boost limit. You were not charged for them.',
+    es: '⚠️ $f $g habían terminado o llegaron al límite de Boosts. No se te cobraron.',
+  },
+  multi_invoice_title_one: {
+    en: 'Boost your giveaway',
+    es: 'Boost a tu sorteo',
+  },
+  multi_invoice_description_one: {
+    en: '$n $b in your giveaway.',
+    es: '$n $b en tu sorteo.',
+  },
+  boost_all_button: {
+    en: '🎯 Boost All',
+    es: '🎯 Boost All',
   },
   multi_expired: {
     en: 'This purchase is no longer available. Start again from /start.',
     es: 'Esta compra ya no está disponible. Empieza de nuevo desde /start.',
   },
   multi_done: {
-    en: '✅ <b>Boosted $k giveaways</b> · $t Boosts used',
-    es: '✅ <b>Boost aplicado en $k sorteos</b> · $t Boosts usados',
+    en: '✅ <b>Done! $t $tb applied</b>\n\n🎁 $k $g · $n $b each',
+    es: '✅ <b>¡Listo! $t $tb aplicados</b>\n\n🎁 $k $g · $n $b en cada uno',
   },
   multi_failed: {
-    en: '⚠️ $f giveaway(s) had ended or reached the Boost limit. <b>$r credits</b> were added back to your balance.',
-    es: '⚠️ $f sorteo(s) habían terminado o llegaron al límite de Boosts. Se devolvieron <b>$r créditos</b> a tu saldo.',
+    en: '⚠️ $f $g had ended or reached the Boost limit. <b>$r $rc</b> added back to your balance.',
+    es: '⚠️ $f $g habían terminado o llegaron al límite de Boosts. Se devolvieron <b>$r $rc</b> a tu saldo.',
   },
   multi_all_failed: {
-    en: '⚠️ None of the giveaways could be boosted (ended or at the Boost limit). <b>$r credits</b> were added back to your balance.',
-    es: '⚠️ No se pudo boostear ningún sorteo (terminados o en el límite de Boosts). Se devolvieron <b>$r créditos</b> a tu saldo.',
+    en: '⚠️ None of the giveaways could be boosted (ended or at the Boost limit). <b>$r $rc</b> added back to your balance.',
+    es: '⚠️ No se pudo boostear ningún sorteo (terminados o en el límite de Boosts). Se devolvieron <b>$r $rc</b> a tu saldo.',
   },
   multi_invoice_title: {
     en: 'Boost $k giveaways',
     es: 'Boost a $k sorteos',
   },
   multi_invoice_description: {
-    en: '$n $b in each of $k $g ($t $tb)',
-    es: '$n $b en cada uno de $k $g ($t $tb)',
+    en: '$n $b in each of your $k giveaways.\n$t $tb in total.',
+    es: '$n $b en cada uno de tus $k sorteos.\n$t $tb en total.',
   },
   crypto_invoice_multi: {
     en: '🪙 <b>Boost $k giveaways</b> · $t Boosts\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · Boosts applied automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
