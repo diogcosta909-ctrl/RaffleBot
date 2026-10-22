@@ -40,8 +40,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🆕 Solo donde aún no he boosteado ($n)',
   },
   multi_pick: {
-    en: '🚀 <b>Boost all giveaways</b>\n\nHow many Boosts in each of the <b>$k giveaways</b>?',
-    es: '🚀 <b>Boost a todos los sorteos</b>\n\n¿Cuántos Boosts en cada uno de los <b>$k sorteos</b>?',
+    en: '🚀 <b>Boost your giveaways</b>\n\nYou are in <b>$k active giveaways</b>.\nHow many Boosts per giveaway?',
+    es: '🚀 <b>Boost a tus sorteos</b>\n\nParticipas en <b>$k sorteos activos</b>.\n¿Cuántos Boosts por sorteo?',
+  },
+  multi_btn_n: {
+    en: '🚀 $n $b · $k giveaways',
+    es: '🚀 $n $b · $k sorteos',
   },
   multi_pick_one: {
     en: '🚀 <b>Boost your giveaway</b>\n\nYou are in <b>1 active giveaway</b>. How many Boosts?',
@@ -52,8 +56,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 <b>$t Boosts</b> en tu sorteo\n\n💰 Tus créditos: $c\nElige cómo pagar:',
   },
   multi_pay: {
-    en: '🚀 <b>$n × $k giveaways = $t Boosts</b>\n\n💰 Your credits: $c\nChoose how to pay:',
-    es: '🚀 <b>$n × $k sorteos = $t Boosts</b>\n\n💰 Tus créditos: $c\nElige cómo pagar:',
+    en: '🚀 <b>$n $b × $k giveaways</b>\n\n$t Boosts in total\n💰 Your credits: $c\nChoose how to pay:',
+    es: '🚀 <b>$n $b × $k sorteos</b>\n\n$t Boosts en total\n💰 Tus créditos: $c\nElige cómo pagar:',
   },
   multi_expired: {
     en: 'This purchase is no longer available. Start again from /start.',

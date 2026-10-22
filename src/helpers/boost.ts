@@ -1035,7 +1035,7 @@ async function showPickMulti(ctx: ContextMessageUpdate, scope: string, edit = fa
     if (!k) continue
     if (!first) first = k
     keyboard.push([
-      { text: k === 1 ? `🚀 ${n} Boost${n === 1 ? '' : 's'}` : `🚀 ${n} × ${k} = ${n * k} Boosts`, callback_data: `ba~${scope}~${n}` },
+      { text: k === 1 ? `🚀 ${n} Boost${n === 1 ? '' : 's'}` : loc('multi_btn_n', lang).replace('$n', `${n}`).replace('$b', 'Boost' + (n === 1 ? '' : 's')).replace('$k', `${k}`), callback_data: `ba~${scope}~${n}` },
     ])
   }
   if (!keyboard.length) return showScreen(ctx, loc('multi_none', lang), [], edit)
@@ -1072,6 +1072,7 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
   keyboard.push([{ text: loc('multi_btn_back', lang), callback_data: `ba~${scope}` }])
   const text = loc(k === 1 ? 'multi_pay_one' : 'multi_pay', lang)
     .replace('$n', `${n}`)
+    .replace('$b', 'Boost' + (n === 1 ? '' : 's'))
     .replace('$k', `${k}`)
     .replace('$t', `${total}`)
     .replace('$c', `${credits}`)
