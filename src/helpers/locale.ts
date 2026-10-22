@@ -23,6 +23,66 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es:
       "👋 ¡Hola! Hago sorteos en grupos y canales de Telegram.\n\n🎁 Ganadores al azar, sin trampas\n🚀 Boosts: compra entradas extra con Stars, USDT o créditos\n🏆 Ranking de ganadores en vivo\n\nPara hacer tu propio sorteo:\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start allí",
   },
+  multi_none: {
+    en: "🚀 You're not in any active giveaway with Boosts right now.\n\nJoin one and come back here.",
+    es: '🚀 Ahora no participas en ningún sorteo activo con Boosts.\n\nÚnete a uno y vuelve aquí.',
+  },
+  multi_menu: {
+    en: "🚀 <b>Boost all giveaways</b>\n\nYou're in <b>$n active giveaways</b> with Boosts.\nWhere do you want to use your Boosts?",
+    es: '🚀 <b>Boost a todos los sorteos</b>\n\nParticipas en <b>$n sorteos activos</b> con Boosts.\n¿Dónde quieres usar tus Boosts?',
+  },
+  multi_btn_all: {
+    en: '🎯 All $n giveaways',
+    es: '🎯 Los $n sorteos',
+  },
+  multi_btn_new: {
+    en: "🆕 Only where I haven't boosted yet ($n)",
+    es: '🆕 Solo donde aún no he boosteado ($n)',
+  },
+  multi_pick: {
+    en: '🚀 <b>Boost all giveaways</b>\n\nHow many Boosts in each of the <b>$k giveaways</b>?',
+    es: '🚀 <b>Boost a todos los sorteos</b>\n\n¿Cuántos Boosts en cada uno de los <b>$k sorteos</b>?',
+  },
+  multi_pay: {
+    en: '🚀 <b>$n × $k giveaways = $t Boosts</b>\n\n💰 Your credits: $c\nChoose how to pay:',
+    es: '🚀 <b>$n × $k sorteos = $t Boosts</b>\n\n💰 Tus créditos: $c\nElige cómo pagar:',
+  },
+  multi_expired: {
+    en: 'This purchase is no longer available. Start again from /start.',
+    es: 'Esta compra ya no está disponible. Empieza de nuevo desde /start.',
+  },
+  multi_done: {
+    en: '✅ <b>Boosted $k giveaways</b> · $t Boosts used',
+    es: '✅ <b>Boost aplicado en $k sorteos</b> · $t Boosts usados',
+  },
+  multi_failed: {
+    en: '⚠️ $f giveaway(s) had ended or reached the Boost limit. <b>$r credits</b> were added back to your balance.',
+    es: '⚠️ $f sorteo(s) habían terminado o llegaron al límite de Boosts. Se devolvieron <b>$r créditos</b> a tu saldo.',
+  },
+  multi_all_failed: {
+    en: '⚠️ None of the giveaways could be boosted (ended or at the Boost limit). <b>$r credits</b> were added back to your balance.',
+    es: '⚠️ No se pudo boostear ningún sorteo (terminados o en el límite de Boosts). Se devolvieron <b>$r créditos</b> a tu saldo.',
+  },
+  multi_invoice_title: {
+    en: 'Boost $k giveaways',
+    es: 'Boost a $k sorteos',
+  },
+  multi_invoice_description: {
+    en: '$n Boost(s) in each of $k giveaways ($t Boosts)',
+    es: '$n Boost(s) en cada uno de $k sorteos ($t Boosts)',
+  },
+  crypto_invoice_multi: {
+    en: '🪙 <b>Boost $k giveaways</b> · $t Boosts\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · Boosts applied automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
+    es: '🪙 <b>Boost a $k sorteos</b> · $t Boosts\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⏳ Válido $min min · los Boosts se aplican solos en 1–2 min\n⚠️ Envía el importe exacto, solo por $network.',
+  },
+  multi_btn_back: {
+    en: '◀️ Back',
+    es: '◀️ Volver',
+  },
+  start_boostall_btn: {
+    en: '🎯 Boost all giveaways',
+    es: '🎯 Boost a todos los sorteos',
+  },
   start_boost_btn: {
     en: '🚀 Buy Boosts',
     es: '🚀 Comprar Boosts',

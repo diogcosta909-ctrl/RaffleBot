@@ -6,7 +6,7 @@ import { CryptoOrderModel } from '../models/cryptoOrder'
 import { BoostEventModel } from '../models/boostEvent'
 
 // Pending announcements waiting for the owner's confirmation (one per owner)
-type Pending = { segment: string; button?: boolean; at: number } & (
+type Pending = { segment: string; button?: string; at: number } & (
   | { kind: 'copy'; fromChat: number; messageId: number; caption?: string }
   | { kind: 'text'; text: string }
 )
@@ -67,9 +67,11 @@ async function recipients(segment = 'all'): Promise<number[]> {
 
 /** Optional button under the announcement: opens the recharge screen in the bot */
 function buttonOf(p: Pending) {
-  return p.button
-    ? { inline_keyboard: [[{ text: '🚀 Buy Boosts', callback_data: 'r~0' }]] }
-    : undefined
+  if (!p.button) return undefined
+  const buy = [{ text: '🚀 Buy Boosts', callback_data: 'r~0' }]
+  const all = [{ text: '🎯 Boost all giveaways', callback_data: 'ba~0' }]
+  const rows = p.button === 'boost' ? [buy] : p.button === 'all' ? [all] : [all, buy]
+  return { inline_keyboard: rows }
 }
 
 async function deliver(telegram: any, to: number, p: Pending) {
@@ -108,10 +110,12 @@ export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
       inline = inline.slice(first.length).trim()
     }
     // Optional next word "boost": adds a "Buy Boosts" button that opens the recharge screen
-    let button = false
-    if (inline.split(/\s+/)[0].toLowerCase() === 'boost') {
-      button = true
-      inline = inline.slice(5).trim()
+    let button: string = undefined
+    const flag = inline.split(/\s+/)[0].toLowerCase()
+    const flags: { [k: string]: string } = { boost: 'boost', boostall: 'all', boostboth: 'both' }
+    if (flags[flag]) {
+      button = flags[flag]
+      inline = inline.slice(flag.length).trim()
     }
     let p: Pending
     if (reply) {
@@ -129,7 +133,7 @@ export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
       p = { segment, button, kind: 'text', text: inline, at: Date.now() }
     } else {
       return ctx.replyWithHTML(
-        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo). Si respondes a una foto o vídeo y escribes texto después, ese texto será el pie de foto (admite HTML). O escribe:\n<code>/broadcast tu texto</code>\n\nPor defecto va a todos los que aceptaron los términos. Para elegir destinatarios pon una palabra después de /broadcast:\n<code>/broadcast buyers tu texto</code>\n\n• <code>me</code> solo tú (para probar)\n• <code>all</code> los que aceptaron los términos (por defecto)\n• <code>everyone</code> todos los que han interactuado con el bot (aunque no aceptaran los términos)\n• <code>noterms</code> solo los que interactuaron y NO aceptaron los términos\n• <code>buyers</code> compradores\n• <code>nonbuyers</code> los que nunca compraron\n• <code>credits</code> con créditos\n• <code>inactive</code> 30 días sin usar Boost\n\nPara añadir un botón <b>🚀 Buy Boosts</b> (abre la recarga) pon <code>boost</code> después del destinatario:\n<code>/broadcast me boost tu texto</code>\n\nAntes verás una vista previa y el número de usuarios para confirmar.'
+        '📣 <b>Comunicados</b>\n\nResponde con /broadcast a cualquier mensaje (texto, foto o vídeo). Si respondes a una foto o vídeo y escribes texto después, ese texto será el pie de foto (admite HTML). O escribe:\n<code>/broadcast tu texto</code>\n\nPor defecto va a todos los que aceptaron los términos. Para elegir destinatarios pon una palabra después de /broadcast:\n<code>/broadcast buyers tu texto</code>\n\n• <code>me</code> solo tú (para probar)\n• <code>all</code> los que aceptaron los términos (por defecto)\n• <code>everyone</code> todos los que han interactuado con el bot (aunque no aceptaran los términos)\n• <code>noterms</code> solo los que interactuaron y NO aceptaron los términos\n• <code>buyers</code> compradores\n• <code>nonbuyers</code> los que nunca compraron\n• <code>credits</code> con créditos\n• <code>inactive</code> 30 días sin usar Boost\n\nPara añadir un botón después del destinatario:\n• <code>boost</code> → <b>🚀 Buy Boosts</b> (abre la recarga)\n• <code>boostall</code> → <b>🎯 Boost all giveaways</b> (boost a todos los sorteos activos)\n• <code>boostboth</code> → los dos botones\n<code>/broadcast me boostall tu texto</code>\n\nAntes verás una vista previa y el número de usuarios para confirmar.'
       )
     }
     try {

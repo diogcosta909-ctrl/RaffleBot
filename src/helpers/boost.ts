@@ -4,6 +4,7 @@ import { RaffleModel, Raffle } from '../models'
 import { findChat, ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
+import { MultiBoostModel } from '../models/multiBoost'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
 import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, bestBonus, getCredits, addCredits, spendCreditsSplit } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
@@ -614,6 +615,7 @@ async function notifyOwner(
 
 /** Parses "boost:<raffleId>:<n>" (n defaults to 1) */
 const TOPUP_PREFIX = 'topup:'
+const MULTI_PREFIX = 'multi:'
 
 function parsePayload(payload: string) {
   const [raffleId, n, m] = payload.substr(PAYLOAD_PREFIX.length).split(':')
@@ -745,6 +747,37 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
         label: `🪙 ${cryptoPriceLabel(order.boosts)} USDT`,
       }
     )
+    return
+  }
+  if (`${order.raffleId}`.startsWith(MULTI_PREFIX)) {
+    let multi: any = null
+    try {
+      multi = await MultiBoostModel.findById(`${order.raffleId}`.substr(MULTI_PREFIX.length))
+    } catch {
+      multi = null
+    }
+    const who = { id: order.userId, username: order.username, first_name: order.firstName, last_name: order.lastName }
+    if (multi) {
+      await applyMulti(telegram, who, multi, {
+        method: 'usdt',
+        network: order.network || 'bsc',
+        txHash,
+        amountUnits: order.amountUnits,
+      })
+    } else {
+      // Paid but the purchase is gone: the boosts become credits
+      const balance = await addCredits(order.userId, order.boosts, { type: 'refund', method: 'usdt', ref: txHash })
+      try {
+        await telegram.sendMessage(
+          order.userId,
+          `${loc('multi_expired', 'en')}\n\n${loc('boost_credits_line', 'en').replace('$n', `${balance}`)}`
+        )
+      } catch {
+        // do nothing
+      }
+    }
+    // The per-giveaway rows carry the sale; this one only held the payment
+    await CryptoOrderModel.updateOne({ _id: order._id }, { status: 'multi' })
     return
   }
   const userId = order.userId
@@ -942,6 +975,265 @@ async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = 
   } catch (err) {
     console.error(err)
   }
+}
+
+// ---------- Boost all giveaways: the same boosts in every active giveaway of the user, paid once ----------
+
+/** Open giveaways (with Boosts on) where the user takes part and can still boost */
+async function activeRafflesOf(userId: number) {
+  const list: any[] = await RaffleModel.find({
+    participantsIds: userId,
+    boostEnabled: true,
+    winners: { $exists: false },
+  }).select('-participantsIds')
+  return list
+    .map((r) => ({ raffle: r, used: boostCounts(r).get(userId) || 0 }))
+    .filter((x) => x.used < maxBoosts())
+}
+
+/** Giveaways chosen by scope ('a' all, 'f' only where the user has not boosted yet) that have room for n more boosts */
+async function multiSelection(userId: number, scope: string, n = 1) {
+  const list = await activeRafflesOf(userId)
+  return list.filter((x) => (scope !== 'f' || x.used === 0) && maxBoosts() - x.used >= n)
+}
+
+/** First screen: all giveaways or only the ones without boosts */
+async function showMulti(ctx: ContextMessageUpdate, edit = false) {
+  const userId = ctx.from.id
+  const lang = (await findChat(userId)).language
+  if (!(await hasAcceptedTerms(userId))) {
+    return ctx.replyWithHTML(`${termsText(lang)}\n\n${loc('terms_accept_prompt', lang)}`, {
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [[{ text: loc('terms_accept_button', lang), callback_data: 'tm~' }]],
+      },
+    } as any)
+  }
+  const list = await activeRafflesOf(userId)
+  if (!list.length) return showScreen(ctx, loc('multi_none', lang), [], edit)
+  const fresh = list.filter((x) => x.used === 0).length
+  const keyboard: any[] = [
+    [{ text: loc('multi_btn_all', lang).replace('$n', `${list.length}`), callback_data: 'ba~a' }],
+  ]
+  if (fresh > 0 && fresh < list.length) {
+    keyboard.push([{ text: loc('multi_btn_new', lang).replace('$n', `${fresh}`), callback_data: 'ba~f' }])
+  }
+  const text = loc('multi_menu', lang).replace('$n', `${list.length}`)
+  // Only one possible choice: skip the question
+  if (keyboard.length === 1) return showPickMulti(ctx, 'a', edit)
+  return showScreen(ctx, text, keyboard, edit)
+}
+
+/** How many boosts in each giveaway */
+async function showPickMulti(ctx: ContextMessageUpdate, scope: string, edit = false) {
+  const userId = ctx.from.id
+  const lang = (await findChat(userId)).language
+  const keyboard: any[] = []
+  let first = 0
+  for (const n of BOOST_OPTIONS) {
+    const k = (await multiSelection(userId, scope, n)).length
+    if (!k) continue
+    if (!first) first = k
+    keyboard.push([
+      { text: `🚀 ${n} × ${k} = ${n * k} Boosts`, callback_data: `ba~${scope}~${n}` },
+    ])
+  }
+  if (!keyboard.length) return showScreen(ctx, loc('multi_none', lang), [], edit)
+  keyboard.push([{ text: loc('multi_btn_back', lang), callback_data: 'ba~0' }])
+  const all = (await multiSelection(userId, scope, 1)).length
+  return showScreen(ctx, loc('multi_pick', lang).replace('$k', `${all}`), keyboard, edit)
+}
+
+/** Payment screen for n boosts in each selected giveaway */
+async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number, edit = false) {
+  const userId = ctx.from.id
+  const lang = (await findChat(userId)).language
+  const picked = await multiSelection(userId, scope, n)
+  if (!picked.length) return showScreen(ctx, loc('multi_none', lang), [], edit)
+  const multi: any = await MultiBoostModel.create({
+    userId,
+    raffleIds: picked.map((x) => `${x.raffle._id}`).join(','),
+    n,
+    mult: multiplierOf(),
+  })
+  const k = picked.length
+  const total = n * k
+  const credits = await getCredits(userId)
+  const keyboard: any[] = []
+  if (credits >= total) {
+    keyboard.push([{ text: `💰 ${creditsLabel(total, lang)}`, callback_data: `bp~w~${multi._id}` }])
+  } else {
+    keyboard.push([{ text: `⭐ ${total * BOOST_PRICE} Stars`, callback_data: `bp~s~${multi._id}` }])
+    if (cryptoEnabled()) {
+      keyboard.push([{ text: `🪙 ${cryptoPriceLabel(total)} USDT`, callback_data: `bp~c~${multi._id}` }])
+    }
+    keyboard.push([{ text: loc('recharge_button', lang), callback_data: 'r~0' }])
+  }
+  keyboard.push([{ text: loc('multi_btn_back', lang), callback_data: `ba~${scope}` }])
+  const text = loc('multi_pay', lang)
+    .replace('$n', `${n}`)
+    .replace('$k', `${k}`)
+    .replace('$t', `${total}`)
+    .replace('$c', `${credits}`)
+  return showScreen(ctx, text, keyboard, edit)
+}
+
+/**
+ * Applies the purchase to every chosen giveaway. Credits are charged one giveaway at a time;
+ * with Stars or USDT (already paid) what cannot be applied (ended, at the limit) is returned as credits.
+ */
+async function applyMulti(
+  telegram: any,
+  user: { id: number; username?: string; first_name?: string; last_name?: string },
+  multi: any,
+  pay: { method: 'credits' | 'stars' | 'usdt'; chargeId?: string; network?: string; txHash?: string; amountUnits?: number }
+) {
+  const ids = `${multi.raffleIds}`.split(',').filter(Boolean)
+  const n = multi.n
+  const mult = multi.mult >= 1 ? multi.mult : multiplierOf()
+  const userId = user.id
+  const name = user.username
+    ? `@${user.username}`
+    : `${user.first_name || userId}${user.last_name ? ` ${user.last_name}` : ''}`
+  const lang = (await findChat(userId)).language
+  const share = pay.amountUnits ? Math.round(pay.amountUnits / Math.max(1, ids.length)) : 0
+  let ok = 0
+  let failed = 0
+  let returned = 0
+  for (let i = 0; i < ids.length; i++) {
+    const raffleId = ids[i]
+    const res: any = await validateBoost(raffleId, userId, n)
+    let good = !res.error
+    let spentFree = 0
+    if (good && pay.method === 'credits') {
+      const sp = await spendCreditsSplit(userId, n, {
+        raffleId,
+        chatId: res.raffle.chatId,
+        name,
+      })
+      if (sp.balance < 0) good = false
+      else spentFree = sp.free
+    }
+    if (good) {
+      const push: any = {
+        boostIds: { $each: Array(n).fill(userId) },
+        boostMults: { $each: Array(n).fill(mult) },
+      }
+      if (pay.method === 'credits') push.creditIds = { $each: Array(n).fill(userId) }
+      if (pay.method === 'usdt') push.cryptoIds = { $each: Array(n).fill(userId) }
+      const upd: any = await RaffleModel.updateOne(
+        { _id: res.raffle._id, winners: { $exists: false } },
+        { $push: push }
+      )
+      if (!upd || !upd.nModified) {
+        good = false
+        if (pay.method === 'credits') {
+          await addCredits(userId, n, { type: 'refund', method: 'credits', raffleId, free: spentFree })
+        }
+      }
+    }
+    // Accounting rows (one per giveaway, so every client sees its own sales)
+    try {
+      if (pay.method === 'stars') {
+        await PaymentModel.create({
+          chargeId: `${pay.chargeId}#${i}`,
+          userId,
+          raffleId: good ? raffleId : 'topup',
+          chatId: good ? res.raffle.chatId : undefined,
+          stars: n * BOOST_PRICE,
+          boosts: n,
+          userName: name,
+        })
+      } else if (pay.method === 'usdt') {
+        await CryptoOrderModel.create({
+          userId,
+          username: user.username,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          raffleId: good ? raffleId : 'topup',
+          boosts: n,
+          amountUnits: share,
+          status: 'paid',
+          txHash: pay.txHash,
+          chatId: good ? res.raffle.chatId : undefined,
+          network: pay.network,
+          mult,
+          expiresAt: new Date(),
+          paidAt: new Date(),
+        })
+      }
+    } catch (err) {
+      console.error('Multi boost row not saved', err)
+    }
+    if (!good) {
+      failed++
+      if (pay.method !== 'credits') returned += n
+      continue
+    }
+    ok++
+    await trackBoost({
+      type: 'invoice',
+      userId,
+      raffleId,
+      boosts: n,
+      method: pay.method === 'usdt' ? 'crypto' : pay.method === 'credits' ? 'credits' : undefined,
+      reminded: true,
+    } as any)
+    const used = res.used + n
+    const value = res.value + n * mult
+    try {
+      const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
+      const raffleChat = await findChat(fresh.chatId)
+      await require('./raffle').refreshRaffleMessage(telegram, fresh, raffleChat)
+    } catch (err) {
+      // message may be unchanged or deleted
+    }
+    await notifyOwner(
+      { telegram, from: user },
+      {
+        userId,
+        stars: n * BOOST_PRICE,
+        credits: pay.method === 'credits',
+        gift: pay.method === 'credits' && spentFree >= n,
+        crypto: pay.method === 'usdt' ? cryptoPriceLabel(n) : undefined,
+        network: pay.network,
+        n,
+        chatId: res.raffle.chatId,
+        messageId: res.raffle.messageId,
+        step: BOOST_STEP * mult,
+        boostMult: mult,
+        mult: multLabel(value, 'es', entryValueOf(res.raffle)),
+        total: entryValueOf(res.raffle) + BOOST_STEP * value,
+      }
+    )
+    void used
+  }
+  if (returned > 0) {
+    await addCredits(userId, returned, {
+      type: 'refund',
+      method: pay.method,
+      ref: pay.chargeId || pay.txHash,
+    })
+  }
+  const balance = await getCredits(userId)
+  const lines: string[] = []
+  if (ok > 0) lines.push(loc('multi_done', lang).replace('$k', `${ok}`).replace('$t', `${ok * n}`))
+  if (failed > 0) {
+    lines.push(
+      (ok > 0 || pay.method === 'credits' ? loc('multi_failed', lang) : loc('multi_all_failed', lang))
+        .replace('$f', `${failed}`)
+        .replace('$r', `${returned}`)
+    )
+  }
+  if (pay.method === 'credits' || returned > 0) {
+    lines.push(loc('boost_credits_line', lang).replace('$n', `${balance}`))
+  }
+  try {
+    await telegram.sendMessage(userId, lines.join('\n\n'), { parse_mode: 'HTML' })
+  } catch (err) {
+    console.error('Multi boost summary not sent', err)
+  }
+  return { ok, failed, returned }
 }
 
 export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
@@ -1369,6 +1661,128 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
   })
 
+  // ---- Boost all giveaways ----
+  bot.use(async (ctx, next) => {
+    const text = ctx.message && ctx.message.text
+    if (!text || !/^\/start boostall$/.test(text) || ctx.chat.type !== 'private') return next()
+    try {
+      await showMulti(ctx)
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  bot.action('tm~', async (ctx) => {
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    await acceptTerms(ctx.from.id)
+    try {
+      await showMulti(ctx)
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  bot.action(/^ba~(0|a|f)(?:~(\d+))?$/, async (ctx) => {
+    const scope = (ctx as any).match[1]
+    const n = parseInt((ctx as any).match[2] || '0', 10)
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    try {
+      if (scope === '0') return await showMulti(ctx, true)
+      if (!n) return await showPickMulti(ctx, scope, true)
+      if (!BOOST_OPTIONS.includes(n)) return
+      return await showPayMulti(ctx, scope, n, true)
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  bot.action(/^bp~(w|s|c)~([a-f0-9]{24})(?:~(bsc|ton))?$/, async (ctx) => {
+    const method = (ctx as any).match[1]
+    const id = (ctx as any).match[2]
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    try {
+      const userId = ctx.from.id
+      const lang = (await findChat(userId)).language
+      const multi: any = await MultiBoostModel.findOne({ _id: id, userId, status: 'open' })
+      if (!multi) return ctx.reply(loc('multi_expired', lang))
+      const k = `${multi.raffleIds}`.split(',').filter(Boolean).length
+      const total = multi.n * k
+      if (method === 'w') {
+        if ((await getCredits(userId)) < total) return ctx.reply(loc('credit_not_enough', lang))
+        // Claim it so a double tap cannot charge twice
+        const claimed: any = await MultiBoostModel.findOneAndUpdate(
+          { _id: id, userId, status: 'open' },
+          { status: 'done' }
+        )
+        if (!claimed) return
+        await applyMulti(ctx.telegram, ctx.from, multi, { method: 'credits' })
+        return
+      }
+      if (method === 's') {
+        await (ctx.telegram as any).callApi('sendInvoice', {
+          chat_id: ctx.chat.id,
+          title: loc('multi_invoice_title', lang).replace('$k', `${k}`),
+          description: loc('multi_invoice_description', lang)
+            .replace('$n', `${multi.n}`)
+            .replace('$k', `${k}`)
+            .replace('$t', `${total}`),
+          payload: `${MULTI_PREFIX}${id}`,
+          provider_token: '',
+          currency: 'XTR',
+          prices: [{ label: `Boosts × ${total}`, amount: total * BOOST_PRICE }],
+        })
+        return
+      }
+      if (!cryptoEnabled()) return
+      const network = await pickNetwork(ctx, (ctx as any).match[3], `bp~c~${id}`, lang)
+      if (!network) return
+      const u = ctx.from
+      const order = await createOrder({
+        network,
+        userId: u.id,
+        username: u.username,
+        firstName: u.first_name,
+        lastName: u.last_name,
+        raffleId: `${MULTI_PREFIX}${id}`,
+        boosts: total,
+        mult: multi.mult || multiplierOf(),
+      })
+      const amount = formatUnits(order.amountUnits)
+      const caption = loc('crypto_invoice_multi', lang)
+        .replace('$k', `${k}`)
+        .replace('$t', `${total}`)
+        .replace('$amount', amount)
+        .replace(/\$network/g, networkLabel(network))
+        .replace('$address', walletOf(network))
+        .replace('$min', `${CRYPTO_EXPIRY_MIN}`)
+      try {
+        const image = await require('./boostImage').renderUsdtImage({
+          amount,
+          pct: `${total} Boosts`,
+          network: networkLabel(network),
+        })
+        return await ctx.replyWithPhoto({ source: image }, { caption, parse_mode: 'HTML' } as any)
+      } catch (err) {
+        console.error('USDT image failed, sending text', err)
+      }
+      return ctx.replyWithHTML(caption, { disable_web_page_preview: true })
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
   // Boost paid with credits
   bot.action(/^w~([a-f0-9]{24})~(\d+)$/, async (ctx) => {
     const raffleId = (ctx as any).match[1]
@@ -1505,6 +1919,17 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     if (q.invoice_payload.startsWith(TOPUP_PREFIX)) {
       return ctx.answerPreCheckoutQuery(true)
     }
+    if (q.invoice_payload.startsWith(MULTI_PREFIX)) {
+      let multi: any = null
+      try {
+        multi = await MultiBoostModel.findById(q.invoice_payload.substr(MULTI_PREFIX.length))
+      } catch {
+        multi = null
+      }
+      return multi && multi.userId === q.from.id
+        ? ctx.answerPreCheckoutQuery(true)
+        : ctx.answerPreCheckoutQuery(false, loc('multi_expired', 'en'))
+    }
     if (!q.invoice_payload.startsWith(PAYLOAD_PREFIX)) {
       return ctx.answerPreCheckoutQuery(false, 'Unknown payment')
     }
@@ -1560,6 +1985,24 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         paid: `${p.total_amount} stars`,
         label: `⭐ ${p.total_amount} Stars`,
       })
+      return
+    }
+    if (p && p.invoice_payload.startsWith(MULTI_PREFIX)) {
+      const chargeId = p.telegram_payment_charge_id
+      if (await PaymentModel.countDocuments({ chargeId: `${chargeId}#0` })) return
+      let multi: any = null
+      try {
+        multi = await MultiBoostModel.findById(p.invoice_payload.substr(MULTI_PREFIX.length))
+      } catch {
+        multi = null
+      }
+      const u = ctx.from
+      if (!multi) {
+        // Paid but the purchase is gone: give the Stars back
+        const ok = await refund(ctx, u.id, chargeId)
+        return ctx.reply(`${loc('multi_expired', 'en')}\n\n${loc(ok ? 'boost_refunded' : 'boost_refund_failed', 'en')}`)
+      }
+      await applyMulti(ctx.telegram, u, multi, { method: 'stars', chargeId })
       return
     }
     if (!p || !p.invoice_payload.startsWith(PAYLOAD_PREFIX)) return
