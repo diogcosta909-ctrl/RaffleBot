@@ -75,6 +75,14 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '🎯 Boost All',
     es: '🎯 Boost All',
   },
+  overtaken: {
+    en: '⚠️ <b>$name</b> just passed you in the giveaway.$odds\n\nBoost to take the lead back 🚀',
+    es: '⚠️ <b>$name</b> te acaba de pasar en el sorteo.$odds\n\nHaz Boost para recuperar la delantera 🚀',
+  },
+  overtaken_link: {
+    en: '🔗 Open the giveaway',
+    es: '🔗 Abrir el sorteo',
+  },
   multi_expired: {
     en: 'This purchase is no longer available. Start again from /start.',
     es: 'Esta compra ya no está disponible. Empieza de nuevo desde /start.',

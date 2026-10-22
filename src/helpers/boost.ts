@@ -840,6 +840,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
     const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
     const raffleChat = await findChat(fresh.chatId)
     await require('./raffle').refreshRaffleMessage(telegram, fresh, raffleChat)
+    void overtakeAlerts(telegram, fresh, { id: userId, username: order.username, first_name: order.firstName, last_name: order.lastName }, n, mult)
   } catch (err) {
     // message may be unchanged or deleted
   }
@@ -1204,6 +1205,7 @@ async function applyMulti(
       const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
       const raffleChat = await findChat(fresh.chatId)
       await require('./raffle').refreshRaffleMessage(telegram, fresh, raffleChat)
+      void overtakeAlerts(telegram, fresh, user, n, mult)
     } catch (err) {
       // message may be unchanged or deleted
     }
@@ -1266,6 +1268,87 @@ async function applyMulti(
     console.error('Multi boost summary not sent', err)
   }
   return { ok, failed, returned }
+}
+
+// ---------- "Someone passed you": private alert to boosters who were overtaken ----------
+const overtakeSent = new Map<string, number>()
+const OVERTAKE_COOLDOWN_MIN = 60
+const OVERTAKE_MAX_PER_BOOST = 3
+
+const escHtmlName = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/**
+ * After a boost: tells the people who had boosted as much as the buyer (or more) and are now behind.
+ * Only people who boosted before; at most 3 per boost and one alert per person and giveaway per hour.
+ */
+async function overtakeAlerts(
+  telegram: any,
+  raffle: any,
+  booster: { id: number; username?: string; first_name?: string; last_name?: string },
+  n: number,
+  mult: number
+) {
+  try {
+    const values = boostValues(raffle)
+    const now = (values.get(booster.id) || 0)
+    const before = now - n * mult
+    const passed: Array<[number, number]> = []
+    values.forEach((v, id) => {
+      if (id !== booster.id && v > 0 && v >= before && v < now) passed.push([id, v])
+    })
+    passed.sort((a, b) => b[1] - a[1])
+    if (!passed.length) return
+    const name = escHtmlName(
+      booster.username ? `@${booster.username}` : `${booster.first_name || booster.id}${booster.last_name ? ` ${booster.last_name}` : ''}`
+    )
+    const raffleId = `${raffle._id}`
+    // Link to the giveaway message
+    let link = ''
+    try {
+      const c: any = await telegram.getChat(raffle.chatId)
+      if (raffle.messageId) {
+        const internal = `${raffle.chatId}`.replace(/^-100/, '')
+        link = c.username
+          ? `https://t.me/${c.username}/${raffle.messageId}`
+          : `${raffle.chatId}`.startsWith('-100')
+          ? `https://t.me/c/${internal}/${raffle.messageId}`
+          : ''
+      }
+    } catch {
+      // no link
+    }
+    const base = entryValueOf(raffle)
+    const totals = await raffleTotals(raffle._id, base, BOOST_STEP)
+    let sent = 0
+    for (const [id, value] of passed) {
+      if (sent >= OVERTAKE_MAX_PER_BOOST) break
+      const key = `${raffleId}:${id}`
+      const last = overtakeSent.get(key) || 0
+      if (Date.now() - last < OVERTAKE_COOLDOWN_MIN * 60000) continue
+      overtakeSent.set(key, Date.now())
+      try {
+        const lang = (await findChat(id)).language
+        const odds = totals ? `\n${oddsLine(lang, chanceOf(totals, value, base, BOOST_STEP))}` : ''
+        const keyboard: any[] = [
+          [
+            { text: loc('boost_button', lang), url: `https://t.me/${process.env.USERNAME}?start=boost_${raffleId}` },
+            { text: loc('boost_all_button', lang), url: `https://t.me/${process.env.USERNAME}?start=boostall` },
+          ],
+        ]
+        if (link) keyboard.push([{ text: loc('overtaken_link', lang), url: link }])
+        await telegram.sendMessage(id, loc('overtaken', lang).replace('$name', name).replace('$odds', odds), {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_markup: { inline_keyboard: keyboard },
+        })
+        sent++
+      } catch {
+        // the person never opened the bot or blocked it
+      }
+    }
+  } catch (err) {
+    console.error('Overtake alerts failed', err)
+  }
 }
 
 export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
@@ -1862,6 +1945,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         const fresh = await RaffleModel.findById(res.raffle._id).select('-participantsIds')
         const raffleChat = await findChat(fresh.chatId)
         await require('./raffle').refreshRaffleMessage(ctx.telegram, fresh, raffleChat)
+        void overtakeAlerts(ctx.telegram, fresh, ctx.from, n, mult)
       } catch (err) {
         // message may be unchanged or deleted
       }
@@ -2105,6 +2189,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         fresh,
         raffleChat
       )
+      void overtakeAlerts(ctx.telegram, fresh, ctx.from, n, mult)
     } catch (err) {
       // message may be unchanged or deleted
     }
