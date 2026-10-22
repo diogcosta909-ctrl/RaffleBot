@@ -30,6 +30,7 @@ import { setupStatus } from './helpers/status'
 import { setupWinners } from './helpers/winners'
 import { setupOwnerReport, alertOwner } from './helpers/ownerReport'
 import { setupBalances } from './helpers/balances'
+import { setupPostButton } from './helpers/postButton'
 import { setupCleanup } from './helpers/cleanup'
 import { RaffleModel } from './models'
 import { findChat } from './models/chat'
@@ -61,6 +62,7 @@ setupWinners(bot)
 setupTestWin(bot)
 setupOwnerReport(bot)
 setupBalances(bot)
+setupPostButton(bot)
 setupCleanup()
 
 // Setup commands
