@@ -1737,8 +1737,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
           title: loc('multi_invoice_title', lang).replace('$k', `${k}`),
           description: loc('multi_invoice_description', lang)
             .replace('$n', `${multi.n}`)
+            .replace('$b', 'Boost' + (multi.n === 1 ? '' : 's'))
             .replace('$k', `${k}`)
-            .replace('$t', `${total}`),
+            .replace('$g', lang === 'es' ? (k === 1 ? 'sorteo' : 'sorteos') : k === 1 ? 'giveaway' : 'giveaways')
+            .replace('$t', `${total}`)
+            .replace('$tb', 'Boost' + (total === 1 ? '' : 's')),
           payload: `${MULTI_PREFIX}${id}`,
           provider_token: '',
           currency: 'XTR',
