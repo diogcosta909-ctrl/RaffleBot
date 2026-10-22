@@ -79,17 +79,9 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: 'Boost $k giveaways',
     es: 'Boost a $k sorteos',
   },
-  multi_invoice_title_one: {
-    en: 'Boost your giveaway',
-    es: 'Boost a tu sorteo',
-  },
   multi_invoice_description: {
-    en: '$n $b in each of your $k giveaways · $t Boosts total',
-    es: '$n $b en cada uno de tus $k sorteos · $t Boosts en total',
-  },
-  multi_invoice_description_one: {
-    en: '$n $b in your giveaway',
-    es: '$n $b en tu sorteo',
+    en: '$n Boost(s) in each of $k giveaways ($t Boosts)',
+    es: '$n Boost(s) en cada uno de $k sorteos ($t Boosts)',
   },
   crypto_invoice_multi: {
     en: '🪙 <b>Boost $k giveaways</b> · $t Boosts\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · Boosts applied automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
