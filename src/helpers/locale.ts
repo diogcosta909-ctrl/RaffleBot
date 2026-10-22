@@ -43,6 +43,14 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '🚀 <b>Boost all giveaways</b>\n\nHow many Boosts in each of the <b>$k giveaways</b>?',
     es: '🚀 <b>Boost a todos los sorteos</b>\n\n¿Cuántos Boosts en cada uno de los <b>$k sorteos</b>?',
   },
+  multi_pick_one: {
+    en: '🚀 <b>Boost your giveaway</b>\n\nYou are in <b>1 active giveaway</b>. How many Boosts?',
+    es: '🚀 <b>Boost a tu sorteo</b>\n\nParticipas en <b>1 sorteo activo</b>. ¿Cuántos Boosts?',
+  },
+  multi_pay_one: {
+    en: '🚀 <b>$t Boosts</b> in your giveaway\n\n💰 Your credits: $c\nChoose how to pay:',
+    es: '🚀 <b>$t Boosts</b> en tu sorteo\n\n💰 Tus créditos: $c\nElige cómo pagar:',
+  },
   multi_pay: {
     en: '🚀 <b>$n × $k giveaways = $t Boosts</b>\n\n💰 Your credits: $c\nChoose how to pay:',
     es: '🚀 <b>$n × $k sorteos = $t Boosts</b>\n\n💰 Tus créditos: $c\nElige cómo pagar:',

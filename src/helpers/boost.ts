@@ -1035,13 +1035,13 @@ async function showPickMulti(ctx: ContextMessageUpdate, scope: string, edit = fa
     if (!k) continue
     if (!first) first = k
     keyboard.push([
-      { text: `🚀 ${n} × ${k} = ${n * k} Boosts`, callback_data: `ba~${scope}~${n}` },
+      { text: k === 1 ? `🚀 ${n} Boost${n === 1 ? '' : 's'}` : `🚀 ${n} × ${k} = ${n * k} Boosts`, callback_data: `ba~${scope}~${n}` },
     ])
   }
   if (!keyboard.length) return showScreen(ctx, loc('multi_none', lang), [], edit)
   keyboard.push([{ text: loc('multi_btn_back', lang), callback_data: 'ba~0' }])
   const all = (await multiSelection(userId, scope, 1)).length
-  return showScreen(ctx, loc('multi_pick', lang).replace('$k', `${all}`), keyboard, edit)
+  return showScreen(ctx, all === 1 ? loc('multi_pick_one', lang) : loc('multi_pick', lang).replace('$k', `${all}`), keyboard, edit)
 }
 
 /** Payment screen for n boosts in each selected giveaway */
@@ -1070,7 +1070,7 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
     keyboard.push([{ text: loc('recharge_button', lang), callback_data: 'r~0' }])
   }
   keyboard.push([{ text: loc('multi_btn_back', lang), callback_data: `ba~${scope}` }])
-  const text = loc('multi_pay', lang)
+  const text = loc(k === 1 ? 'multi_pay_one' : 'multi_pay', lang)
     .replace('$n', `${n}`)
     .replace('$k', `${k}`)
     .replace('$t', `${total}`)
