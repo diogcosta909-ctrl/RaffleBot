@@ -1734,15 +1734,16 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       if (method === 's') {
         await (ctx.telegram as any).callApi('sendInvoice', {
           chat_id: ctx.chat.id,
-          title: loc('multi_invoice_title', lang).replace('$k', `${k}`),
-          description: loc('multi_invoice_description', lang)
+          title: k === 1 ? loc('multi_invoice_title_one', lang) : loc('multi_invoice_title', lang).replace('$k', `${k}`),
+          description: loc(k === 1 ? 'multi_invoice_description_one' : 'multi_invoice_description', lang)
             .replace('$n', `${multi.n}`)
+            .replace('$b', 'Boost' + (multi.n === 1 ? '' : 's'))
             .replace('$k', `${k}`)
             .replace('$t', `${total}`),
           payload: `${MULTI_PREFIX}${id}`,
           provider_token: '',
           currency: 'XTR',
-          prices: [{ label: `Boosts × ${total}`, amount: total * BOOST_PRICE }],
+          prices: [{ label: `${total} Boost${total === 1 ? '' : 's'}`, amount: total * BOOST_PRICE }],
         })
         return
       }
