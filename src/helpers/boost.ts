@@ -1028,6 +1028,7 @@ async function showMulti(ctx: ContextMessageUpdate, edit = false) {
   }
   const list = await activeRafflesOf(userId)
   if (!list.length) return showScreen(ctx, loc('multi_none', lang), [], edit)
+  await trackBoost({ type: 'multi_menu', userId })
   const fresh = list.filter((x) => x.used === 0).length
   const keyboard: any[] = [
     [{ text: loc('multi_btn_all', lang).replace('$n', `${list.length}`), callback_data: 'ba~a' }],
@@ -1075,6 +1076,7 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
   })
   const k = picked.length
   const total = n * k
+  await trackBoost({ type: 'multi_pay', userId, boosts: total })
   const credits = await getCredits(userId)
   const keyboard: any[] = []
   if (credits >= total) {
@@ -1235,6 +1237,17 @@ async function applyMulti(
       method: pay.method,
       ref: pay.chargeId || pay.txHash,
     })
+  }
+  try {
+    await MultiBoostModel.updateOne(
+      { _id: multi._id },
+      {
+        $inc: { payments: 1, boostsApplied: ok * n, giveawaysApplied: ok, returned },
+        $set: { method: pay.method, status: 'done' },
+      }
+    )
+  } catch (err) {
+    console.error('Multi boost stats not saved', err)
   }
   const balance = await getCredits(userId)
   const lines: string[] = []
@@ -1499,6 +1512,34 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `🧾 Eligieron un pack: <b>${invoices.people}</b>\n` +
       `✅ Pagaron: <b>${payers}</b>\n` +
       `📈 Conversión clic → pago: <b>${pct(payers, clicks.people)}</b>\n\n`
+    // Boost All
+    const multiOpen = (await BoostEventModel.distinct('userId', { type: 'multi_menu', ...sinceMatch })).length
+    const multiPay = (await BoostEventModel.distinct('userId', { type: 'multi_pay', ...sinceMatch })).length
+    const multiRows: any[] = await MultiBoostModel.aggregate([
+      { $match: { payments: { $gt: 0 }, ...sinceMatch } },
+      {
+        $group: {
+          _id: '$method',
+          buys: { $sum: '$payments' },
+          boosts: { $sum: '$boostsApplied' },
+          giveaways: { $sum: '$giveawaysApplied' },
+          returned: { $sum: '$returned' },
+        },
+      },
+    ])
+    const multiBuyers = (await MultiBoostModel.distinct('userId', { payments: { $gt: 0 }, ...sinceMatch })).length
+    const mSum = (key: string) => multiRows.reduce((a, r) => a + (r[key] || 0), 0)
+    const mBy = (m: string) => (multiRows.find((r) => r._id === m) || { buys: 0, boosts: 0 })
+    const multiText =
+      `🎯 <b>Boost All</b>\n` +
+      `👆 Lo abrieron: <b>${multiOpen}</b>\n` +
+      `🧾 Llegaron al pago: <b>${multiPay}</b>\n` +
+      `✅ Compraron: <b>${multiBuyers}</b> personas (${mSum('buys')} compras)\n` +
+      `🚀 Boosts: <b>${mSum('boosts')}</b> en ${mSum('giveaways')} sorteos` +
+      (mSum('buys') ? ` (media ${Math.round((mSum('giveaways') / mSum('buys')) * 10) / 10} sorteos por compra)` : '') +
+      `\n💰 Créditos: ${mBy('credits').buys} · ⭐ Stars: ${mBy('stars').buys} · 🪙 USDT: ${mBy('usdt').buys}\n` +
+      `↩️ Devueltos como créditos: ${mSum('returned')}\n` +
+      `📈 Conversión abrir → comprar: <b>${pct(multiBuyers, multiOpen)}</b>\n\n`
     const text =
       `⭐ <b>Stars</b>\n\n` +
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
@@ -1508,6 +1549,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         : '') +
       `\n` +
       funnelText +
+      multiText +
       `<b>Últimos pagos</b>\n` +
       (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
     return ctx.replyWithHTML(text, { disable_web_page_preview: true })

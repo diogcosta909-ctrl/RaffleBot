@@ -17,6 +17,19 @@ export class MultiBoost extends Typegoose {
   // open | done
   @prop({ default: 'open', index: true })
   status?: string
+  // Stats (filled when it is paid and applied)
+  @prop({ default: 0 })
+  payments?: number
+  @prop({ default: 0 })
+  boostsApplied?: number
+  @prop({ default: 0 })
+  giveawaysApplied?: number
+  // Boosts that could not be applied and went back as credits
+  @prop({ default: 0 })
+  returned?: number
+  // credits | stars | usdt (last payment)
+  @prop()
+  method?: string
 }
 
 export const MultiBoostModel = new MultiBoost().getModelForClass(MultiBoost, {
