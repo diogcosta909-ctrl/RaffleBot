@@ -1122,6 +1122,7 @@ async function applyMulti(
   let ok = 0
   let failed = 0
   let returned = 0
+  const notices: any[] = []
   for (let i = 0; i < ids.length; i++) {
     const raffleId = ids[i]
     const res: any = await validateBoost(raffleId, userId, n)
@@ -1211,9 +1212,7 @@ async function applyMulti(
     } catch (err) {
       // message may be unchanged or deleted
     }
-    await notifyOwner(
-      { telegram, from: user },
-      {
+    notices.push({
         userId,
         stars: n * BOOST_PRICE,
         credits: pay.method === 'credits',
@@ -1227,9 +1226,14 @@ async function applyMulti(
         boostMult: mult,
         mult: multLabel(value, 'es', entryValueOf(res.raffle)),
         total: entryValueOf(res.raffle) + BOOST_STEP * value,
-      }
-    )
+    })
     void used
+  }
+  // One combined notice when the purchase touched 3+ giveaways (no spam), one per giveaway otherwise
+  if (notices.length >= 3) {
+    await notifyMultiOwner(telegram, user, notices, n, pay)
+  } else {
+    for (const info of notices) await notifyOwner({ telegram, from: user }, info)
   }
   if (returned > 0) {
     await addCredits(userId, returned, {
@@ -1281,6 +1285,82 @@ async function applyMulti(
     console.error('Multi boost summary not sent', err)
   }
   return { ok, failed, returned }
+}
+
+/** One notice (owner + public feed) for a Boost All purchase that touched several giveaways */
+async function notifyMultiOwner(
+  telegram: any,
+  user: { id: number; username?: string; first_name?: string; last_name?: string },
+  notices: any[],
+  per: number,
+  pay: { method: 'credits' | 'stars' | 'usdt'; amountUnits?: number }
+) {
+  const admin = parseInt(process.env.ADMIN, 10)
+  const feed = (process.env.BOOST_FEED_CHAT || '').trim()
+  if (!admin && !feed) return
+  try {
+    const name = user.username
+      ? `@${user.username}`
+      : `${user.first_name || user.id}${user.last_name ? ` ${user.last_name}` : ''}`
+    const k = notices.length
+    const boosts = k * per
+    const titles: string[] = []
+    for (const info of notices) {
+      try {
+        const c: any = await telegram.getChat(info.chatId)
+        const t = c.title || `${info.chatId}`
+        if (titles.indexOf(t) < 0) titles.push(t)
+      } catch {
+        // keep going
+      }
+    }
+    const how =
+      pay.method === 'credits'
+        ? `${notices.every((x) => x.gift) ? '🎁' : '💰'} ${creditsLabel(boosts, 'es')}`
+        : pay.method === 'usdt'
+        ? `🪙 ${formatUnits(pay.amountUnits || 0)} USDT`
+        : `⭐ ${boosts * BOOST_PRICE} Stars`
+    if (admin) {
+      try {
+        await telegram.sendMessage(
+          admin,
+          `🚀 <b>Nuevo boost múltiple</b>\n` +
+            `👤 <a href="tg://user?id=${user.id}">${escHtml(name)}</a>\n` +
+            `🎯 ${k} sorteos · ${per} ${per === 1 ? 'Boost' : 'Boosts'} en cada uno\n` +
+            `📦 ${boosts} ${boosts === 1 ? 'Boost' : 'Boosts'} · ${how}\n` +
+            `📢 ${titles.map(escHtml).join(', ')}`,
+          { parse_mode: 'HTML', disable_web_page_preview: true }
+        )
+      } catch (err) {
+        console.error('Owner multi notification failed', err)
+      }
+    }
+    if (feed) {
+      const who = user.username ? escHtml(name) : `<a href="tg://user?id=${user.id}">${escHtml(name)}</a>`
+      const caption =
+        `🚀 <b>${who} boosted ${k} giveaways</b>\n` +
+        `📦 <b>${boosts} ${boosts === 1 ? 'Boost' : 'Boosts'}</b> · ${per} in each`
+      try {
+        const image = await require('./boostImage').renderMultiImage({
+          name,
+          giveaways: k,
+          boosts,
+          per,
+          method: pay.method,
+        })
+        await telegram.sendPhoto(feed, { source: image }, { caption, parse_mode: 'HTML', disable_notification: true } as any)
+      } catch (err) {
+        console.error('Multi feed image failed, sending text', err)
+        try {
+          await telegram.sendMessage(feed, caption, { parse_mode: 'HTML', disable_notification: true } as any)
+        } catch (e) {
+          console.error('Multi feed message failed', e)
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Multi boost notification failed', err)
+  }
 }
 
 // ---------- "Someone passed you": private alert to boosters who were overtaken ----------

@@ -1001,3 +1001,89 @@ export async function renderCodeImage(info: { name: string; credits: number; lef
   text(label, 186, 280, '800 13px InterX', info.left <= 0 ? '#ffffff' : '#2a1b00', 'center')
   return canvas.toBuffer('image/png')
 }
+
+/** Feed card for a purchase that boosted several giveaways at once (Boost All) */
+export async function renderMultiImage(info: {
+  name: string
+  giveaways: number
+  boosts: number
+  per: number
+  method: string
+}): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const themes: any = {
+    credits: { bg0: '#12245a', bg1: '#050914', G: '#4f7cff', L: '#a9c4ff', how: 'paid with credits' },
+    stars: { bg0: '#6b4a0c', bg1: '#120a02', G: '#f5b301', L: '#ffd77a', how: 'paid with Stars' },
+    usdt: { bg0: '#0f4a38', bg1: '#05100c', G: '#26a17b', L: '#7fe0bf', how: 'paid in USDT' },
+  }
+  const P: any = themes[info.method] || { bg0: '#12245a', bg1: '#050914', G: '#4f7cff', L: '#a9c4ff', how: 'paid' }
+  const S = 2
+  const canvas = createCanvas(372 * S, 300 * S)
+  const ctx = canvas.getContext('2d')
+  ctx.scale(S, S)
+  const text = (s: string, x: number, y: number, font: string, color: string, align = 'left', ls = '0px') => {
+    ctx.font = font
+    ctx.fillStyle = color
+    ctx.textAlign = align
+    ;(ctx as any).letterSpacing = ls
+    ctx.fillText(s, x, y)
+    ;(ctx as any).letterSpacing = '0px'
+  }
+  const bg = ctx.createRadialGradient(186, 110, 10, 186, 110, 240)
+  bg.addColorStop(0, P.bg0)
+  bg.addColorStop(1, P.bg1)
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, 372, 300)
+  ctx.strokeStyle = P.G + '1a'
+  ctx.lineWidth = 1
+  for (let k = -300; k < 400; k += 22) {
+    ctx.beginPath()
+    ctx.moveTo(k, 0)
+    ctx.lineTo(k + 300, 300)
+    ctx.stroke()
+  }
+  const name = drawableName(info.name)
+  if (name) {
+    let size = 22
+    ctx.font = `800 ${size}px InterX`
+    while (ctx.measureText(name).width > 300 && size > 14) {
+      size -= 2
+      ctx.font = `800 ${size}px InterX`
+    }
+    text(name, 186, 36, ctx.font, '#ffffff', 'center')
+  }
+  text('boosted several giveaways at once', 186, 54, '700 12px InterB', P.L, 'center', '1px')
+  // Stack of cards = several giveaways (back cards first, front card on top)
+  for (let i = 2; i >= 0; i--) {
+    roundRect(ctx, 106 + i * 9, 80 - i * 9, 160, 88, 16)
+    ctx.fillStyle = P.bg1
+    ctx.fill()
+    ctx.fillStyle = P.G + (i === 0 ? '33' : '18')
+    ctx.fill()
+    ctx.lineWidth = 1.2
+    ctx.strokeStyle = P.G + (i === 0 ? 'cc' : '66')
+    ctx.stroke()
+  }
+  text(`${info.giveaways}`, 186, 138, '800 58px InterX', '#ffffff', 'center')
+  text('GIVEAWAYS', 186, 158, '800 13px InterX', P.L, 'center', '4px')
+  ctx.fillStyle = P.G
+  ctx.globalAlpha = 0.4
+  ctx.fillRect(36, 188, 300, 1)
+  ctx.globalAlpha = 1
+  roundRect(ctx, 36, 200, 300, 76, 16)
+  const bx = ctx.createLinearGradient(0, 200, 0, 276)
+  bx.addColorStop(0, P.G + '40')
+  bx.addColorStop(1, P.G + '0d')
+  ctx.fillStyle = bx
+  ctx.fill()
+  ctx.lineWidth = 1.2
+  ctx.strokeStyle = P.G
+  ctx.stroke()
+  const total = `${info.boosts}`
+  text(total, 70, 254, '800 54px InterX', '#ffffff', 'left')
+  ctx.font = '800 54px InterX'
+  const ew = ctx.measureText(total).width
+  text(info.boosts === 1 ? 'BOOST' : 'BOOSTS', 80 + ew, 238, '800 13px InterX', P.L, 'left', '2px')
+  text(`${info.per} in each · ${P.how}`, 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
+  return canvas.toBuffer('image/png')
+}
