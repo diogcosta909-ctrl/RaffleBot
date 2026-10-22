@@ -41,7 +41,7 @@ const bot: Telegraf<ContextMessageUpdate> = new telegraf(process.env.TOKEN, {
   channelMode: true,
 })
 bot.startPolling()
-console.log('Bot is up and running')
+console.log('Bot is up and running · build boostall-2 · ' + (require('./helpers/locale').localizations.multi_pick_one ? 'locale OK' : 'locale OLD'))
 
 // Setup callback
 setupCallback(bot)
