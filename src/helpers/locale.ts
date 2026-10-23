@@ -28,8 +28,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 Ahora no participas en ningún sorteo activo con Boosts.\n\nÚnete a uno y vuelve aquí.',
   },
   multi_menu: {
-    en: "🚀 <b>Boost all giveaways</b>\n\nYou're in <b>$n active giveaways</b> with Boosts.\nWhere do you want to use your Boosts?",
-    es: '🚀 <b>Boost a todos los sorteos</b>\n\nParticipas en <b>$n sorteos activos</b> con Boosts.\n¿Dónde quieres usar tus Boosts?',
+    en: "🚀 <b>Boost all giveaways</b>\n\nYou're in <b>$n active giveaways</b>\n\nWhere do you want to use your Boosts?",
+    es: '🚀 <b>Boost a todos los sorteos</b>\n\nParticipas en <b>$n sorteos activos</b>\n\n¿Dónde quieres usar tus Boosts?',
   },
   multi_btn_all: {
     en: '🎯 All $n giveaways',
