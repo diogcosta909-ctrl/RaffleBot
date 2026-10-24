@@ -571,8 +571,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 = usó Boost · $k de $total ganadores hicieron boost',
   },
   boost_choose: {
-    en: '🚀 Boost this giveaway\nEach boost = $step\n🎟 You have: $mult',
-    es: '🚀 Boost de este sorteo\nCada boost = $step\n🎟 Tienes: $mult',
+    en: '🚀 Boost this giveaway\n\nEach boost = $step\n🎟 You have: $mult',
+    es: '🚀 Boost de este sorteo\n\nCada boost = $step\n🎟 Tienes: $mult',
   },
   boost_applied: {
     en: '✅ Boost applied!\n🎟 You now have $mult',
@@ -595,8 +595,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🪙 <b>Pagar con USDT</b>\n\nElige la red desde la que vas a enviar:',
   },
   odds_line: {
-    en: '🎯 Your chance to win now: $pct',
-    es: '🎯 Tu probabilidad de ganar ahora: $pct',
+    en: '🎯 Chance to win now: $pct',
+    es: '🎯 Probabilidad de ganar ahora: $pct',
   },
   top_entries: {
     en: '+$n extra entries',

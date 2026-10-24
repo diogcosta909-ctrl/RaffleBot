@@ -208,7 +208,7 @@ export function boostBlock(language: string, extra: number) {
     extra > 0
       ? loc('boost_count', language).replace('$n', `${extra}`)
       : loc('boost_first', language)
-  return `${loc('boost_header', language)}\n${rate}${tag}\n${count}`
+  return `${rate}${tag}\n${count}`
 }
 
 /** Boost button row for the raffle message */
@@ -322,7 +322,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
       .replace('$used', `${res.used}`)
       .replace('$max', `${maxBoosts()}`)}${
       totals ? `\n${oddsLine(res.language, chanceOf(totals, res.value, base, BOOST_STEP))}` : ''
-    }\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}${
+    }\n\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}${
       credits === 0 && bestBonus()
         ? `\n${loc('recharge_cta', res.language)
             .replace('$pack', `${bestBonus().pack}`)
