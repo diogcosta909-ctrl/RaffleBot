@@ -322,13 +322,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
       .replace('$used', `${res.used}`)
       .replace('$max', `${maxBoosts()}`)}${
       totals ? `\n${oddsLine(res.language, chanceOf(totals, res.value, base, BOOST_STEP))}` : ''
-    }\n\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}${
-      credits === 0 && bestBonus()
-        ? `\n${loc('recharge_cta', res.language)
-            .replace('$pack', `${bestBonus().pack}`)
-            .replace('$bonus', `${bestBonus().bonus}`)}`
-        : ''
-    }`,
+    }\n\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}`,
     { reply_markup: { inline_keyboard: keyboard } }
   )
 }
