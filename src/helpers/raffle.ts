@@ -208,10 +208,20 @@ export function setupCallback(bot: Telegraf<ContextMessageUpdate>) {
       }
       return
     }
+    // Auto-Boost (credits): boosts the giveaway right away; its result is added to the pop-up
+    let autoNote = ''
+    try {
+      autoNote = await Promise.race([
+        require('./autoBoost').autoBoostOnJoin(raffle, ctx.from),
+        new Promise((resolve) => setTimeout(() => resolve(''), 3000)),
+      ])
+    } catch (err) {
+      console.error('Auto-Boost failed', err)
+    }
     // Reply that they are in
     try {
       await (<any>ctx).answerCbQuery(
-        loc('participated', chat.language),
+        `${loc('participated', chat.language)}${autoNote || ''}`,
         undefined,
         true
       )

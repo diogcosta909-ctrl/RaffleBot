@@ -34,6 +34,9 @@ export function bestBonus() {
 /** Pack marked as popular in RECHARGE (CREDIT_POPULAR, default 10; 0 = none) */
 export const CREDIT_POPULAR = parseInt(process.env.CREDIT_POPULAR || '10', 10)
 
+/** Days free credits (gifts, pack bonus) last; credits you buy never expire. 0 = free credits never expire */
+export const FREE_DAYS = Math.max(0, parseInt(process.env.CREDIT_FREE_DAYS || '7', 10) || 0)
+
 /** Current balance of a user (stored on their private chat) */
 export async function getCredits(userId: number) {
   const chat: any = await ChatModel.findOne({ chatId: userId }).select('credits')
@@ -54,13 +57,25 @@ export async function addCredits(
   n: number,
   tx: { type: string; method?: string; ref?: string; raffleId?: string; free?: number }
 ) {
-  const chat: any = await ChatModel.findOneAndUpdate(
-    { chatId: userId },
-    { $inc: { credits: n, freeCredits: tx.free && tx.free > 0 ? tx.free : 0 } },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
-  )
+  const freeN = tx.free && tx.free > 0 ? tx.free : 0
+  const update: any = { $inc: { credits: n, freeCredits: freeN } }
+  // Remember when the free credits arrived so they can expire
+  if (freeN > 0) update.$push = { freeLots: { n: freeN, at: new Date(), warned: false } }
+  const chat: any = await ChatModel.findOneAndUpdate({ chatId: userId }, update, {
+    new: true,
+    upsert: true,
+    setDefaultsOnInsert: true,
+  })
   const balance = chat.credits || 0
   await log(userId, n, balance, tx)
+  // Auto-Boost: a recharge resumes it (and gives the one-time gift if it was offered)
+  if (n > 0 && (tx.type === 'topup' || tx.type === 'code') && chat.autoBoost > 0) {
+    try {
+      require('./autoBoost').afterCredit(userId, tx.type)
+    } catch (err) {
+      console.error('Auto-Boost resume failed', err)
+    }
+  }
   return balance
 }
 

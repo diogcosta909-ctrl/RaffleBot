@@ -5,6 +5,7 @@ import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { CreditTxModel } from '../models/creditTx'
 import { WinCountModel } from '../models/winCount'
+import { DrawStatModel } from '../models/drawStat'
 import { findChat, ChatModel } from '../models/chat'
 import { checkIfAdmin } from './checkAdmin'
 
@@ -63,6 +64,20 @@ export async function recordRaffleWins(raffle: any, previousFirst = 0) {
       await WinCountModel.updateOne({ chatId: raffle.chatId, userId }, { $inc: { wins: 1 } }, { upsert: true })
     }
     await ChatModel.updateOne({ chatId: raffle.chatId }, { $inc: { giveawaysDone: 1 } }, { upsert: true })
+    // Remember whether the winner used Boost (real data for the "winners with Boost" line)
+    if (raffle.boostEnabled && userId) {
+      const full: any = await RaffleModel.findById(raffle._id).select('participantsIds boostIds')
+      if (full) {
+        const boosted = new Set<number>(full.boostIds || [])
+        await DrawStatModel.create({
+          chatId: raffle.chatId,
+          at: new Date(),
+          winnerBoosted: boosted.has(userId),
+          participants: (full.participantsIds || []).length,
+          boostedParticipants: boosted.size,
+        })
+      }
+    }
   } catch (err) {
     console.error('Wins not recorded', err)
   }

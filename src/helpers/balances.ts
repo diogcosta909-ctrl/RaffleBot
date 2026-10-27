@@ -14,11 +14,12 @@ interface Row {
   codes: number // free credits from codes
   manual: number // given or corrected by the owner (/addcredits) and refunds
   spent: number
+  expired: number // free credits that expired
   left: number // free credits still in the balance
   inferred: number // free credits left, worked out from history (gifts are spent first)
 }
 
-const empty = (): Row => ({ balance: 0, bought: 0, bonus: 0, codes: 0, manual: 0, spent: 0, left: 0, inferred: 0 })
+const empty = (): Row => ({ balance: 0, bought: 0, bonus: 0, codes: 0, manual: 0, spent: 0, expired: 0, left: 0, inferred: 0 })
 
 /** Free credits inside a topup row: saved with the row, or worked out from the pack size for older rows */
 function bonusOfTopup(delta: number, saved: number | undefined) {
@@ -62,6 +63,8 @@ async function collect(userId?: number) {
       r.codes += delta * n
     } else if (type === 'spend') {
       r.spent += -delta * n
+    } else if (type === 'expire') {
+      r.expired += -delta * n
     } else {
       r.manual += delta * n
     }
@@ -73,7 +76,7 @@ async function collect(userId?: number) {
     const r = get(c.chatId)
     r.balance = c.credits || 0
     r.left = Math.min(c.freeCredits || 0, r.balance)
-    r.inferred = Math.max(0, Math.min(r.balance, r.bonus + r.codes - r.spent))
+    r.inferred = Math.max(0, Math.min(r.balance, r.bonus + r.codes - r.spent - r.expired))
   }
   return rows
 }

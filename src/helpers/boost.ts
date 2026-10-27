@@ -80,7 +80,7 @@ export function stepOf(raffle?: any) {
 
 /** "+3 entries" for a pack of n boosts */
 /** "1 credit" / "5 credits" */
-function creditsLabel(n: number, language = 'en') {
+export function creditsLabel(n: number, language = 'en') {
   return `${n} ${loc(n === 1 ? 'credit_one' : 'credit_many', language)}`
 }
 
@@ -96,7 +96,7 @@ function packLabel(n: number, language = 'en') {
   return bonus ? `${creditsLabel(n, language)} +${bonus} ${loc('free_word', language)}` : creditsLabel(n, language)
 }
 
-function pctLabel(n: number, language = 'en', step = BOOST_STEP) {
+export function pctLabel(n: number, language = 'en', step = BOOST_STEP) {
   return `+${entriesLabel(step * n, language)}`
 }
 
@@ -106,7 +106,7 @@ export function entryValueOf(raffle: { entryValue?: number }) {
 }
 
 /** Total entries with n boosts, e.g. "4 entries" */
-function multLabel(value: number, language = 'en', base = 1) {
+export function multLabel(value: number, language = 'en', base = 1) {
   return entriesLabel(base + BOOST_STEP * value, language)
 }
 
@@ -226,7 +226,7 @@ export function boostButton(raffle: Raffle & { id?: string }, language: string) 
 }
 
 /** Checks that the raffle is open, boostable and the user can still boost */
-async function validateBoost(raffleId: string, userId: number, amount = 1) {
+export async function validateBoost(raffleId: string, userId: number, amount = 1) {
   let raffle
   try {
     raffle = await RaffleModel.findById(raffleId).select('-participantsIds')
@@ -312,6 +312,17 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
     return row
   })
   keyboard.push([{ text: loc('recharge_button', res.language), callback_data: `r~${raffleId}` }])
+  let autoLine = ''
+  let proofLine = ''
+  try {
+    const ab = require('./autoBoost')
+    const status = await ab.autoBoostStatus(ctx.from.id)
+    autoLine = `\n${status.line}`
+    keyboard.push([{ text: status.button, callback_data: 'ab~m' }])
+    proofLine = await require('./proof').winnersBoostLine()
+  } catch (err) {
+    console.error(err)
+  }
   return ctx.reply(
     `${multiplierNote(res.raffle, res.language)}${
       multiplierNote(res.raffle, res.language) ? '\n' : ''
@@ -322,7 +333,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
       .replace('$used', `${res.used}`)
       .replace('$max', `${maxBoosts()}`)}${
       totals ? `\n${oddsLine(res.language, chanceOf(totals, res.value, base, BOOST_STEP))}` : ''
-    }\n\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}`,
+    }${proofLine ? `\n${proofLine}` : ''}\n\n${loc('boost_credits_line', res.language).replace('$n', `${credits}`)}${autoLine}`,
     { reply_markup: { inline_keyboard: keyboard } }
   )
 }
@@ -361,7 +372,7 @@ async function sendBoostInvoice(
 }
 
 /** "🎯 Your chance: 0.4% → 1.6%" after a purchase (empty if it can't be computed) */
-async function chanceAfterBuy(raffle: any, value: number, n: number, language: string, mult: number) {
+export async function chanceAfterBuy(raffle: any, value: number, n: number, language: string, mult: number) {
   try {
     const base = entryValueOf(raffle)
     const totals = await raffleTotals(raffle._id, base, BOOST_STEP)
@@ -494,13 +505,14 @@ export async function notifyBoostWin(
 }
 
 /** Private notification to the bot owner (ADMIN) for every paid boost */
-async function notifyOwner(
+export async function notifyOwner(
   ctx: any,
   info: {
     crypto?: string
     network?: string
     credits?: boolean
     gift?: boolean
+    auto?: boolean
     userId: number
     stars: number
     n: number
@@ -545,7 +557,7 @@ async function notifyOwner(
             `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
             `${
               info.credits
-                ? `${info.gift ? '🎁' : '💰'} ${creditsLabel(info.n, 'es')}${info.gift ? ' (gift)' : ''}`
+                ? `${info.gift ? '🎁' : '💰'} ${creditsLabel(info.n, 'es')}${info.gift ? ' (gift)' : ''}${info.auto ? ' · 🔁 Auto-Boost' : ''}`
                 : info.crypto
                 ? `🪙 ${info.crypto} USDT (${networkShort(info.network || 'bsc')})`
                 : `⭐ ${info.stars} Stars`
@@ -568,7 +580,7 @@ async function notifyOwner(
         const mult = info.boostMult || multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-          `${info.credits ? (info.gift ? '🎁 Gift credits' : '💰 Credits') : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>` +
+          `${info.credits ? (info.gift ? '🎁 Gift credits' : '💰 Credits') : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>${info.auto ? ' · 🔁 Auto-Boost' : ''}` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
@@ -1368,7 +1380,7 @@ const escHtmlName = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;'
  * After a boost: tells the people who had boosted as much as the buyer (or more) and are now behind.
  * Only people who boosted before; at most 3 per boost and one alert per person and giveaway per hour.
  */
-async function overtakeAlerts(
+export async function overtakeAlerts(
   telegram: any,
   raffle: any,
   booster: { id: number; username?: string; first_name?: string; last_name?: string },
@@ -1614,6 +1626,12 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `\n💰 Créditos: ${mBy('credits').buys} · ⭐ Stars: ${mBy('stars').buys} · 🪙 USDT: ${mBy('usdt').buys}\n` +
       `↩️ Devueltos como créditos: ${mSum('returned')}\n` +
       `📈 Conversión abrir → comprar: <b>${pct(multiBuyers, multiOpen)}</b>\n\n`
+    let autoText = ''
+    try {
+      autoText = await require('./autoBoost').autoBoostText()
+    } catch {
+      autoText = ''
+    }
     const text =
       `⭐ <b>Stars</b>\n\n` +
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
@@ -1624,6 +1642,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `\n` +
       funnelText +
       multiText +
+      autoText +
       `<b>Últimos pagos</b>\n` +
       (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
     return ctx.replyWithHTML(text, { disable_web_page_preview: true })

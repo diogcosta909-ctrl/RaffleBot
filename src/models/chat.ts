@@ -43,6 +43,35 @@ export class Chat extends Typegoose {
   // Part of the credits balance that came free (gift codes, pack bonus); spent first
   @prop({ default: 0 })
   freeCredits?: number
+  // Free credits by grant date, so they can expire ({ n, at, warned })
+  @arrayProp({ default: [], items: Object })
+  freeLots?: any[]
+  // Auto-Boost (private chats): Boosts added automatically to every giveaway the person joins (0 = off)
+  @prop({ default: 0 })
+  autoBoost?: number
+  // Daily limit of credits Auto-Boost may spend
+  @prop({ default: 10 })
+  autoBoostLimit?: number
+  // Day (Andorra time) of the counter below and credits spent that day by Auto-Boost
+  @prop()
+  autoBoostDay?: string
+  @prop({ default: 0 })
+  autoBoostSpent?: number
+  // Giveaways joined in a row without credits (3 turns Auto-Boost off)
+  @prop({ default: 0 })
+  autoBoostMissed?: number
+  // Set when Auto-Boost paused for lack of credits (the "paused" notice is sent once)
+  @prop()
+  autoBoostPausedAt?: Date
+  // Day the "daily limit reached" notice was sent
+  @prop()
+  autoBoostLimitDay?: string
+  // One-time recharge gift offered to a paused person (+1 free credit on their next recharge)
+  @prop({ default: false })
+  autoBoostGift?: boolean
+  // Credits spent by Auto-Boost in total
+  @prop({ default: 0 })
+  autoBoostTotal?: number
   // Telegram @username in lowercase (saved when the person writes to the bot)
   @prop({ index: true })
   username?: string

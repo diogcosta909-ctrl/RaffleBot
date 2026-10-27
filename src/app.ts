@@ -30,6 +30,7 @@ import { setupStatus } from './helpers/status'
 import { setupWinners } from './helpers/winners'
 import { setupOwnerReport, alertOwner } from './helpers/ownerReport'
 import { setupBalances } from './helpers/balances'
+import { setupAutoBoost } from './helpers/autoBoost'
 import { setupPostButton } from './helpers/postButton'
 import { setupUserLookup } from './helpers/userLookup'
 import { setupCleanup } from './helpers/cleanup'
@@ -43,7 +44,7 @@ const bot: Telegraf<ContextMessageUpdate> = new telegraf(process.env.TOKEN, {
   channelMode: true,
 })
 bot.startPolling()
-console.log('Bot is up and running · build boostall-3 · ' + (require('./helpers/locale').localizations.multi_pick_one ? 'locale OK' : 'locale OLD'))
+console.log('Bot is up and running · build autoboost-1 · ' + (require('./helpers/locale').localizations.multi_pick_one ? 'locale OK' : 'locale OLD'))
 
 // Remember @usernames (must run before the other handlers)
 setupUserLookup(bot)
@@ -65,6 +66,7 @@ setupWinners(bot)
 setupTestWin(bot)
 setupOwnerReport(bot)
 setupBalances(bot)
+setupAutoBoost(bot)
 setupPostButton(bot)
 setupCleanup()
 
