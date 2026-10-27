@@ -73,9 +73,11 @@ export function formatUnits(units: number) {
   return (units / 10000).toFixed(4)
 }
 
-/** Short price label for the pack button, e.g. "0.10" */
+/** Price label for the pack button: keeps the decimals that matter, at least 2 ("0.10", "0.075") */
 export function cryptoPriceLabel(n: number) {
-  return (unitsFor(n) / 10000).toFixed(2)
+  const text = (unitsFor(n) / 10000).toFixed(4).replace(/0+$/, '')
+  const decimals = text.split('.')[1] || ''
+  return decimals.length >= 2 ? text : (unitsFor(n) / 10000).toFixed(2)
 }
 
 function post(url: string, body: string): Promise<any> {
