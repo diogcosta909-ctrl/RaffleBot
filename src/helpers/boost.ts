@@ -948,14 +948,12 @@ function pad(s: string, w: number) {
 }
 
 /** Pack buttons (3 per row) to choose a pack; with USDT on they ask how to pay next */
-function packNumberKeyboard(raffleId: string) {
+function packNumberKeyboard(raffleId: string, lang: string) {
   const crypto = cryptoEnabled()
-  const last = CREDIT_PACKS[CREDIT_PACKS.length - 1]
   const buttons = CREDIT_PACKS.map((n) => {
     const bonus = bonusFor(n)
-    const tag = n === CREDIT_POPULAR ? '🔥 ' : n === last && CREDIT_PACKS.length > 2 ? '💎 ' : ''
     return {
-      text: `${tag}${n}${bonus ? ` +${bonus}` : ''}`,
+      text: `${n}${bonus ? ` +${bonus}` : ''} ${loc(n === 1 && !bonus ? 'credit_one' : 'credit_many', lang)}`,
       callback_data: crypto ? `ap~${n}~${raffleId}` : `ts~${n}~${raffleId}`,
     }
   })
@@ -982,9 +980,8 @@ async function showScreen(ctx: ContextMessageUpdate, text: string, keyboard: any
 /** Buttons with the packs of one payment method: 's' = Stars, 'c' = USDT (one pack per row) */
 function packKeyboard(method: 's' | 'c', lang: string, raffleId: string, withBack: boolean) {
   const keyboard: any[] = CREDIT_PACKS.map((n) => {
-    const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
     const price = method === 's' ? `${n * BOOST_PRICE} ⭐` : `${cryptoPriceLabel(n)} USDT`
-    return [{ text: `${hot}${packText(n, lang)} · ${price}`, callback_data: `t${method}~${n}~${raffleId}` }]
+    return [{ text: `${packText(n, lang)} · ${price}`, callback_data: `t${method}~${n}~${raffleId}` }]
   })
   if (withBack) keyboard.push([{ text: loc('back_btn', lang), callback_data: `rb~${raffleId}` }])
   return keyboard
@@ -1005,7 +1002,7 @@ async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = 
       .replace('$packs', packList(lang))
       .replace('$n', `${credits}`)
       .replace('$choose', loc('choose_pack', lang))
-    const keyboard: any[] = packNumberKeyboard(raffleId)
+    const keyboard: any[] = packNumberKeyboard(raffleId, lang)
     if (raffleId !== '0') {
       keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
     }
