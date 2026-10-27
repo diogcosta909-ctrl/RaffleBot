@@ -39,22 +39,19 @@ const giveawayWord = (n: number) => (n === 1 ? 'giveaway' : 'giveaways')
 const creditWord = (n: number) => (n === 1 ? 'credit' : 'credits')
 const dayOf = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ })
 
-/** Buttons to recharge in one tap: the popular pack with Stars and USDT side by side */
+/** All the packs, one per row with both prices; tapping one asks how to pay (Stars or USDT) */
 function packButtons() {
-  const n = CREDIT_PACKS.indexOf(CREDIT_POPULAR) >= 0 ? CREDIT_POPULAR : CREDIT_PACKS[0]
-  const rows: any[] = []
-  if (n) {
+  const crypto = cryptoEnabled()
+  return CREDIT_PACKS.map((n) => {
     const bonus = bonusFor(n)
-    const row: any[] = [
+    const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
+    return [
       {
-        text: `⭐ ${n}${bonus ? `+${bonus}` : ''} credits`,
-        callback_data: `ts~${n}~0`,
+        text: `${hot}${n}${bonus ? `+${bonus}` : ''} credits · ${n * BOOST_PRICE}⭐${crypto ? ` · ${cryptoPriceLabel(n)} USDT` : ''}`,
+        callback_data: crypto ? `ap~${n}` : `ts~${n}~0`,
       },
     ]
-    if (cryptoEnabled()) row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `tc~${n}~0` })
-    rows.push(row)
-  }
-  return rows
+  })
 }
 
 async function giveawayInfo(raffle: any) {
@@ -165,7 +162,6 @@ async function setBoosts(ctx: any, n: number) {
   const keyboard: any[] = []
   if (credits <= 0) {
     packButtons().forEach((r) => keyboard.push(r))
-    keyboard.push([{ text: 'Recharge Credits', callback_data: 'r~0' }])
   }
   keyboard.push([
     { text: '🚀 Change Boosts', callback_data: 'ab~m' },
@@ -381,7 +377,6 @@ async function sweep() {
     for (const c of list) {
       await ChatModel.updateOne({ chatId: c.chatId }, { $set: { autoBoostGift: true } })
       const keyboard: any[] = packButtons()
-      keyboard.push([{ text: 'Recharge Credits', callback_data: 'r~0' }])
       await send(
         c.chatId,
         `🎁 <b>A little gift for you</b>\n\nRecharge today and get <b>+1 extra credit</b> free.\nYour Auto-Boost will resume right away.`,
@@ -455,6 +450,24 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
     await answer(ctx)
     try {
       await setBoosts(ctx, parseInt((ctx as any).match[1], 10))
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // A pack was chosen: now ask how to pay
+  bot.action(/^ap~(\d+)$/, async (ctx) => {
+    await answer(ctx)
+    const n = parseInt((ctx as any).match[1], 10)
+    if (CREDIT_PACKS.indexOf(n) < 0) return
+    try {
+      const bonus = bonusFor(n)
+      const row: any[] = [{ text: `⭐ ${n * BOOST_PRICE} Stars`, callback_data: `ts~${n}~0` }]
+      if (cryptoEnabled()) row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `tc~${n}~0` })
+      await ctx.reply(
+        `💳 <b>${n}${bonus ? `+${bonus}` : ''} credits</b>\n\nHow do you want to pay?`,
+        { parse_mode: 'HTML', reply_markup: { inline_keyboard: [row] } } as any
+      )
     } catch (err) {
       console.error(err)
     }
