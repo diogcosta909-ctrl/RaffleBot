@@ -15,6 +15,7 @@ import {
   overtakeAlerts,
   multLabel,
   pctLabel,
+  packText,
   multiplierOf,
   maxBoosts,
   entryValueOf,
@@ -39,19 +40,9 @@ const giveawayWord = (n: number) => (n === 1 ? 'giveaway' : 'giveaways')
 const creditWord = (n: number) => (n === 1 ? 'credit' : 'credits')
 const dayOf = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ })
 
-/** All the packs, one per row with both prices; tapping one asks how to pay (Stars or USDT) */
+/** One button to the recharge screen (numbered packs with both prices) */
 function packButtons() {
-  const crypto = cryptoEnabled()
-  return CREDIT_PACKS.map((n) => {
-    const bonus = bonusFor(n)
-    const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
-    return [
-      {
-        text: `${hot}${n}${bonus ? `+${bonus}` : ''} credits · ${n * BOOST_PRICE}⭐${crypto ? ` · ${cryptoPriceLabel(n)} USDT` : ''}`,
-        callback_data: crypto ? `ap~${n}` : `ts~${n}~0`,
-      },
-    ]
-  })
+  return [[{ text: '💳 Buy credits', callback_data: 'r~0' }]]
 }
 
 async function giveawayInfo(raffle: any) {
@@ -456,17 +447,21 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
   })
 
   // A pack was chosen: now ask how to pay
-  bot.action(/^ap~(\d+)$/, async (ctx) => {
+  bot.action(/^ap~(\d+)~([a-f0-9]{24}|0)$/, async (ctx) => {
     await answer(ctx)
     const n = parseInt((ctx as any).match[1], 10)
+    const raffleId = (ctx as any).match[2]
     if (CREDIT_PACKS.indexOf(n) < 0) return
     try {
-      const bonus = bonusFor(n)
-      const row: any[] = [{ text: `⭐ ${n * BOOST_PRICE} Stars`, callback_data: `ts~${n}~0` }]
-      if (cryptoEnabled()) row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `tc~${n}~0` })
-      await ctx.reply(
-        `💳 <b>${n}${bonus ? `+${bonus}` : ''} credits</b>\n\nHow do you want to pay?`,
-        { parse_mode: 'HTML', reply_markup: { inline_keyboard: [row] } } as any
+      const chat: any = await findChat(ctx.from.id)
+      const row: any[] = [{ text: `⭐ ${n * BOOST_PRICE} Stars`, callback_data: `ts~${n}~${raffleId}` }]
+      if (cryptoEnabled()) row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `tc~${n}~${raffleId}` })
+      await ctx.editMessageText(
+        `💳 <b>${packText(n, chat.language)}</b>\n\nHow do you want to pay? 👇`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [row, [{ text: loc('back_btn', chat.language), callback_data: `r~${raffleId}` }]] },
+        } as any
       )
     } catch (err) {
       console.error(err)

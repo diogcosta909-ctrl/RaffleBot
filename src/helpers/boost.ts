@@ -917,19 +917,34 @@ function bestBonusNote(lang: string) {
 }
 
 /** "5 credits" or "10 +1 free" (pack with its free bonus) */
-function packText(n: number, lang: string) {
+export function packText(n: number, lang: string) {
   const bonus = bonusFor(n)
   return bonus ? `${n} +${bonus} ${loc('free_word', lang)}` : creditsLabel(n, lang)
 }
 
-/** Packs as a list with both prices, shown in the recharge text */
+const NUMBER_EMOJI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+
+/** Packs as a numbered list with both prices, shown in the recharge text ("1️⃣ 5 credits · 5⭐ or 0.075 USDT") */
 function packList(lang: string) {
-  const lines = CREDIT_PACKS.map((n) => {
-    const hot = n === CREDIT_POPULAR ? '🔥 ' : ''
+  const last = CREDIT_PACKS[CREDIT_PACKS.length - 1]
+  const lines = CREDIT_PACKS.map((n, i) => {
+    const tag = n === CREDIT_POPULAR ? '🔥 ' : n === last && CREDIT_PACKS.length > 2 ? '💎 ' : ''
     const usdt = cryptoEnabled() ? ` ${loc('or_word', lang)} ${cryptoPriceLabel(n)} USDT` : ''
-    return `• ${hot}<b>${packText(n, lang)}</b> — ${n * BOOST_PRICE} ⭐${usdt}`
+    return `${NUMBER_EMOJI[i] || `${i + 1}.`} ${tag}<b>${packText(n, lang)}</b> · ${n * BOOST_PRICE}⭐${usdt}`
   })
   return `${loc('packs_header', lang)}\n${lines.join('\n')}`
+}
+
+/** Numbered buttons (3 per row) to choose a pack; with USDT on they ask how to pay next */
+function packNumberKeyboard(raffleId: string) {
+  const crypto = cryptoEnabled()
+  const buttons = CREDIT_PACKS.map((n, i) => ({
+    text: `${i + 1}`,
+    callback_data: crypto ? `ap~${n}~${raffleId}` : `ts~${n}~${raffleId}`,
+  }))
+  const rows: any[] = []
+  for (let i = 0; i < buttons.length; i += 3) rows.push(buttons.slice(i, i + 3))
+  return rows
 }
 
 /** Edits the message the button was pressed on (sends a new one if it cannot be edited) */
@@ -973,13 +988,8 @@ async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = 
       .replace('$bonus', bestBonusNote(lang))
       .replace('$packs', packList(lang))
       .replace('$n', `${credits}`)
-      .replace('$choose', loc(both ? 'pay_how' : 'choose_pack', lang))
-    const keyboard: any[] = both
-      ? [
-          [{ text: loc('pay_stars', lang), callback_data: `rm~s~${raffleId}` }],
-          [{ text: loc('pay_usdt', lang), callback_data: `rm~c~${raffleId}` }],
-        ]
-      : packKeyboard('s', lang, raffleId, false)
+      .replace('$choose', loc('choose_pack', lang))
+    const keyboard: any[] = packNumberKeyboard(raffleId)
     if (raffleId !== '0') {
       keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
     }
