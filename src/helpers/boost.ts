@@ -6,7 +6,7 @@ import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { MultiBoostModel } from '../models/multiBoost'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, bestBonus, getCredits, addCredits, spendCreditsSplit } from './credits'
+import { CREDIT_PACKS, bonusFor, bestBonus, getCredits, addCredits, spendCreditsSplit } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -926,12 +926,10 @@ const NUMBER_EMOJI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6�
 
 /** Packs as a monospace table (Boosts | Stars | USDT), shown in the recharge text */
 function packList(lang: string) {
-  const last = CREDIT_PACKS[CREDIT_PACKS.length - 1]
   const crypto = cryptoEnabled()
   const rows = CREDIT_PACKS.map((n) => {
     const bonus = bonusFor(n)
-    const tag = n === CREDIT_POPULAR ? ' 🔥' : n === last && CREDIT_PACKS.length > 2 ? ' 💎' : ''
-    return [`${n}${bonus ? ` +${bonus}` : ''}${tag}`, `${n * BOOST_PRICE}⭐`, crypto ? cryptoPriceLabel(n) : '']
+    return [`${n}${bonus ? ` +${bonus}` : ''}`, `${n * BOOST_PRICE}⭐`, crypto ? cryptoPriceLabel(n) : '']
   })
   const head = ['Boosts', 'Stars', crypto ? 'USDT' : '']
   const all = [head].concat(rows)
