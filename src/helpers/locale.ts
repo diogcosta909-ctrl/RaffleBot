@@ -631,8 +631,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'Boosts',
   },
   recharge_text: {
-    en: '💳 <b>Buy Boosts</b>\n\n✅ Each Boost = $pct\n✅ Boosts you buy never expire\n✅ Free bonus Boosts last 7 days\n✅ One tap to boost, no payment each time$bonus\n\n$packs\n\n🪙 Your Boosts: <b>$n</b>\n\n$choose',
-    es: '💳 <b>Compra Boosts</b>\n\n✅ Cada Boost = $pct\n✅ Los Boosts que compras no caducan\n✅ Los Boosts gratis duran 7 días\n✅ Un toque para hacer boost, sin pagar cada vez$bonus\n\n$packs\n\n🪙 Tus Boosts: <b>$n</b>\n\n$choose',
+    en: '💳 <b>Buy Boosts</b>\nEach Boost = $pct · they never expire\n\n$packs\n\n💰 Your Boosts: <b>$n</b>\n\n$choose',
+    es: '💳 <b>Compra Boosts</b>\nCada Boost = $pct · no caducan\n\n$packs\n\n💰 Tus Boosts: <b>$n</b>\n\n$choose',
   },
   topup_invoice_title: {
     en: '$n Boosts',

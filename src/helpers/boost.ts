@@ -924,24 +924,41 @@ export function packText(n: number, lang: string) {
 
 const NUMBER_EMOJI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
 
-/** Packs as a numbered list with both prices, shown in the recharge text ("1️⃣ 5 credits · 5⭐ or 0.075 USDT") */
+/** Packs as a monospace table (Boosts | Stars | USDT), shown in the recharge text */
 function packList(lang: string) {
   const last = CREDIT_PACKS[CREDIT_PACKS.length - 1]
-  const lines = CREDIT_PACKS.map((n, i) => {
-    const tag = n === CREDIT_POPULAR ? '🔥 ' : n === last && CREDIT_PACKS.length > 2 ? '💎 ' : ''
-    const usdt = cryptoEnabled() ? ` ${loc('or_word', lang)} ${cryptoPriceLabel(n)} USDT` : ''
-    return `${NUMBER_EMOJI[i] || `${i + 1}.`} ${tag}<b>${packText(n, lang)}</b> · ${n * BOOST_PRICE}⭐${usdt}`
+  const crypto = cryptoEnabled()
+  const rows = CREDIT_PACKS.map((n) => {
+    const bonus = bonusFor(n)
+    const tag = n === CREDIT_POPULAR ? ' 🔥' : n === last && CREDIT_PACKS.length > 2 ? ' 💎' : ''
+    return [`${n}${bonus ? ` +${bonus}` : ''}${tag}`, `${n * BOOST_PRICE}⭐`, crypto ? cryptoPriceLabel(n) : '']
   })
-  return `${loc('packs_header', lang)}\n${lines.join('\n')}`
+  const head = ['Boosts', 'Stars', crypto ? 'USDT' : '']
+  const all = [head].concat(rows)
+  const w0 = Math.max(...all.map((r) => r[0].length)) + 3
+  const w1 = Math.max(...all.map((r) => r[1].length)) + 3
+  const lines = all.map((r) => `${pad(r[0], w0)}${crypto ? pad(r[1], w1) + r[2] : r[1]}`)
+  return `<pre>${lines.join('\n')}</pre>`
 }
 
-/** Numbered buttons (3 per row) to choose a pack; with USDT on they ask how to pay next */
+function pad(s: string, w: number) {
+  let out = s
+  while (out.length < w) out += ' '
+  return out
+}
+
+/** Pack buttons (3 per row) to choose a pack; with USDT on they ask how to pay next */
 function packNumberKeyboard(raffleId: string) {
   const crypto = cryptoEnabled()
-  const buttons = CREDIT_PACKS.map((n, i) => ({
-    text: `${i + 1}`,
-    callback_data: crypto ? `ap~${n}~${raffleId}` : `ts~${n}~${raffleId}`,
-  }))
+  const last = CREDIT_PACKS[CREDIT_PACKS.length - 1]
+  const buttons = CREDIT_PACKS.map((n) => {
+    const bonus = bonusFor(n)
+    const tag = n === CREDIT_POPULAR ? '🔥 ' : n === last && CREDIT_PACKS.length > 2 ? '💎 ' : ''
+    return {
+      text: `${tag}${n}${bonus ? ` +${bonus}` : ''}`,
+      callback_data: crypto ? `ap~${n}~${raffleId}` : `ts~${n}~${raffleId}`,
+    }
+  })
   const rows: any[] = []
   for (let i = 0; i < buttons.length; i += 3) rows.push(buttons.slice(i, i + 3))
   return rows
@@ -985,7 +1002,6 @@ async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = 
     const both = cryptoEnabled()
     const text = loc('recharge_text', lang)
       .replace('$pct', pctLabel(1, lang))
-      .replace('$bonus', bestBonusNote(lang))
       .replace('$packs', packList(lang))
       .replace('$n', `${credits}`)
       .replace('$choose', loc('choose_pack', lang))
