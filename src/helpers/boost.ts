@@ -470,7 +470,7 @@ export async function notifyBoostWin(
       : `<a href="tg://user?id=${winner.id}">${escHtml(winner.name)}</a>`
     const text =
       `🏆 <b>${who} won a giveaway with a Boost!</b>\n` +
-      `${info.credits ? '💰 Paid with credits' : info.crypto ? '🪙 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
+      `${info.credits ? '💰 Paid with Boosts' : info.crypto ? '🪙 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
       (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
     let sent = false
     try {
@@ -580,7 +580,7 @@ export async function notifyOwner(
         const mult = info.boostMult || multiplierOf()
         const text =
           `🚀 <b>${who} bought a Boost</b>\n` +
-          `${info.credits ? (info.gift ? '🎁 Gift credits' : '💰 Credits') : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>${info.auto ? ' · 🔁 Auto-Boost' : ''}` +
+          `${info.credits ? (info.gift ? '🎁 Gift Boosts' : '💰 Boost balance') : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>${info.auto ? ' · 🔁 Auto-Boost' : ''}` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
@@ -701,7 +701,7 @@ async function notifyTopup(
     try {
       const name = u.username ? `@${u.username}` : `${u.first_name || u.id}${u.last_name ? ` ${u.last_name}` : ''}`
       const who = u.username ? escHtml(name) : `<a href="tg://user?id=${u.id}">${escHtml(name)}</a>`
-      const text = `💳 <b>${who} recharged credits</b>\n${pack ? pack.label : paid} · ${creditsLabel(n, 'en')}`
+      const text = `💳 <b>${who} bought Boosts</b>\n${pack ? pack.label : paid} · ${creditsLabel(n, 'en')}`
       let sent = false
       try {
         const credits = pack ? pack.credits : n
@@ -916,10 +916,10 @@ function bestBonusNote(lang: string) {
     .replace('$total', `${b.pack + b.bonus}`)
 }
 
-/** "5 credits" or "10 +1 free" (pack with its free bonus) */
+/** "5 Boosts" or "10 +1 free Boosts" (pack with its free bonus) */
 export function packText(n: number, lang: string) {
   const bonus = bonusFor(n)
-  return bonus ? `${n} +${bonus} ${loc('free_word', lang)}` : creditsLabel(n, lang)
+  return bonus ? `${n} +${bonus} ${loc('free_word', lang)} ${loc('credit_many', lang)}` : creditsLabel(n, lang)
 }
 
 const NUMBER_EMOJI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
@@ -1009,7 +1009,7 @@ function giveawayWord(k: number, lang: string) {
   return lang === 'es' ? (k === 1 ? 'sorteo' : 'sorteos') : k === 1 ? 'giveaway' : 'giveaways'
 }
 function creditWord(n: number, lang: string) {
-  return lang === 'es' ? (n === 1 ? 'crédito' : 'créditos') : n === 1 ? 'credit' : 'credits'
+  return n === 1 ? 'Boost' : 'Boosts'
 }
 
 /** Open giveaways (with Boosts on) where the user takes part and can still boost */

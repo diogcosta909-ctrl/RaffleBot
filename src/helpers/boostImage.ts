@@ -446,7 +446,7 @@ async function renderWinImage(info: {
   const cr = !!info.crypto || cc
   const logo = cr && !cc ? await usdtLogo() : null
   const P = cc
-    ? { bg0: '#12245a', bg1: '#050914', ray: 'rgba(169,196,255,0.07)', halo: '#4f7cff', conf: ['#4f7cff', '#ffffff', '#a9c4ff', '#ffd54a', '#3556d8'], rd: '#2c46b0', rb0: '#d6e2ff', rb1: '#4f7cff', rt: '#0a1640', pill: '#4f7cff', label: 'CREDITS BOOST' }
+    ? { bg0: '#12245a', bg1: '#050914', ray: 'rgba(169,196,255,0.07)', halo: '#4f7cff', conf: ['#4f7cff', '#ffffff', '#a9c4ff', '#ffd54a', '#3556d8'], rd: '#2c46b0', rb0: '#d6e2ff', rb1: '#4f7cff', rt: '#0a1640', pill: '#4f7cff', label: 'BOOST BALANCE' }
     : { bg0: '#0f4a38', bg1: '#05100c', ray: 'rgba(127,224,191,0.07)', halo: '#26a17b', conf: ['#26a17b', '#ffffff', '#7fe0bf', '#ffd54a', '#1d7f61'], rd: '#1d7f61', rb0: '#b6f5df', rb1: '#26a17b', rt: '#04251b', pill: '#26a17b', label: 'USDT BOOST' }
   const S = 2
   const canvas = createCanvas(372 * S, 300 * S)
@@ -711,7 +711,7 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     }
     text(name, 186, 36, ctx.font, '#ffffff', 'center')
   }
-  text(`${gift ? `used a gift for a ${t.title.toLowerCase()}` : `bought a ${t.title.toLowerCase()} with ${credits ? 'credits' : 'USDT'}`}`, 186, 54, '700 12px InterB', L, 'center', '1px')
+  text(`${gift ? `used a gift for a ${t.title.toLowerCase()}` : `bought a ${t.title.toLowerCase()} with ${credits ? 'Boosts' : 'USDT'}`}`, 186, 54, '700 12px InterB', L, 'center', '1px')
 
   for (const [x, y, r] of pyramid(n, 186, 126, 260, 108)) {
     if (credits) {
@@ -744,7 +744,7 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
   ctx.font = '800 54px InterX'
   const ew = ctx.measureText(entText).width
   text('ENTRIES NOW', 80 + ew, 238, '800 13px InterX', L, 'left', '2px')
-  text(gift ? `${n} gift ${n === 1 ? 'credit' : 'credits'}` : credits ? `paid with ${n} ${n === 1 ? 'credit' : 'credits'}` : info.usdt ? `for ${info.usdt} USDT` : 'paid in USDT', 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
+  text(gift ? `${n} gift ${n === 1 ? 'Boost' : 'Boosts'}` : credits ? `paid with ${n} ${n === 1 ? 'Boost' : 'Boosts'}` : info.usdt ? `for ${info.usdt} USDT` : 'paid in USDT', 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
 
   if (info.mult && info.mult > 1) {
     const label = `x${+info.mult.toFixed(2)} TODAY`
@@ -763,7 +763,7 @@ async function renderCryptoImage(info: { name: string; entries: number; mult?: n
     gr.addColorStop(1, '#ffb300')
     ctx.fillStyle = gr
     ctx.fillRect(0, 278, 372, 22)
-    text('GIFT CREDITS', 186, 293, '800 12px InterX', '#2a1800', 'center', '3px')
+    text('GIFT BOOSTS', 186, 293, '800 12px InterX', '#2a1800', 'center', '3px')
     for (const cx of [75, 297]) {
       ctx.fillStyle = '#7a3ae0'
       ctx.fillRect(cx - 6, 284, 12, 9)
@@ -838,7 +838,7 @@ export async function renderRechargeImage(info: {
     }
     text(name, 186, 36, ctx.font, '#ffffff', 'center')
   }
-  text('recharged credits', 186, 54, '700 12px InterB', L, 'center', '1px')
+  text('bought Boosts', 186, 54, '700 12px InterB', L, 'center', '1px')
 
   // One big coin with glowing rings; a "+N FREE" badge when the pack comes with bonus
   for (const [rad, alpha] of [[84, 0.08], [66, 0.12]]) {
@@ -876,7 +876,7 @@ export async function renderRechargeImage(info: {
   text(big, 70, 254, '800 54px InterX', '#ffffff', 'left')
   ctx.font = '800 54px InterX'
   const ew = ctx.measureText(big).width
-  text('CREDITS', 80 + ew, 238, '800 13px InterX', L, 'left', '2px')
+  text('BOOSTS', 80 + ew, 238, '800 13px InterX', L, 'left', '2px')
   text(bonus > 0 ? `${info.credits} + ${bonus} free` : info.paid, 80 + ew, 258, '700 12px InterB', 'rgba(255,255,255,0.6)', 'left')
   return canvas.toBuffer('image/png')
 }
@@ -989,7 +989,7 @@ export async function renderCodeImage(info: { name: string; credits: number; lef
   const x0 = 186 - (ew + 100) / 2
   text(big, x0, 227, '800 54px InterX', '#ffffff')
   text('FREE', x0 + ew + 10, 206, '800 14px InterX', '#ffd24a', 'left', '2px')
-  text('CREDITS', x0 + ew + 10, 227, '800 14px InterX', light, 'left', '2px')
+  text('BOOSTS', x0 + ew + 10, 227, '800 14px InterX', light, 'left', '2px')
 
   // How many codes are still available
   const label = info.left <= 0 ? 'ALL CLAIMED' : info.left === 1 ? 'LAST ONE LEFT!' : `${info.left} CODES LEFT`
@@ -1012,7 +1012,7 @@ export async function renderMultiImage(info: {
 }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const themes: any = {
-    credits: { bg0: '#12245a', bg1: '#050914', G: '#4f7cff', L: '#a9c4ff', how: 'paid with credits' },
+    credits: { bg0: '#12245a', bg1: '#050914', G: '#4f7cff', L: '#a9c4ff', how: 'paid with Boosts' },
     stars: { bg0: '#6b4a0c', bg1: '#120a02', G: '#f5b301', L: '#ffd77a', how: 'paid with Stars' },
     usdt: { bg0: '#0f4a38', bg1: '#05100c', G: '#26a17b', L: '#7fe0bf', how: 'paid in USDT' },
   }

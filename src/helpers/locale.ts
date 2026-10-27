@@ -13,15 +13,15 @@ export function loc(text: string, language: string) {
 export const localizations: { [index: string]: { [index: string]: string } } = {
   public_help_start: {
     en:
-      "👋 Hi! I pick random winners among the people who tap \"Participate\" in your group or channel.\n\n🚀 *Quick start*\n1. Add me as an admin to your group or channel\n2. Send /start to start a giveaway\n3. Reply to the giveaway message to finish it and pick the winner\n\n⚙️ *Settings*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription (e.g. `/subscribe @channel`)\n/nosubscribe — turn it off\n/raffleMessage · /noRaffleMessage — custom or default giveaway message\n/winnerMessage · /noWinnerMessage — custom or default winner message\n/nodelete — keep the original giveaway message\n/setentryvalue — value of each entry (e.g. `/setentryvalue 1.5`)\n\n🚀 *Boosts*\n/boost — let participants buy extra entries with Stars, USDT or credits. The giveaway shows a Boost button. Send /boost again to turn it off.\n\n🏆 /winners — all-time ranking of winners\n\n📩 *Configure from private chat*\nForward me a message from your group or channel (or use `/addChat @channel`), pick it with /configRaffle and send the settings here.\n\nℹ️ /terms · /support · /paysupport",
+      "👋 Hi! I pick random winners among the people who tap \"Participate\" in your group or channel.\n\n🚀 *Quick start*\n1. Add me as an admin to your group or channel\n2. Send /start to start a giveaway\n3. Reply to the giveaway message to finish it and pick the winner\n\n⚙️ *Settings*\n/number — number of winners (e.g. `/number 3`)\n/language — change the language\n/subscribe — require a channel subscription (e.g. `/subscribe @channel`)\n/nosubscribe — turn it off\n/raffleMessage · /noRaffleMessage — custom or default giveaway message\n/winnerMessage · /noWinnerMessage — custom or default winner message\n/nodelete — keep the original giveaway message\n/setentryvalue — value of each entry (e.g. `/setentryvalue 1.5`)\n\n🚀 *Boosts*\n/boost — let participants buy extra entries with Stars or USDT. The giveaway shows a Boost button. Send /boost again to turn it off.\n\n🏆 /winners — all-time ranking of winners\n\n📩 *Configure from private chat*\nForward me a message from your group or channel (or use `/addChat @channel`), pick it with /configRaffle and send the settings here.\n\nℹ️ /terms · /support · /paysupport",
     es:
-      "👋 ¡Hola! Elijo ganadores al azar entre quienes pulsan \"Participar\" en tu grupo o canal.\n\n🚀 *Inicio rápido*\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start para empezar un sorteo\n3. Responde al mensaje del sorteo para cerrarlo y elegir al ganador\n\n⚙️ *Ajustes*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal (ej. `/subscribe @canal`)\n/nosubscribe — desactivarlo\n/raffleMessage · /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage · /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo\n/setentryvalue — valor de cada entrada (ej. `/setentryvalue 1.5`)\n\n🚀 *Boosts*\n/boost — deja que los participantes compren entradas extra con Stars, USDT o créditos. El sorteo muestra un botón Boost. Envía /boost otra vez para desactivarlo.\n\n🏆 /winners — ranking de ganadores de todos los tiempos\n\n📩 *Configurar desde privado*\nReenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.\n\nℹ️ /terms · /support · /paysupport",
+      "👋 ¡Hola! Elijo ganadores al azar entre quienes pulsan \"Participar\" en tu grupo o canal.\n\n🚀 *Inicio rápido*\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start para empezar un sorteo\n3. Responde al mensaje del sorteo para cerrarlo y elegir al ganador\n\n⚙️ *Ajustes*\n/number — número de ganadores (ej. `/number 3`)\n/language — cambiar el idioma\n/subscribe — exigir suscripción a un canal (ej. `/subscribe @canal`)\n/nosubscribe — desactivarlo\n/raffleMessage · /noRaffleMessage — mensaje del sorteo personalizado o estándar\n/winnerMessage · /noWinnerMessage — mensaje del ganador personalizado o estándar\n/nodelete — conservar el mensaje original del sorteo\n/setentryvalue — valor de cada entrada (ej. `/setentryvalue 1.5`)\n\n🚀 *Boosts*\n/boost — deja que los participantes compren entradas extra con Stars o USDT. El sorteo muestra un botón Boost. Envía /boost otra vez para desactivarlo.\n\n🏆 /winners — ranking de ganadores de todos los tiempos\n\n📩 *Configurar desde privado*\nReenvíame un mensaje de tu grupo o canal (o usa `/addChat @canal`), elígelo con /configRaffle y envíame aquí los ajustes.\n\nℹ️ /terms · /support · /paysupport",
   },
   start_text: {
     en:
-      "👋 Hi! I run giveaways in Telegram groups and channels.\n\n🎁 Fair random winners\n🚀 Boosts: buy extra entries with Stars, USDT or credits\n🏆 Live ranking of winners\n\nTo run your own giveaway:\n1. Add me as an admin to your group or channel\n2. Send /start there",
+      "👋 Hi! I run giveaways in Telegram groups and channels.\n\n🎁 Fair random winners\n🚀 Boosts: buy extra entries with Stars or USDT\n🏆 Live ranking of winners\n\nTo run your own giveaway:\n1. Add me as an admin to your group or channel\n2. Send /start there",
     es:
-      "👋 ¡Hola! Hago sorteos en grupos y canales de Telegram.\n\n🎁 Ganadores al azar, sin trampas\n🚀 Boosts: compra entradas extra con Stars, USDT o créditos\n🏆 Ranking de ganadores en vivo\n\nPara hacer tu propio sorteo:\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start allí",
+      "👋 ¡Hola! Hago sorteos en grupos y canales de Telegram.\n\n🎁 Ganadores al azar, sin trampas\n🚀 Boosts: compra entradas extra con Stars o USDT\n🏆 Ranking de ganadores en vivo\n\nPara hacer tu propio sorteo:\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start allí",
   },
   multi_none: {
     en: "🚀 You're not in any active giveaway with Boosts right now.\n\nJoin one and come back here.",
@@ -52,12 +52,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 <b>Boost a tu sorteo</b>\n\nParticipas en <b>1 sorteo activo</b>. ¿Cuántos Boosts?',
   },
   multi_pay_one: {
-    en: '🚀 <b>Your order</b>\n\n🎁 Your giveaway\n⚡ $n $b\n\n💰 Your credits: $c\nChoose how to pay:',
-    es: '🚀 <b>Tu pedido</b>\n\n🎁 Tu sorteo\n⚡ $n $b\n\n💰 Tus créditos: $c\nElige cómo pagar:',
+    en: '🚀 <b>Your order</b>\n\n🎁 Your giveaway\n⚡ $n $b\n\n💰 Your Boosts: $c\nChoose how to pay:',
+    es: '🚀 <b>Tu pedido</b>\n\n🎁 Tu sorteo\n⚡ $n $b\n\n💰 Tus Boosts: $c\nElige cómo pagar:',
   },
   multi_pay: {
-    en: '🚀 <b>Your order</b>\n\n🎁 $k $g\n⚡ $n $b in each one\n📦 $t $tb in total\n\n💰 Your credits: $c\nChoose how to pay:',
-    es: '🚀 <b>Tu pedido</b>\n\n🎁 $k $g\n⚡ $n $b en cada uno\n📦 $t $tb en total\n\n💰 Tus créditos: $c\nElige cómo pagar:',
+    en: '🚀 <b>Your order</b>\n\n🎁 $k $g\n⚡ $n $b in each one\n📦 $t $tb in total\n\n💰 Your Boosts: $c\nChoose how to pay:',
+    es: '🚀 <b>Tu pedido</b>\n\n🎁 $k $g\n⚡ $n $b en cada uno\n📦 $t $tb en total\n\n💰 Tus Boosts: $c\nElige cómo pagar:',
   },
   multi_skipped: {
     en: '⚠️ $f $g had ended or reached the Boost limit. You were not charged for them.',
@@ -423,8 +423,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     ru: 'Отлично! Теперь вы редактируете настройки этого чата',
   },
   boost_help: {
-    en: '🚀 *Boost:* use /boost to let participants buy extra entries with Telegram Stars, USDT or credits. The giveaway message shows a Boost button and says boosts are active. Run /boost again to turn it off.',
-    es: '🚀 *Boost:* usa /boost para que los participantes compren entradas extra con Telegram Stars, USDT o créditos. El mensaje del sorteo muestra un botón Boost e indica que los boosts están activos. Vuelve a usar /boost para desactivarlo.',
+    en: '🚀 *Boost:* use /boost to let participants buy extra entries with Telegram Stars or USDT. The giveaway message shows a Boost button and says boosts are active. Run /boost again to turn it off.',
+    es: '🚀 *Boost:* usa /boost para que los participantes compren entradas extra con Telegram Stars o USDT. El mensaje del sorteo muestra un botón Boost e indica que los boosts están activos. Vuelve a usar /boost para desactivarlo.',
   },
   boost_true: {
     en: '🚀 Boost ON for new giveaways: $price⭐ = $mult. Participants will see it on the giveaway message.',
@@ -519,8 +519,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: 'Valor de entrada actual: $value. Usa /setentryvalue seguido de un número del 1 al 10, ej. /setentryvalue 1.5',
   },
   terms_text: {
-    en: '📄 <b>Terms for Boost purchases</b>\n\n1. Boost is an optional digital add-on paid with Telegram Stars, USDT or credits. Each Boost adds extra entries to your participation in one specific giveaway.\n2. Boost increases your chances but never guarantees a win. Free entries can also win. The winner is picked at random by the bot.\n3. Boosts only apply to the giveaway you bought them for and cannot be transferred.\n4. Purchases are final. If the giveaway ends before your Boost is applied, your payment is refunded (Stars automatically, USDT by the operator). Credits (1 credit = 1 Boost) are bought in advance with Stars or USDT, are only used for Boosts and are not refundable once added.\n5. Prizes are offered and delivered by the giveaway organizer (the channel or group admin), not by Telegram.\n6. This bot is run by an independent operator. Telegram is not responsible for these purchases and its support cannot help with them.\n7. For payment issues use /paysupport, for anything else /support. Contact: $contact',
-    es: '📄 <b>Términos de compra del Boost</b>\n\n1. El Boost es un extra digital opcional que se paga con Telegram Stars, USDT o créditos. Cada Boost añade entradas extra a tu participación en un sorteo concreto.\n2. El Boost aumenta tus opciones pero nunca garantiza ganar. Las entradas gratis también pueden ganar. El ganador lo elige el bot al azar.\n3. Los Boosts solo valen para el sorteo en el que los compraste y no se pueden transferir.\n4. Las compras son definitivas. Si el sorteo termina antes de aplicar tu Boost, se te devuelve el pago (las Stars automáticamente, el USDT lo devuelve el operador). Los créditos (1 crédito = 1 Boost) se compran por adelantado con Stars o USDT, solo se usan para Boosts y no se reembolsan una vez añadidos.\n5. Los premios los ofrece y entrega el organizador del sorteo (el admin del canal o grupo), no Telegram.\n6. Este bot lo gestiona un operador independiente. Telegram no es responsable de estas compras y su soporte no puede ayudar con ellas.\n7. Para problemas de pago usa /paysupport, para lo demás /support. Contacto: $contact',
+    en: '📄 <b>Terms for Boost purchases</b>\n\n1. Boost is an optional digital add-on paid with Telegram Stars or USDT. Each Boost adds extra entries to your participation in one specific giveaway.\n2. Boost increases your chances but never guarantees a win. Free entries can also win. The winner is picked at random by the bot.\n3. Boosts only apply to the giveaway you bought them for and cannot be transferred.\n4. Purchases are final. If the giveaway ends before your Boost is applied, your payment is refunded (Stars automatically, USDT by the operator). Boosts can also be bought in advance with Stars or USDT and saved to use later: they are only used for Boosts and are not refundable once added.\n5. Prizes are offered and delivered by the giveaway organizer (the channel or group admin), not by Telegram.\n6. This bot is run by an independent operator. Telegram is not responsible for these purchases and its support cannot help with them.\n7. For payment issues use /paysupport, for anything else /support. Contact: $contact',
+    es: '📄 <b>Términos de compra del Boost</b>\n\n1. El Boost es un extra digital opcional que se paga con Telegram Stars o USDT. Cada Boost añade entradas extra a tu participación en un sorteo concreto.\n2. El Boost aumenta tus opciones pero nunca garantiza ganar. Las entradas gratis también pueden ganar. El ganador lo elige el bot al azar.\n3. Los Boosts solo valen para el sorteo en el que los compraste y no se pueden transferir.\n4. Las compras son definitivas. Si el sorteo termina antes de aplicar tu Boost, se te devuelve el pago (las Stars automáticamente, el USDT lo devuelve el operador). Los Boosts también se pueden comprar por adelantado con Stars o USDT y guardarse para usarlos después: solo se usan para Boosts y no se reembolsan una vez añadidos.\n5. Los premios los ofrece y entrega el organizador del sorteo (el admin del canal o grupo), no Telegram.\n6. Este bot lo gestiona un operador independiente. Telegram no es responsable de estas compras y su soporte no puede ayudar con ellas.\n7. Para problemas de pago usa /paysupport, para lo demás /support. Contacto: $contact',
   },
   terms_accept_prompt: {
     en: 'To buy a Boost you need to accept these terms.',
@@ -611,56 +611,56 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🏆 Top boosters',
   },
   recharge_cta: {
-    en: '🎁 Recharge $pack credits and get $bonus free',
-    es: '🎁 Recarga $pack créditos y llévate $bonus gratis',
+    en: '🎁 Buy $pack Boosts and get $bonus free',
+    es: '🎁 Compra $pack Boosts y llévate $bonus gratis',
   },
   boost_credits_line: {
-    en: '💰 Your credits: $n',
-    es: '💰 Tus créditos: $n',
+    en: '💰 Your Boosts: $n',
+    es: '💰 Tus Boosts: $n',
   },
   recharge_button: {
-    en: 'Recharge Credits',
-    es: 'Recharge Credits',
+    en: 'Buy Boosts',
+    es: 'Buy Boosts',
   },
   credit_one: {
-    en: 'credit',
-    es: 'crédito',
+    en: 'Boost',
+    es: 'Boost',
   },
   credit_many: {
-    en: 'credits',
-    es: 'créditos',
+    en: 'Boosts',
+    es: 'Boosts',
   },
   recharge_text: {
-    en: '💳 <b>Recharge credits</b>\n\n✅ 1 credit = 1 Boost ($pct)\n✅ Credits you buy never expire\n✅ Free bonus credits last 7 days\n✅ One tap to boost, no payment each time$bonus\n\n$packs\n\n🪙 Your credits: <b>$n</b>\n\n$choose',
-    es: '💳 <b>Recarga créditos</b>\n\n✅ 1 crédito = 1 Boost ($pct)\n✅ Los créditos que compras no caducan\n✅ Los créditos gratis duran 7 días\n✅ Un toque para hacer boost, sin pagar cada vez$bonus\n\n$packs\n\n🪙 Tus créditos: <b>$n</b>\n\n$choose',
+    en: '💳 <b>Buy Boosts</b>\n\n✅ Each Boost = $pct\n✅ Boosts you buy never expire\n✅ Free bonus Boosts last 7 days\n✅ One tap to boost, no payment each time$bonus\n\n$packs\n\n🪙 Your Boosts: <b>$n</b>\n\n$choose',
+    es: '💳 <b>Compra Boosts</b>\n\n✅ Cada Boost = $pct\n✅ Los Boosts que compras no caducan\n✅ Los Boosts gratis duran 7 días\n✅ Un toque para hacer boost, sin pagar cada vez$bonus\n\n$packs\n\n🪙 Tus Boosts: <b>$n</b>\n\n$choose',
   },
   topup_invoice_title: {
-    en: 'Recharge $n credits',
-    es: 'Recarga de $n créditos',
+    en: '$n Boosts',
+    es: '$n Boosts',
   },
   topup_invoice_description: {
-    en: 'Credits for boosts: 1 credit = 1 boost. Not refundable once added.',
-    es: 'Créditos para boosts: 1 crédito = 1 boost. No reembolsables una vez añadidos.',
+    en: 'Boosts to use in any giveaway. Not refundable once added.',
+    es: 'Boosts para usar en cualquier sorteo. No reembolsables una vez añadidos.',
   },
   topup_done: {
-    en: '✅ <b>$added added.</b>\n💰 Your credits: <b>$n</b>',
-    es: '✅ <b>$added añadidos.</b>\n💰 Tus créditos: <b>$n</b>',
+    en: '✅ <b>$added added.</b>\n💰 Your Boosts: <b>$n</b>',
+    es: '✅ <b>$added añadidos.</b>\n💰 Tus Boosts: <b>$n</b>',
   },
   free_word: {
     en: 'free',
     es: 'gratis',
   },
   topup_bonus_note: {
-    en: ' 🎁 Includes +$b free credits.',
-    es: ' 🎁 Incluye +$b créditos gratis.',
+    en: ' 🎁 Includes +$b free Boosts.',
+    es: ' 🎁 Incluye +$b Boosts gratis.',
   },
   credit_low: {
-    en: '⚠️ You have $n left. Recharge to keep boosting in one tap 👇',
-    es: '⚠️ Te queda $n. Recarga para seguir haciendo boost con un toque 👇',
+    en: '⚠️ You have $n left. Buy more to keep boosting in one tap 👇',
+    es: '⚠️ Te queda $n. Compra más para seguir haciendo boost con un toque 👇',
   },
   credit_out: {
-    en: '⚠️ You are out of credits. Recharge to keep boosting in one tap 👇',
-    es: '⚠️ Te has quedado sin créditos. Recarga para seguir haciendo boost con un toque 👇',
+    en: '⚠️ You are out of Boosts. Buy more to keep boosting in one tap 👇',
+    es: '⚠️ Te has quedado sin Boosts. Compra más para seguir haciendo boost con un toque 👇',
   },
   packs_header: {
     en: '📦 <b>Packs</b>',
@@ -699,16 +699,16 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '← Atrás',
   },
   recharge_bonus_note: {
-    en: '\n🔥 Best deal: <b>$pack+$bonus</b> = $total credits ($bonus free)',
-    es: '\n🔥 Mejor oferta: <b>$pack+$bonus</b> = $total créditos ($bonus gratis)',
+    en: '\n🔥 Best deal: <b>$pack+$bonus</b> = $total Boosts ($bonus free)',
+    es: '\n🔥 Mejor oferta: <b>$pack+$bonus</b> = $total Boosts ($bonus gratis)',
   },
   code_usage: {
     en: '🎁 Send your code like this:\n/redeem YOURCODE',
     es: '🎁 Envía tu código así:\n/redeem TUCODIGO',
   },
   code_ok: {
-    en: '🎁 <b>Code redeemed!</b>\n+$n credits added.\n💰 Your credits: <b>$bal</b>',
-    es: '🎁 <b>¡Código canjeado!</b>\n+$n créditos añadidos.\n💰 Tus créditos: <b>$bal</b>',
+    en: '🎁 <b>Code redeemed!</b>\n+$n Boosts added.\n💰 Your Boosts: <b>$bal</b>',
+    es: '🎁 <b>¡Código canjeado!</b>\n+$n Boosts añadidos.\n💰 Tus Boosts: <b>$bal</b>',
   },
   code_invalid: {
     en: '❌ That code does not exist or is no longer active.',
@@ -739,12 +739,12 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 Volver al Boost',
   },
   credit_not_enough: {
-    en: '💰 Not enough credits. Tap Recharge Credits.',
-    es: '💰 No tienes créditos suficientes. Pulsa Recharge Credits.',
+    en: '💰 Not enough Boosts. Tap Buy Boosts.',
+    es: '💰 No tienes Boosts suficientes. Pulsa Buy Boosts.',
   },
   crypto_invoice_topup: {
-    en: '🪙 <b>Recharge with USDT</b> · $n\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · credits added automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
-    es: '🪙 <b>Recarga con USDT</b> · $n\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⏳ Válido $min min · los créditos se añaden solos en 1–2 min\n⚠️ Envía el importe exacto, solo por $network.',
+    en: '🪙 <b>Buy Boosts with USDT</b> · $n\n\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>$amount</code> USDT\n\n2️⃣ To this address <i>(tap to copy)</i> · <b>$network</b> only\n<code>$address</code>\n\n⏳ Valid $min min · Boosts added automatically in 1–2 min\n⚠️ Send the exact amount, only on $network.',
+    es: '🪙 <b>Compra Boosts con USDT</b> · $n\n\n1️⃣ Envía exactamente <i>(toca para copiar)</i>\n<code>$amount</code> USDT\n\n2️⃣ A esta dirección <i>(toca para copiar)</i> · solo <b>$network</b>\n<code>$address</code>\n\n⏳ Válido $min min · los Boosts se añaden solos en 1–2 min\n⚠️ Envía el importe exacto, solo por $network.',
   },
   crypto_failed: {
     en: 'We received your crypto payment but could not apply the boost. Contact $contact and send this transaction hash:\n<code>$hash</code>',

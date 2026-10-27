@@ -37,12 +37,12 @@ let tg: any = null
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const boostWord = (n: number) => (n === 1 ? 'Boost' : 'Boosts')
 const giveawayWord = (n: number) => (n === 1 ? 'giveaway' : 'giveaways')
-const creditWord = (n: number) => (n === 1 ? 'credit' : 'credits')
+const creditWord = (n: number) => (n === 1 ? 'Boost' : 'Boosts')
 const dayOf = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ })
 
 /** One button to the recharge screen (numbered packs with both prices) */
 function packButtons() {
-  return [[{ text: '💳 Buy credits', callback_data: 'r~0' }]]
+  return [[{ text: '💳 Buy Boosts', callback_data: 'r~0' }]]
 }
 
 async function giveawayInfo(raffle: any) {
@@ -105,7 +105,7 @@ async function showMenu(ctx: any, edit = false) {
   const text =
     `🔁 <b>Auto-Boost</b>\n\n` +
     `Boost every giveaway you join, automatically.\n` +
-    `Paid with your credits. Free credits are used first.\n\n` +
+    `Paid with your Boosts. Free Boosts are used first.\n\n` +
     (n ? `Now: <b>ON · ${n} ${boostWord(n)} per giveaway</b>\n\n` : '') +
     `How many Boosts per giveaway?`
   const keyboard: any[] = [
@@ -146,10 +146,10 @@ async function setBoosts(ctx: any, n: number) {
   const text =
     `✅ <b>Auto-Boost is ON</b>\n\n` +
     `🚀 ${n} ${boostWord(n)} in every giveaway you join\n` +
-    `🛡 Daily limit: ${limit} credits\n\n` +
+    `🛡 Daily limit: ${limit} Boosts\n\n` +
     (credits > 0
-      ? `💰 Your credits: ${credits} · enough for ${Math.floor(credits / n)} ${giveawayWord(Math.floor(credits / n))}`
-      : `💰 You have 0 credits. Recharge to start 👇`)
+      ? `💰 Your Boosts: ${credits} · enough for ${Math.floor(credits / n)} ${giveawayWord(Math.floor(credits / n))}`
+      : `💰 You have 0 Boosts. Buy Boosts to start 👇`)
   const keyboard: any[] = []
   if (credits <= 0) {
     packButtons().forEach((r) => keyboard.push(r))
@@ -169,8 +169,8 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
     await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoost: 0, autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } })
     await send(
       userId,
-      `🔁 <b>Auto-Boost turned off</b>\n\nYou missed ${MAX_MISSED} giveaways without credits, so we paused it to keep things quiet.\n\nTurn it back on anytime 👇`,
-      [[{ text: '🔁 Turn on again', callback_data: 'ab~m' }], [{ text: 'Recharge Credits', callback_data: 'r~0' }]]
+      `🔁 <b>Auto-Boost turned off</b>\n\nYou missed ${MAX_MISSED} giveaways without Boosts, so we paused it to keep things quiet.\n\nTurn it back on anytime 👇`,
+      [[{ text: '🔁 Turn on again', callback_data: 'ab~m' }], [{ text: 'Buy Boosts', callback_data: 'r~0' }]]
     )
     return
   }
@@ -201,7 +201,7 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
     userId,
     `🔁 <b>Auto-Boost paused</b>\n\n` +
       `You joined <b>${esc(title)}</b> with ${multLabel(res.value, 'en', base)} instead of ${multLabel(res.value + mult, 'en', base)}.` +
-      `${chanceLine}\n\nBoost this one now, or recharge to resume Auto-Boost 👇`,
+      `${chanceLine}\n\nBoost this one now, or buy Boosts to resume Auto-Boost 👇`,
     keyboard
   )
 }
@@ -232,7 +232,7 @@ export async function autoBoostOnJoin(raffle: any, from: any): Promise<string> {
       await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoostLimitDay: today } })
       await send(
         userId,
-        `🛡 <b>Daily limit reached</b>\n\nAuto-Boost used ${limit} credits today and will pause until tomorrow.\n💰 Your credits: ${credits}`,
+        `🛡 <b>Daily limit reached</b>\n\nAuto-Boost used ${limit} Boosts today and will pause until tomorrow.\n💰 Your Boosts: ${credits}`,
         [[{ text: '⚙️ Change limit', callback_data: 'abl~m' }], [{ text: 'Turn off', callback_data: 'ab~0' }]]
       )
     }
@@ -307,12 +307,12 @@ export async function autoBoostOnJoin(raffle: any, from: any): Promise<string> {
     (partial
       ? `🚀 ${k} of ${want} ${boostWord(want)} · ${pctLabel(k, 'en', step)}\n`
       : `🚀 ${pctLabel(k, 'en', step)} · you have ${multLabel(value, 'en', base)}\n`) +
-    `💰 Credits left: ${balance}` +
+    `💰 Boosts left: ${balance}` +
     (low && !partial && balance > 0 ? ` · enough for ${enough} ${giveawayWord(enough)}` : '') +
     (partial
-      ? `\n\nRecharge to get your full ${want} ${boostWord(want)} next time 👇`
+      ? `\n\nBuy more Boosts to get your full ${want} next time 👇`
       : low
-      ? `\n\n⚠️ Recharge now so you never miss a Boost 👇`
+      ? `\n\n⚠️ Buy more Boosts so you never miss one 👇`
       : '')
   const keyboard: any[] = linkRow(link)
   if (low || partial) packButtons().forEach((r) => keyboard.push(r))
@@ -344,7 +344,7 @@ export async function afterCredit(userId: number, type: string) {
   const n = chat.autoBoost
   await send(
     userId,
-    `✅ <b>Auto-Boost resumed</b>\n\n💰 Your credits: ${balance}\n🚀 ${n} ${boostWord(n)} in every giveaway you join` +
+    `✅ <b>Auto-Boost resumed</b>\n\n💰 Your Boosts: ${balance}\n🚀 ${n} ${boostWord(n)} in every giveaway you join` +
       (gift ? `\n🎁 +1 free ${creditWord(1)} added` : ''),
     []
   )
@@ -370,7 +370,7 @@ async function sweep() {
       const keyboard: any[] = packButtons()
       await send(
         c.chatId,
-        `🎁 <b>A little gift for you</b>\n\nRecharge today and get <b>+1 extra credit</b> free.\nYour Auto-Boost will resume right away.`,
+        `🎁 <b>A little gift for you</b>\n\nBuy Boosts today and get <b>+1 extra Boost</b> free.\nYour Auto-Boost will resume right away.`,
         keyboard
       )
     }
@@ -389,7 +389,7 @@ export async function autoBoostText() {
       `🔁 <b>Auto-Boost</b>\n` +
       `👥 Activos: <b>${active}</b>\n` +
       `⏸ Pausados sin créditos: <b>${paused}</b>\n` +
-      `💰 Créditos gastados en total: <b>${(total[0] && total[0].n) || 0}</b>\n\n`
+      `💰 Boosts gastados en total: <b>${(total[0] && total[0].n) || 0}</b>\n\n`
     )
   } catch {
     return ''
@@ -474,7 +474,7 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
       const chat: any = await findChat(ctx.from.id)
       const limit = chat.autoBoostLimit || DEFAULT_LIMIT
       await ctx.reply(
-        `🛡 <b>Daily limit</b>\n\nMost credits Auto-Boost can spend in one day.\nNow: <b>${limit}</b>`,
+        `🛡 <b>Daily limit</b>\n\nMost Boosts Auto-Boost can use in one day.\nNow: <b>${limit}</b>`,
         {
           parse_mode: 'HTML',
           reply_markup: {
@@ -493,7 +493,7 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
     if (LIMITS.indexOf(n) < 0) return
     try {
       await ChatModel.updateOne({ chatId: ctx.from.id }, { $set: { autoBoostLimit: n } })
-      await ctx.editMessageText(`🛡 <b>Daily limit set to ${n} credits</b>`, { parse_mode: 'HTML' })
+      await ctx.editMessageText(`🛡 <b>Daily limit set to ${n} Boosts</b>`, { parse_mode: 'HTML' })
     } catch (err) {
       console.error(err)
     }

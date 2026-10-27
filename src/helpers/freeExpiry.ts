@@ -17,7 +17,7 @@ async function dm(telegram: any, userId: number, text: string, keyboard: any[]) 
   }
 }
 
-const plural = (n: number) => `${n} free ${n === 1 ? 'credit' : 'credits'}`
+const plural = (n: number) => `${n} free ${n === 1 ? 'Boost' : 'Boosts'}`
 
 /**
  * Free credits (gifts, pack bonus) last FREE_DAYS days; bought credits never expire.
@@ -81,8 +81,8 @@ export async function expireFreeCredits(telegram: any) {
         await dm(
           telegram,
           c.chatId,
-          `⏳ <b>${plural(expireN)} expired</b>\n\nFree credits last ${FREE_DAYS} days. The credits you buy never expire.`,
-          [[{ text: 'Recharge Credits', callback_data: 'r~0' }]]
+          `⏳ <b>${plural(expireN)} expired</b>\n\nFree Boosts last ${FREE_DAYS} days. The Boosts you buy never expire.`,
+          [[{ text: 'Buy Boosts', callback_data: 'r~0' }]]
         )
         if (warnN > 0) {
           // those warned lots were not expired; save the flag

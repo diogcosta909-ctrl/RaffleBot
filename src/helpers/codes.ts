@@ -95,8 +95,8 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
     const extra = BOOST_STEP * multiplierOf()
     const who =
       maxUses === 1
-        ? `The first person to tap gets **${credits} ${credits === 1 ? 'credit' : 'credits'}**`
-        : `The first **${maxUses} people** get **${credits} ${credits === 1 ? 'credit' : 'credits'}** each`
+        ? `The first person to tap gets **${credits} ${credits === 1 ? 'Boost' : 'Boosts'}**`
+        : `The first **${maxUses} people** get **${credits} ${credits === 1 ? 'Boost' : 'Boosts'}** each`
     const share =
       `🎁 **Free Boosts!**\n\n` +
       `${who} (+${extra} extra entries per Boost) 🚀\n\n` +
@@ -205,7 +205,7 @@ export function setupCodes(bot: Telegraf<ContextMessageUpdate>) {
       const left = Math.max(0, doc.maxUses - doc.uses)
       const caption =
         `🎁 <b>${esc(name)}</b> redeemed a free code!\n` +
-        `<b>+${doc.credits} credits</b> · 🎟 ${left === 0 ? 'all codes claimed' : `${left} ${left === 1 ? 'code' : 'codes'} left`}`
+        `<b>+${doc.credits} ${doc.credits === 1 ? 'Boost' : 'Boosts'}</b> · 🎟 ${left === 0 ? 'all codes claimed' : `${left} ${left === 1 ? 'code' : 'codes'} left`}`
       try {
         let sent = false
         try {
