@@ -136,6 +136,8 @@ async function setBoosts(ctx: any, n: number) {
       reply_markup: { inline_keyboard: [[{ text: '🔁 Turn on', callback_data: 'ab~m' }]] },
     })
   }
+  const before: any = await ChatModel.findOne({ chatId: userId }).select('autoBoost')
+  const wasOn = !!(before && before.autoBoost > 0)
   const chat: any = await ChatModel.findOneAndUpdate(
     { chatId: userId },
     { $set: { autoBoost: n, autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } },
@@ -143,6 +145,23 @@ async function setBoosts(ctx: any, n: number) {
   )
   const credits = chat.credits || 0
   const limit = chat.autoBoostLimit || DEFAULT_LIMIT
+  // Owner alert: someone turned Auto-Boost on (not when only changing the amount)
+  if (!wasOn) {
+    try {
+      const admin = parseInt(process.env.ADMIN, 10)
+      if (admin) {
+        const u = ctx.from
+        const name = u.username ? `@${u.username}` : `${u.first_name || ''}${u.last_name ? ` ${u.last_name}` : ''}`.trim()
+        await tg.sendMessage(
+          admin,
+          `🔁 <b>Auto-Boost activado</b>\n\n👤 ${esc(name)} (<code>${userId}</code>)\n🚀 ${n} ${boostWord(n)} por sorteo\n💰 Boosts: ${credits}`,
+          { parse_mode: 'HTML' } as any
+        )
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
   const text =
     `✅ <b>Auto-Boost is ON</b>\n\n` +
     `🚀 ${n} ${boostWord(n)} in every giveaway you join\n` +
