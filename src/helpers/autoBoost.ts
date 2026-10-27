@@ -158,20 +158,20 @@ async function setBoosts(ctx: any, n: number) {
   const text =
     `✅ <b>Auto-Boost is ON</b>\n\n` +
     `🚀 ${n} ${boostWord(n)} in every giveaway you join\n` +
-    (credits > 0
-      ? `💰 Your credits: ${credits} · enough for ${Math.floor(credits / n)} ${giveawayWord(Math.floor(credits / n))}\n`
-      : '') +
     `🛡 Daily limit: ${limit} credits\n\n` +
     (credits > 0
-      ? `You can turn it off anytime.`
-      : `You have 0 credits, so it will start working\nas soon as you recharge 👇`)
-  const keyboard: any[] = credits > 0 ? [] : packButtons()
+      ? `💰 Your credits: ${credits} · enough for ${Math.floor(credits / n)} ${giveawayWord(Math.floor(credits / n))}`
+      : `💰 You have 0 credits. Recharge to start 👇`)
+  const keyboard: any[] = []
+  if (credits <= 0) {
+    packButtons().forEach((r) => keyboard.push(r))
+    keyboard.push([{ text: 'Recharge Credits', callback_data: 'r~0' }])
+  }
   keyboard.push([
-    { text: '⚙️ Change', callback_data: 'ab~m' },
+    { text: '🚀 Change Boosts', callback_data: 'ab~m' },
     { text: '🛡 Daily limit', callback_data: 'abl~m' },
   ])
   keyboard.push([{ text: 'Turn off', callback_data: 'ab~0' }])
-  if (credits <= 0) keyboard.push([{ text: 'Recharge Credits', callback_data: 'r~0' }])
   return ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
 }
 
@@ -213,8 +213,7 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
   await send(
     userId,
     `🔁 <b>Auto-Boost paused</b>\n\n` +
-      `You joined <b>${esc(title)}</b> with ${multLabel(res.value, 'en', base)}\n` +
-      `instead of ${multLabel(res.value + mult, 'en', base)}.` +
+      `You joined <b>${esc(title)}</b> with ${multLabel(res.value, 'en', base)} instead of ${multLabel(res.value + mult, 'en', base)}.` +
       `${chanceLine}\n\nBoost this one now, or recharge to resume Auto-Boost 👇`,
     keyboard
   )
