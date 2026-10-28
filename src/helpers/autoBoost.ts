@@ -3,6 +3,8 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { RaffleModel } from '../models'
 import { ChatModel, findChat } from '../models/chat'
 import { trackBoost } from '../models/boostEvent'
+import { AutoBoostEventModel, trackAuto } from '../models/autoBoostEvent'
+import { CreditTxModel } from '../models/creditTx'
 import { CREDIT_PACKS, CREDIT_POPULAR, getCredits, addCredits, spendCreditsSplit, bonusFor } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText } from './terms'
 import { raffleTotals, chanceOf, pct } from './odds'
@@ -21,6 +23,7 @@ import {
   entryValueOf,
   BOOST_STEP,
   BOOST_PRICE,
+  sendRecharge,
 } from './boost'
 
 // Auto-Boost: Boosts paid with credits and added automatically to every giveaway a person joins.
@@ -42,7 +45,7 @@ const dayOf = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ })
 
 /** One button to the recharge screen (numbered packs with both prices) */
 function packButtons() {
-  return [[{ text: '💳 Buy Boosts', callback_data: 'r~0' }]]
+  return [[{ text: '💳 Buy Boosts', callback_data: 'abr~' }]]
 }
 
 async function giveawayInfo(raffle: any) {
@@ -95,7 +98,7 @@ async function needBoosts(ctx: any, edit: boolean) {
     `🔁 <b>Auto-Boost</b>\n\n` +
     `Boost every giveaway you join, automatically.\n\n` +
     `💰 You have 0 Boosts. Buy Boosts first, then turn Auto-Boost on 👇`
-  const keyboard: any[] = [[{ text: '💳 Buy Boosts', callback_data: 'r~0' }]]
+  const keyboard: any[] = [[{ text: '💳 Buy Boosts', callback_data: 'abr~' }]]
   if (edit) {
     try {
       await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
@@ -120,7 +123,11 @@ async function showMenu(ctx: any, edit = false) {
     })
   }
   const n = chat.autoBoost || 0
-  if (!n && (await getCredits(userId)) <= 0) return needBoosts(ctx, edit)
+  if (!n && (await getCredits(userId)) <= 0) {
+    void trackAuto('open_nobal', userId)
+    return needBoosts(ctx, edit)
+  }
+  void trackAuto('open', userId)
   const text =
     `🔁 <b>Auto-Boost</b>\n\n` +
     `Boost every giveaway you join, automatically.\n` +
@@ -150,6 +157,7 @@ async function setBoosts(ctx: any, n: number) {
   const userId = ctx.from.id
   if (n === 0) {
     await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoost: 0, autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } })
+    void trackAuto('off_manual', userId)
     return ctx.editMessageText('🔁 <b>Auto-Boost is OFF</b>\n\nYou can turn it on again anytime.', {
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: [[{ text: '🔁 Turn on', callback_data: 'ab~m' }]] },
@@ -165,6 +173,8 @@ async function setBoosts(ctx: any, n: number) {
   )
   const credits = chat.credits || 0
   const limit = chat.autoBoostLimit || DEFAULT_LIMIT
+  void trackAuto('pick', userId, { n })
+  if (!wasOn) void trackAuto('activate', userId, { n })
   // Owner alert: someone turned Auto-Boost on (not when only changing the amount)
   if (!wasOn) {
     try {
@@ -206,10 +216,11 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
   const missed = (chat.autoBoostMissed || 0) + 1
   if (missed >= MAX_MISSED) {
     await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoost: 0, autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } })
+    void trackAuto('off_auto', userId)
     await send(
       userId,
       `🔁 <b>Auto-Boost turned off</b>\n\nYou missed ${MAX_MISSED} giveaways without Boosts, so we paused it to keep things quiet.\n\nTurn it back on anytime 👇`,
-      [[{ text: '🔁 Turn on again', callback_data: 'ab~m' }], [{ text: 'Buy Boosts', callback_data: 'r~0' }]]
+      [[{ text: '🔁 Turn on again', callback_data: 'ab~m' }], [{ text: 'Buy Boosts', callback_data: 'abr~' }]]
     )
     return
   }
@@ -219,6 +230,7 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
     first ? { $set: { autoBoostMissed: missed, autoBoostPausedAt: new Date() } } : { $set: { autoBoostMissed: missed } }
   )
   if (!first) return
+  void trackAuto('paused', userId, { raffleId: `${raffle._id}` })
   const { title, link } = await giveawayInfo(raffle)
   const base = entryValueOf(raffle)
   const mult = multiplierOf()
@@ -269,6 +281,7 @@ export async function autoBoostOnJoin(raffle: any, from: any): Promise<string> {
   if (limit - spentToday <= 0) {
     if (chat.autoBoostLimitDay !== today) {
       await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoostLimitDay: today } })
+      void trackAuto('limit_hit', userId)
       await send(
         userId,
         `🛡 <b>Daily limit reached</b>\n\nAuto-Boost used ${limit} Boosts today and will pause until tomorrow.\n💰 Your Boosts: ${credits}`,
@@ -305,6 +318,7 @@ export async function autoBoostOnJoin(raffle: any, from: any): Promise<string> {
     }
   )
   await trackBoost({ type: 'invoice', userId, raffleId, boosts: k, method: 'credits', reminded: true })
+  void trackAuto('applied', userId, { k, raffleId })
   const value = res.value + k * mult
   const base = entryValueOf(res.raffle)
   try {
@@ -354,9 +368,28 @@ export async function autoBoostOnJoin(raffle: any, from: any): Promise<string> {
       ? `\n\n⚠️ Buy more Boosts so you never miss one 👇`
       : '')
   const keyboard: any[] = linkRow(link)
-  if (low || partial) packButtons().forEach((r) => keyboard.push(r))
+  if (partial) void trackAuto('partial', userId, { k, raffleId })
+  if (low || partial) {
+    void trackAuto('low_warn', userId)
+    packButtons().forEach((r) => keyboard.push(r))
+  }
   await send(userId, text, keyboard)
   return `\n🔁 ${pctLabel(k, 'en', step)} applied`
+}
+
+/** A top-up right after a low-balance / paused / partial / gift message counts as bought after the warning */
+async function markRechargeAfterWarn(userId: number) {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const warn = await AutoBoostEventModel.findOne({
+      userId,
+      type: { $in: ['low_warn', 'paused', 'gift_sent'] },
+      createdAt: { $gte: since },
+    } as any)
+    if (warn) await trackAuto('recharge_after_warn', userId)
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 const giving = new Set<number>()
@@ -367,18 +400,21 @@ export async function afterCredit(userId: number, type: string) {
   const chat: any = await ChatModel.findOne({ chatId: userId })
   if (!chat || !(chat.autoBoost > 0)) return
   let gift = 0
+  if (type === 'topup') void markRechargeAfterWarn(userId)
   if (type === 'topup' && chat.autoBoostGift) {
     giving.add(userId)
     try {
       await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoostGift: false } })
       await addCredits(userId, 1, { type: 'code', method: 'auto_gift', free: 1 })
       gift = 1
+      void trackAuto('gift_claimed', userId)
     } finally {
       giving.delete(userId)
     }
   }
   if (!chat.autoBoostPausedAt) return
   await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } })
+  void trackAuto('resumed', userId)
   const balance = await getCredits(userId)
   const n = chat.autoBoost
   await send(
@@ -407,6 +443,7 @@ async function sweep() {
     for (const c of list) {
       await ChatModel.updateOne({ chatId: c.chatId }, { $set: { autoBoostGift: true } })
       const keyboard: any[] = packButtons()
+      void trackAuto('gift_sent', c.chatId)
       await send(
         c.chatId,
         `🎁 <b>A little gift for you</b>\n\nBuy Boosts today and get <b>+1 extra Boost</b> free.\nYour Auto-Boost will resume right away.`,
@@ -421,16 +458,62 @@ async function sweep() {
 /** Numbers for the owner's /stars */
 export async function autoBoostText() {
   try {
+    const now = Date.now()
+    const d1 = new Date(now - 24 * 60 * 60 * 1000)
+    const d7 = new Date(now - 7 * 24 * 60 * 60 * 1000)
+    const cnt = (type: string, since?: Date) =>
+      AutoBoostEventModel.countDocuments(since ? ({ type, createdAt: { $gte: since } } as any) : ({ type } as any))
+    const users = async (type: string, since?: Date) =>
+      ((await AutoBoostEventModel.distinct('userId', since ? ({ type, createdAt: { $gte: since } } as any) : ({ type } as any))) as any[]).length
+    const sum = async (since?: Date) => {
+      const r: any[] = await AutoBoostEventModel.aggregate([
+        { $match: Object.assign({ type: 'applied' }, since ? { createdAt: { $gte: since } } : {}) },
+        { $group: { _id: null, k: { $sum: '$k' }, raffles: { $addToSet: '$raffleId' } } },
+      ])
+      return { k: (r[0] && r[0].k) || 0, raffles: (r[0] && r[0].raffles.length) || 0 }
+    }
     const active = await ChatModel.countDocuments({ autoBoost: { $gt: 0 } })
     const paused = await ChatModel.countDocuments({ autoBoost: { $gt: 0 }, autoBoostPausedAt: { $exists: true } })
+    const per: number[] = []
+    for (const n of [1, 2, 3]) per.push(await ChatModel.countDocuments({ autoBoost: n }))
     const total: any[] = await ChatModel.aggregate([{ $group: { _id: null, n: { $sum: '$autoBoostTotal' } } }])
+    const buyers = (await CreditTxModel.distinct('userId', { type: 'topup', method: { $in: ['stars', 'usdt'] } } as any)) as number[]
+    const buyersOn = buyers.length ? await ChatModel.countDocuments({ chatId: { $in: buyers }, autoBoost: { $gt: 0 } }) : 0
+    const buyersPct = buyers.length ? Math.round((buyersOn / buyers.length) * 100) : 0
+    const s1 = await sum(d1)
+    const s7 = await sum(d7)
+    const sAll = await sum()
+    const spentAll = (total[0] && total[0].n) || 0
+    const star = (n: number) => `${n} (${n * BOOST_PRICE}⭐)`
+    const [act1, act7, actAll] = [await cnt('activate', d1), await cnt('activate', d7), await cnt('activate')]
+    const [open7, openUsers7] = [await cnt('open', d7), await users('open', d7)]
+    const [noBal7, buy7, buyUsers7, pack7, packUsers7] = [
+      await cnt('open_nobal', d7),
+      await cnt('buy_click', d7),
+      await users('buy_click', d7),
+      await cnt('pack_pick', d7),
+      await users('pack_pick', d7),
+    ]
     return (
       `🔁 <b>Auto-Boost</b>\n` +
-      `👥 Activos: <b>${active}</b>\n` +
-      `⏸ Pausados sin créditos: <b>${paused}</b>\n` +
-      `💰 Boosts gastados en total: <b>${(total[0] && total[0].n) || 0}</b>\n\n`
+      `👥 Activos: <b>${active}</b> · ⏸ Pausados sin Boosts: <b>${paused}</b>\n` +
+      `🎚 Reparto: 1 Boost <b>${per[0]}</b> · 2 Boosts <b>${per[1]}</b> · 3 Boosts <b>${per[2]}</b>\n` +
+      `🛒 Compradores con Auto-Boost activo: <b>${buyersPct}%</b> (${buyersOn}/${buyers.length})\n\n` +
+      `➕ Activaciones: 24 h <b>${act1}</b> · 7 d <b>${act7}</b> · total <b>${actAll}</b>\n` +
+      `💰 Boosts gastados: 24 h <b>${star(s1.k)}</b> · 7 d <b>${star(s7.k)}</b> · total <b>${star(spentAll)}</b>\n` +
+      `🎁 Sorteos potenciados: 24 h <b>${s1.raffles}</b> · 7 d <b>${s7.raffles}</b> · total <b>${sAll.raffles}</b>\n\n` +
+      `👆 <b>Clics (7 d)</b>\n` +
+      `🔁 Abrieron Auto-Boost: <b>${open7}</b> clics (${openUsers7} personas) · sin Boosts: <b>${noBal7}</b>\n` +
+      `💳 Pulsaron Buy Boosts desde ahí: <b>${buy7}</b> (${buyUsers7} personas)\n` +
+      `📦 Eligieron un pack: <b>${pack7}</b> (${packUsers7} personas)\n` +
+      `✅ Compraron tras un aviso: <b>${await cnt('recharge_after_warn', d7)}</b>\n\n` +
+      `🩺 <b>Salud</b>\n` +
+      `🔕 Apagados solos (3 sorteos sin Boosts): <b>${await cnt('off_auto')}</b> · ▶️ Reanudados al recargar: <b>${await cnt('resumed')}</b>\n` +
+      `🛡 Límite diario alcanzado: <b>${await cnt('limit_hit')}</b> veces\n` +
+      `🎁 Regalo +1 Boost: enviados <b>${await cnt('gift_sent')}</b> · canjeados <b>${await cnt('gift_claimed')}</b>\n\n`
     )
-  } catch {
+  } catch (err) {
+    console.error(err)
     return ''
   }
 }
@@ -456,6 +539,17 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
       // do nothing
     }
   }
+
+  // "Buy Boosts" pressed from an Auto-Boost screen: count it, then open the recharge screen
+  bot.action('abr~', async (ctx) => {
+    await answer(ctx)
+    void trackAuto('buy_click', ctx.from.id)
+    try {
+      await sendRecharge(ctx, '0')
+    } catch (err) {
+      console.error(err)
+    }
+  })
 
   bot.action('ab~m', async (ctx) => {
     await answer(ctx)
@@ -492,6 +586,12 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
     const raffleId = (ctx as any).match[2]
     if (CREDIT_PACKS.indexOf(n) < 0) return
     try {
+      const recent = await AutoBoostEventModel.findOne({
+        userId: ctx.from.id,
+        type: 'buy_click',
+        createdAt: { $gte: new Date(Date.now() - 30 * 60 * 1000) },
+      } as any)
+      if (recent) void trackAuto('pack_pick', ctx.from.id, { n })
       const chat: any = await findChat(ctx.from.id)
       const row: any[] = [{ text: `⭐ ${n * BOOST_PRICE} Stars`, callback_data: `ts~${n}~${raffleId}` }]
       if (cryptoEnabled()) row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `tc~${n}~${raffleId}` })

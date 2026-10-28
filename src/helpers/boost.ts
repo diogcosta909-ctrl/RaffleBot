@@ -990,7 +990,7 @@ function packKeyboard(method: 's' | 'c', lang: string, raffleId: string, withBac
  * (the packs to tap come next). With Stars only: the packs to tap right away.
  * raffleId = giveaway to come back to, or '0'
  */
-async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = false) {
+export async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, edit = false) {
   try {
     const lang = (await findChat(ctx.from.id)).language
     const credits = await getCredits(ctx.from.id)
@@ -1663,10 +1663,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       `\n` +
       funnelText +
       multiText +
-      autoText +
       `<b>Últimos pagos</b>\n` +
       (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
-    return ctx.replyWithHTML(text, { disable_web_page_preview: true })
+    await ctx.replyWithHTML(text, { disable_web_page_preview: true })
+    // Auto-Boost numbers go in their own message (Telegram limits one message to 4096 characters)
+    if (autoText) await ctx.replyWithHTML(autoText.trim(), { disable_web_page_preview: true })
   })
 
   // Bot owner: reset the /stars stats to 0 (data is kept, only the counting start changes)
