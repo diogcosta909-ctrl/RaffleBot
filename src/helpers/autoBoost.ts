@@ -500,7 +500,7 @@ export async function autoBoostText() {
       `<b>👥 Ahora</b>\n` +
       `${L('Activos', `${active}`)}\n` +
       `${L('Pausados sin Boosts', `${paused}`)}\n` +
-      `${L('🚀 Boost', `${per[0]}`)} · ${L('🚀🚀 Boosts', `${per[1]}`)} · ${L('🚀🚀🚀 Boosts', `${per[2]}`)}\n` +
+      `${L('🚀 Boost', `${per[0]}`)}\n${L('🚀🚀 Boosts', `${per[1]}`)}\n${L('🚀🚀🚀 Boosts', `${per[2]}`)}\n` +
       `${L('Compradores con Auto-Boost', `${buyersPct}% (${buyersOn}/${buyers.length})`)}\n\n` +
       `<b>➕ Activaciones</b>\n` +
       `${L('24 h', `${act1}`)} · ${L('7 d', `${act7}`)} · ${L('Total', `${actAll}`)}\n\n` +
