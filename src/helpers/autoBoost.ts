@@ -494,23 +494,33 @@ export async function autoBoostText() {
       await cnt('pack_pick', d7),
       await users('pack_pick', d7),
     ]
+    const L = (label: string, value: string) => `<b>${label}:</b> ${value}`
     return (
-      `🔁 <b>Auto-Boost</b>\n` +
-      `👥 Activos: <b>${active}</b> · ⏸ Pausados sin Boosts: <b>${paused}</b>\n` +
-      `🎚 Reparto: 1 Boost <b>${per[0]}</b> · 2 Boosts <b>${per[1]}</b> · 3 Boosts <b>${per[2]}</b>\n` +
-      `🛒 Compradores con Auto-Boost activo: <b>${buyersPct}%</b> (${buyersOn}/${buyers.length})\n\n` +
-      `➕ Activaciones: 24 h <b>${act1}</b> · 7 d <b>${act7}</b> · total <b>${actAll}</b>\n` +
-      `💰 Boosts gastados: 24 h <b>${star(s1.k)}</b> · 7 d <b>${star(s7.k)}</b> · total <b>${star(spentAll)}</b>\n` +
-      `🎁 Sorteos potenciados: 24 h <b>${s1.raffles}</b> · 7 d <b>${s7.raffles}</b> · total <b>${sAll.raffles}</b>\n\n` +
-      `👆 <b>Clics (7 d)</b>\n` +
-      `🔁 Abrieron Auto-Boost: <b>${open7}</b> clics (${openUsers7} personas) · sin Boosts: <b>${noBal7}</b>\n` +
-      `💳 Pulsaron Buy Boosts desde ahí: <b>${buy7}</b> (${buyUsers7} personas)\n` +
-      `📦 Eligieron un pack: <b>${pack7}</b> (${packUsers7} personas)\n` +
-      `✅ Compraron tras un aviso: <b>${await cnt('recharge_after_warn', d7)}</b>\n\n` +
-      `🩺 <b>Salud</b>\n` +
-      `🔕 Apagados solos (3 sorteos sin Boosts): <b>${await cnt('off_auto')}</b> · ▶️ Reanudados al recargar: <b>${await cnt('resumed')}</b>\n` +
-      `🛡 Límite diario alcanzado: <b>${await cnt('limit_hit')}</b> veces\n` +
-      `🎁 Regalo +1 Boost: enviados <b>${await cnt('gift_sent')}</b> · canjeados <b>${await cnt('gift_claimed')}</b>\n\n`
+      `<b>🔁 AUTO-BOOST</b>\n\n` +
+      `<b>👥 Ahora</b>\n` +
+      `${L('Activos', `${active}`)}\n` +
+      `${L('Pausados sin Boosts', `${paused}`)}\n` +
+      `${L('1 Boost', `${per[0]}`)} · ${L('2 Boosts', `${per[1]}`)} · ${L('3 Boosts', `${per[2]}`)}\n` +
+      `${L('Compradores con Auto-Boost', `${buyersPct}% (${buyersOn}/${buyers.length})`)}\n\n` +
+      `<b>➕ Activaciones</b>\n` +
+      `${L('24 h', `${act1}`)} · ${L('7 d', `${act7}`)} · ${L('Total', `${actAll}`)}\n\n` +
+      `<b>💰 Boosts gastados</b>\n` +
+      `${L('24 h', star(s1.k))}\n` +
+      `${L('7 d', star(s7.k))}\n` +
+      `${L('Total', star(spentAll))}\n\n` +
+      `<b>🎁 Sorteos potenciados</b>\n` +
+      `${L('24 h', `${s1.raffles}`)} · ${L('7 d', `${s7.raffles}`)} · ${L('Total', `${sAll.raffles}`)}\n\n` +
+      `<b>👆 Clics (7 d)</b>\n` +
+      `${L('Abrieron Auto-Boost', `${open7} clics · ${openUsers7} personas`)}\n` +
+      `${L('Sin Boosts al abrir', `${noBal7}`)}\n` +
+      `${L('Pulsaron Buy Boosts', `${buy7} clics · ${buyUsers7} personas`)}\n` +
+      `${L('Eligieron un pack', `${pack7} · ${packUsers7} personas`)}\n` +
+      `${L('Compraron tras un aviso', `${await cnt('recharge_after_warn', d7)}`)}\n\n` +
+      `<b>🩺 Salud</b>\n` +
+      `${L('Apagados solos', `${await cnt('off_auto')}`)}\n` +
+      `${L('Reanudados al recargar', `${await cnt('resumed')}`)}\n` +
+      `${L('Límite diario alcanzado', `${await cnt('limit_hit')}`)}\n` +
+      `${L('Regalo +1 Boost', `${await cnt('gift_sent')} enviados · ${await cnt('gift_claimed')} canjeados`)}\n\n`
     )
   } catch (err) {
     console.error(err)
