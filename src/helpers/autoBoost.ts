@@ -89,6 +89,24 @@ export async function autoBoostStatus(userId: number) {
   }
 }
 
+/** Auto-Boost can only be turned on with Boosts in the balance */
+async function needBoosts(ctx: any, edit: boolean) {
+  const text =
+    `🔁 <b>Auto-Boost</b>\n\n` +
+    `Boost every giveaway you join, automatically.\n\n` +
+    `💰 You have 0 Boosts. Buy Boosts first, then turn Auto-Boost on 👇`
+  const keyboard: any[] = [[{ text: '💳 Buy Boosts', callback_data: 'r~0' }]]
+  if (edit) {
+    try {
+      await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
+      return
+    } catch (err) {
+      if (/not modified/i.test(`${(err && (err.description || err.message)) || ''}`)) return
+    }
+  }
+  return ctx.replyWithHTML(text, { reply_markup: { inline_keyboard: keyboard } } as any)
+}
+
 /** Auto-Boost screen: choose how many Boosts per giveaway */
 async function showMenu(ctx: any, edit = false) {
   const userId = ctx.from.id
@@ -102,6 +120,7 @@ async function showMenu(ctx: any, edit = false) {
     })
   }
   const n = chat.autoBoost || 0
+  if (!n && (await getCredits(userId)) <= 0) return needBoosts(ctx, edit)
   const text =
     `🔁 <b>Auto-Boost</b>\n\n` +
     `Boost every giveaway you join, automatically.\n` +
@@ -136,6 +155,7 @@ async function setBoosts(ctx: any, n: number) {
       reply_markup: { inline_keyboard: [[{ text: '🔁 Turn on', callback_data: 'ab~m' }]] },
     })
   }
+  if ((await getCredits(userId)) <= 0) return needBoosts(ctx, true)
   const before: any = await ChatModel.findOne({ chatId: userId }).select('autoBoost')
   const wasOn = !!(before && before.autoBoost > 0)
   const chat: any = await ChatModel.findOneAndUpdate(
