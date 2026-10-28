@@ -79,6 +79,29 @@ export async function addCredits(
   return balance
 }
 
+/**
+ * Owner: takes Boosts off a balance (manual refund). Never goes below 0: removes what is there.
+ * Bought Boosts go first, free ones last. Returns how many were removed and the new balance.
+ */
+export async function removeCredits(userId: number, n: number) {
+  const chat: any = await ChatModel.findOne({ chatId: userId }).select('credits freeCredits')
+  const balance = (chat && chat.credits) || 0
+  const take = Math.max(0, Math.min(n, balance))
+  if (take <= 0) return { removed: 0, balance }
+  const free = Math.max(0, Math.min((chat && chat.freeCredits) || 0, balance))
+  const bought = balance - free
+  const freeTake = Math.max(0, take - bought)
+  const upd: any = await ChatModel.findOneAndUpdate(
+    { chatId: userId, credits: { $gte: take } },
+    { $inc: { credits: -take, freeCredits: -freeTake } },
+    { new: true }
+  )
+  if (!upd) return { removed: 0, balance }
+  const after = upd.credits || 0
+  await log(userId, -take, after, { type: 'admin', method: 'admin_remove' })
+  return { removed: take, balance: after }
+}
+
 /** Spends credits atomically, free (gift) credits first. Returns the new balance (-1 when there are not enough) and how many were free */
 export async function spendCreditsSplit(
   userId: number,

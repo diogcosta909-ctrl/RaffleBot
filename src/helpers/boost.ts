@@ -6,7 +6,7 @@ import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { MultiBoostModel } from '../models/multiBoost'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { CREDIT_PACKS, bonusFor, bestBonus, getCredits, addCredits, spendCreditsSplit } from './credits'
+import { CREDIT_PACKS, bonusFor, bestBonus, getCredits, addCredits, removeCredits, spendCreditsSplit } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -2159,6 +2159,28 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
     const balance = await addCredits(userId, n, { type: 'admin', method: 'admin' })
     return ctx.reply(`✅ ${parts[1]}: ${n > 0 ? '+' : ''}${n} créditos. Saldo: ${balance}`)
+  })
+
+  // Owner: /removeboosts <@user|id> <n|all> takes Boosts off an account (manual refund). Never below 0
+  bot.command('removeboosts', async (ctx) => {
+    if (ctx.chat.type !== 'private') return
+    if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+    const parts = ((ctx.message as any).text || '').split(/\s+/)
+    const usage = 'Uso: /removeboosts @usuario 5  (o el ID) · o "all" para quitar todos\nQuita primero los comprados y al final los gratis. Nunca baja de 0.'
+    if (!parts[1] || !parts[2]) return ctx.reply(usage)
+    const userId = await resolveUser(parts[1])
+    if (!userId) {
+      return ctx.reply(`No encuentro a ${parts[1]}. Tiene que haber escrito al bot alguna vez; si no, usa su ID.`)
+    }
+    const before = await getCredits(userId)
+    const n = /^all$/i.test(parts[2]) ? before : parseInt(parts[2], 10)
+    if (!(n > 0)) return ctx.reply(usage)
+    if (before <= 0) return ctx.reply(`${parts[1]} no tiene Boosts (saldo 0). No se ha quitado nada.`)
+    const res = await removeCredits(userId, n)
+    return ctx.reply(
+      `✅ ${parts[1]}: quitados ${res.removed} Boosts${res.removed < n ? ` (pediste ${n}, solo tenía ${before})` : ''}\n` +
+        `Saldo: ${before} → ${res.balance}`
+    )
   })
 
   // Start watching the chain for USDT payments (needs CRYPTO_WALLET)
