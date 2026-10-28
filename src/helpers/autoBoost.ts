@@ -500,7 +500,7 @@ export async function autoBoostText() {
       `<b>👥 Ahora</b>\n` +
       `${L('Activos', `${active}`)}\n` +
       `${L('Pausados sin Boosts', `${paused}`)}\n` +
-      `${L('1 Boost', `${per[0]}`)} · ${L('2 Boosts', `${per[1]}`)} · ${L('3 Boosts', `${per[2]}`)}\n` +
+      `${L('🚀 Boost', `${per[0]}`)} · ${L('🚀🚀 Boosts', `${per[1]}`)} · ${L('🚀🚀🚀 Boosts', `${per[2]}`)}\n` +
       `${L('Compradores con Auto-Boost', `${buyersPct}% (${buyersOn}/${buyers.length})`)}\n\n` +
       `<b>➕ Activaciones</b>\n` +
       `${L('24 h', `${act1}`)} · ${L('7 d', `${act7}`)} · ${L('Total', `${actAll}`)}\n\n` +
@@ -511,10 +511,10 @@ export async function autoBoostText() {
       `<b>🎁 Sorteos potenciados</b>\n` +
       `${L('24 h', `${s1.raffles}`)} · ${L('7 d', `${s7.raffles}`)} · ${L('Total', `${sAll.raffles}`)}\n\n` +
       `<b>👆 Clics (7 d)</b>\n` +
-      `${L('Abrieron Auto-Boost', `${open7} clics · ${openUsers7} personas`)}\n` +
+      `${L('Abrieron Auto-Boost', `${open7} 👆 · ${openUsers7} 👥`)}\n` +
       `${L('Sin Boosts al abrir', `${noBal7}`)}\n` +
-      `${L('Pulsaron Buy Boosts', `${buy7} clics · ${buyUsers7} personas`)}\n` +
-      `${L('Eligieron un pack', `${pack7} · ${packUsers7} personas`)}\n` +
+      `${L('Pulsaron Buy Boosts', `${buy7} 👆 · ${buyUsers7} 👥`)}\n` +
+      `${L('Eligieron un pack', `${pack7} 👆 · ${packUsers7} 👥`)}\n` +
       `${L('Compraron tras un aviso', `${await cnt('recharge_after_warn', d7)}`)}\n\n` +
       `<b>🩺 Salud</b>\n` +
       `${L('Apagados solos', `${await cnt('off_auto')}`)}\n` +
