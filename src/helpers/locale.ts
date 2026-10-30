@@ -19,9 +19,9 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
   },
   start_text: {
     en:
-      "👋 Hi! I run giveaways in Telegram groups and channels.\n\n🎁 Fair random winners\n🚀 Boosts: buy extra entries with Stars or USDT\n🏆 Live ranking of winners\n\nTo run your own giveaway:\n1. Add me as an admin to your group or channel\n2. Send /start there",
+      "👋 <b>Welcome!</b> Fair giveaways, more chances to win.\n\n🚀 <b>Boosts:</b> more entries with Stars or USDT\n🔁 <b>Auto-Boost:</b> we boost every giveaway you join\n👥 <b>Invite & earn:</b> 10% of every Boost your friends buy, for life\n🏆 Live ranking of winners\n\n👇 Pick an option",
     es:
-      "👋 ¡Hola! Hago sorteos en grupos y canales de Telegram.\n\n🎁 Ganadores al azar, sin trampas\n🚀 Boosts: compra entradas extra con Stars o USDT\n🏆 Ranking de ganadores en vivo\n\nPara hacer tu propio sorteo:\n1. Añádeme como admin a tu grupo o canal\n2. Envía /start allí",
+      "👋 <b>¡Bienvenido!</b> Sorteos justos, más posibilidades de ganar.\n\n🚀 <b>Boosts:</b> más entradas con Stars o USDT\n🔁 <b>Auto-Boost:</b> potenciamos cada sorteo en el que participes\n👥 <b>Invita y gana:</b> el 10% de cada Boost que compren tus amigos, de por vida\n🏆 Ranking de ganadores en vivo\n\n👇 Elige una opción",
   },
   multi_none: {
     en: "🚀 You're not in any active giveaway with Boosts right now.\n\nJoin one and come back here.",
