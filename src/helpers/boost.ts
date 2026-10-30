@@ -1590,7 +1590,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         : `${o.firstName || ''}${o.lastName ? ` ${o.lastName}` : ''}`.trim() || `${o.userId}`
       feed.push({
         at: when ? +new Date(when) : 0,
-        line: `${fmtDate(when)} · ${link(o.userId, name)} · 🪙 ${formatUnits(o.amountUnits)} USDT`,
+        line: `${fmtDate(when)} · ${link(o.userId, name)} · $${(o.amountUnits / 10000).toFixed(2)} 🪙`,
       })
     })
     const lines = feed
