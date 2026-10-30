@@ -602,6 +602,8 @@ export async function notifyOwner(
             usdt: info.crypto,
             credits: !!info.credits,
             gift: !!info.gift,
+            auto: !!info.auto,
+            added: Math.round(info.n * step),
           })
           await ctx.telegram.sendPhoto(
             feed,
