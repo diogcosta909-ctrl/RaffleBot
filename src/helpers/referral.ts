@@ -3,7 +3,7 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { ChatModel } from '../models/chat'
 import { CreditTxModel } from '../models/creditTx'
 import { trackAuto } from '../models/autoBoostEvent'
-import { addCredits } from './credits'
+import { addCredits, removeCredits } from './credits'
 
 // Invite friends: you get 10% of every Boost your friend buys, for life. The friend gets +1 free Boost on buying and turning on Auto-Boost.
 // Streak and tiers: every 10 giveaways in a row boosted by Auto-Boost = +1 free Boost.
@@ -147,6 +147,68 @@ export async function inviteCommission(userId: number, boosts: number) {
   }
 }
 
+/** Manual refund: takes the inviter's commission back too. Returns what was taken (Boosts) or 0 */
+export async function clawbackCommission(userId: number, removed: number) {
+  try {
+    if (!REFERRAL_PCT || !(removed > 0)) return { refId: 0, taken: 0 }
+    const me: any = await ChatModel.findOne({ chatId: userId }).select('referredBy')
+    if (!me || !me.referredBy) return { refId: 0, taken: 0 }
+    const refId = me.referredBy
+    const inv: any = await ChatModel.findOneAndUpdate(
+      { chatId: refId },
+      { $inc: { refPending: -((removed * REFERRAL_PCT) / 100) } },
+      { new: true }
+    )
+    if (!inv) return { refId, taken: 0 }
+    const k = Math.floor(Math.round(-(inv.refPending || 0) * 1000) / 1000)
+    if (k < 1) return { refId, taken: 0 }
+    const res = await removeCredits(refId, k)
+    // What could not be taken stays as a debt that future commissions pay off
+    await ChatModel.updateOne({ chatId: refId }, { $inc: { refPending: res.removed } })
+    return { refId, taken: res.removed }
+  } catch (err) {
+    console.error('Clawback failed', err)
+    return { refId: 0, taken: 0 }
+  }
+}
+
+/** Owner: top inviters with friends, buyers, Boosts bought by them and commission paid */
+export async function topInviteText() {
+  const groups: any[] = await ChatModel.aggregate([
+    { $match: { referredBy: { $exists: true } } },
+    { $group: { _id: '$referredBy', friends: { $push: '$chatId' } } },
+  ])
+  if (!groups.length) return 'Todavía nadie ha entrado por invitación.'
+  const all: number[] = []
+  groups.forEach((g) => g.friends.forEach((f: number) => all.push(f)))
+  const bought: any[] = await CreditTxModel.aggregate([
+    { $match: { userId: { $in: all }, type: 'topup' } },
+    { $group: { _id: '$userId', n: { $sum: '$delta' } } },
+  ])
+  const boughtBy = new Map<number, number>(bought.map((b) => [b._id, b.n]))
+  const earn: any[] = await CreditTxModel.aggregate([
+    { $match: { userId: { $in: groups.map((g) => g._id) }, method: 'invite_commission' } },
+    { $group: { _id: '$userId', n: { $sum: '$delta' } } },
+  ])
+  const earnBy = new Map<number, number>(earn.map((e) => [e._id, e.n]))
+  const rows = groups
+    .map((g) => {
+      const buyers = g.friends.filter((f: number) => boughtBy.has(f)).length
+      const boosts = g.friends.reduce((a: number, f: number) => a + (boughtBy.get(f) || 0), 0)
+      return { id: g._id, friends: g.friends.length, buyers, boosts, earned: earnBy.get(g._id) || 0 }
+    })
+    .sort((a, b) => b.boosts - a.boosts || b.friends - a.friends)
+    .slice(0, 15)
+  const names: any[] = await ChatModel.find({ chatId: { $in: rows.map((r) => r.id) } }).select('chatId username')
+  const nm = new Map<number, string>(names.map((c) => [c.chatId, c.username ? `@${c.username}` : '']))
+  const lines = rows.map(
+    (r, i) =>
+      `<b>${i + 1}. ${nm.get(r.id) || r.id}</b> <code>${r.id}</code>\n` +
+      `👥 ${r.friends} entraron · 🛒 ${r.buyers} compraron · 🚀 ${r.boosts} Boosts comprados · 💰 ${r.earned} de comisión`
+  )
+  return `<b>👥 TOP INVITADORES</b>\n\n${lines.join('\n\n')}`
+}
+
 export function inviteText(userId: number, invited: number, buyers: number, earned: number) {
   return (
     `👥 <b>Invite friends</b>\n\n` +
@@ -177,6 +239,14 @@ export function setupReferral(bot: Telegraf<ContextMessageUpdate>) {
       reply_markup: { inline_keyboard: [[{ text: '📤 Share link', url: share }]] },
     } as any)
   }
+  bot.command('topinvite', async (ctx) => {
+    if (ctx.chat.type !== 'private' || ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+    try {
+      await ctx.replyWithHTML(await topInviteText())
+    } catch (err) {
+      console.error(err)
+    }
+  })
   bot.command('invite', async (ctx) => {
     if (ctx.chat.type !== 'private') return
     try {

@@ -2185,7 +2185,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     if (ctx.chat.type !== 'private') return
     if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
     const parts = ((ctx.message as any).text || '').split(/\s+/)
-    const usage = 'Uso: /removeboosts @usuario 5  (o el ID) · o "all" para quitar todos\nQuita primero los comprados y al final los gratis. Nunca baja de 0.'
+    const usage = 'Uso: /removeboosts @usuario 5  (o el ID) · o "all" para quitar todos\nQuita primero los comprados y al final los gratis. Nunca baja de 0.\nTambién descuenta el 10% al que lo invitó (añade "nocom" al final para no hacerlo).'
     if (!parts[1] || !parts[2]) return ctx.reply(usage)
     const userId = await resolveUser(parts[1])
     if (!userId) {
@@ -2196,9 +2196,15 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     if (!(n > 0)) return ctx.reply(usage)
     if (before <= 0) return ctx.reply(`${parts[1]} no tiene Boosts (saldo 0). No se ha quitado nada.`)
     const res = await removeCredits(userId, n)
+    // The inviter's 10% goes back too (add "nocom" at the end to skip it)
+    let comLine = ''
+    if (!/^nocom$/i.test(parts[3] || '')) {
+      const cb = await require('./referral').clawbackCommission(userId, res.removed)
+      if (cb.refId) comLine = cb.taken > 0 ? `\n↩️ Comisión devuelta: -${cb.taken} Boosts a quien lo invitó (${cb.refId})` : `\n↩️ Comisión del invitador (${cb.refId}): fracción descontada de su acumulado`
+    }
     return ctx.reply(
       `✅ ${parts[1]}: quitados ${res.removed} Boosts${res.removed < n ? ` (pediste ${n}, solo tenía ${before})` : ''}\n` +
-        `Saldo: ${before} → ${res.balance}`
+        `Saldo: ${before} → ${res.balance}${comLine}`
     )
   })
 
