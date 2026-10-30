@@ -3,6 +3,7 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { checkIfAdmin } from '../helpers/checkAdmin'
 import { findChat } from '../models/chat'
 import { loc, START_COMMAND } from '../helpers/locale'
+import { registerReferral } from '../helpers/referral'
 
 /**
  * Setting up the start and help commands
@@ -14,6 +15,8 @@ export function setupStartAndHelp(bot: Telegraf<ContextMessageUpdate>) {
     if (ctx.chat.type !== 'private' && START_COMMAND === 'start') {
       return next()
     }
+    const m = /^\/start(?:@\w+)?\s+(ref_\d+)$/.exec((ctx.message && ctx.message.text) || '')
+    if (m) await registerReferral(ctx.from.id, m[1])
     return sendStart(ctx)
   })
   bot.command('help', sendHelp)

@@ -76,6 +76,14 @@ export async function addCredits(
       console.error('Auto-Boost resume failed', err)
     }
   }
+  // Invited friend: the first pack purchase may complete the invite reward
+  if (n > 0 && tx.type === 'topup') {
+    try {
+      require('./referral').checkReferral(userId)
+    } catch (err) {
+      console.error('Referral check failed', err)
+    }
+  }
   // Auto-Boost off: after buying a pack, offer to turn it on with one tap
   if (n > 0 && tx.type === 'topup' && !(chat.autoBoost > 0)) {
     try {

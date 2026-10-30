@@ -115,10 +115,12 @@ async function nameOf(telegram: any, id: number) {
 /** True when the person has Auto-Boost on (🔁 badge in the top boosters) */
 async function hasAutoBoost(userId: number) {
   try {
-    const c: any = await require('../models/chat').ChatModel.findOne({ chatId: userId }).select('autoBoost')
-    return !!(c && c.autoBoost > 0)
+    const c: any = await require('../models/chat').ChatModel.findOne({ chatId: userId }).select('autoBoost autoBoostCount')
+    if (!(c && c.autoBoost > 0)) return ''
+    const t = require('./referral').tierOf(c.autoBoostCount || 0)
+    return t ? `🔁 ${t.name}` : '🔁'
   } catch {
-    return false
+    return ''
   }
 }
 
@@ -149,7 +151,7 @@ export async function topBoostersText(
       const extra = Math.round(top[i][1] * step)
       const auto = await hasAutoBoost(top[i][0])
       lines.push(
-        `${MEDALS[i]} ${esc(name)}${auto ? ' 🔁' : ''} · ${loc('top_entries', language).replace('$n', `${extra}`)}`
+        `${MEDALS[i]} ${esc(name)}${auto ? ` ${auto}` : ''} · ${loc('top_entries', language).replace('$n', `${extra}`)}`
       )
     }
     return `\n${loc('top_boosters', language)}\n${lines.join('\n')}`

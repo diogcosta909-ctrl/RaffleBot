@@ -11,6 +11,7 @@ import { raffleTotals, chanceOf, pct } from './odds'
 import { cryptoEnabled, cryptoPriceLabel } from './cryptoPay'
 import { expireFreeCredits } from './freeExpiry'
 import { loc } from './locale'
+import { streakStep, streakReset, checkReferral } from './referral'
 import {
   validateBoost,
   notifyOwner,
@@ -158,6 +159,7 @@ async function setBoosts(ctx: any, n: number) {
   if (n === 0) {
     await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoost: 0, autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } })
     void trackAuto('off_manual', userId)
+    void streakReset(userId)
     return ctx.editMessageText('🔁 <b>Auto-Boost is OFF</b>\n\nYou can turn it on again anytime.', {
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: [[{ text: '🔁 Turn on', callback_data: 'ab~m' }]] },
@@ -174,7 +176,10 @@ async function setBoosts(ctx: any, n: number) {
   const credits = chat.credits || 0
   const limit = chat.autoBoostLimit || DEFAULT_LIMIT
   void trackAuto('pick', userId, { n })
-  if (!wasOn) void trackAuto('activate', userId, { n })
+  if (!wasOn) {
+    void trackAuto('activate', userId, { n })
+    void checkReferral(userId)
+  }
   // Owner alert: someone turned Auto-Boost on (not when only changing the amount)
   if (!wasOn) {
     try {
@@ -207,6 +212,7 @@ async function setBoosts(ctx: any, n: number) {
     { text: '🚀 Change Boosts', callback_data: 'ab~m' },
     { text: '🛡 Daily limit', callback_data: 'abl~m' },
   ])
+  keyboard.push([{ text: '👥 Invite friends · +1 Boost', callback_data: 'inv~' }])
   keyboard.push([{ text: 'Turn off', callback_data: 'ab~0' }])
   return ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
 }
@@ -217,6 +223,7 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
   if (missed >= MAX_MISSED) {
     await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoost: 0, autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } })
     void trackAuto('off_auto', userId)
+    void streakReset(userId)
     await send(
       userId,
       `🔁 <b>Auto-Boost turned off</b>\n\nYou missed ${MAX_MISSED} giveaways without Boosts, so we paused it to keep things quiet.\n\nTurn it back on anytime 👇`,
@@ -231,6 +238,7 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
   )
   if (!first) return
   void trackAuto('paused', userId, { raffleId: `${raffle._id}` })
+  void streakReset(userId)
   const { title, link } = await giveawayInfo(raffle)
   const base = entryValueOf(raffle)
   const mult = multiplierOf()
@@ -319,6 +327,7 @@ export async function autoBoostOnJoin(raffle: any, from: any): Promise<string> {
   )
   await trackBoost({ type: 'invoice', userId, raffleId, boosts: k, method: 'credits', reminded: true })
   void trackAuto('applied', userId, { k, raffleId })
+  void streakStep(userId)
   const value = res.value + k * mult
   const base = entryValueOf(res.raffle)
   try {
@@ -550,7 +559,12 @@ export async function autoBoostText() {
       `${L('Apagados solos', `${await cnt('off_auto')}`)}\n` +
       `${L('Reanudados al recargar', `${await cnt('resumed')}`)}\n` +
       `${L('Límite diario alcanzado', `${await cnt('limit_hit')}`)}\n` +
-      `${L('Regalo +1 Boost', `${await cnt('gift_sent')} enviados · ${await cnt('gift_claimed')} canjeados`)}\n\n`
+      `${L('Regalo +1 Boost', `${await cnt('gift_sent')} enviados · ${await cnt('gift_claimed')} canjeados`)}\n\n` +
+      `<b>🔥 Rachas e invitados</b>\n` +
+      `${L('Premios de racha (10 seguidos)', `${await cnt('streak_reward')}`)}\n` +
+      `${L('Abrieron /invite', `${await cnt('invite_open')}`)}\n` +
+      `${L('Entraron por invitación', `${await cnt('ref_join')}`)}\n` +
+      `${L('Invitaciones premiadas', `${await cnt('ref_reward')}`)}\n\n`
     )
   } catch (err) {
     console.error(err)

@@ -72,6 +72,17 @@ export class Chat extends Typegoose {
   // Credits spent by Auto-Boost in total
   @prop({ default: 0 })
   autoBoostTotal?: number
+  // Giveaways boosted by Auto-Boost in a row (every 10 = +1 free Boost; resets when it pauses or turns off)
+  @prop({ default: 0 })
+  autoBoostStreak?: number
+  // Giveaways boosted by Auto-Boost in total (tiers: Bronze 10, Silver 50, Gold 100)
+  @prop({ default: 0 })
+  autoBoostCount?: number
+  // Who invited this person (user id) and whether the invite reward was already paid
+  @prop({ index: true })
+  referredBy?: number
+  @prop({ default: false })
+  referralRewarded?: boolean
   // Telegram @username in lowercase (saved when the person writes to the bot)
   @prop({ index: true })
   username?: string

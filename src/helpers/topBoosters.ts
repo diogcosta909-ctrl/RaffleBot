@@ -15,7 +15,7 @@ const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 /** Top boosters of the last days (Stars and USDT together, counted in boosts) */
 export async function topBoosters(days = DAYS) {
   const since = new Date(Date.now() - days * 24 * 3600 * 1000)
-  const byUser = new Map<number, { id: number; name: string; boosts: number; auto?: boolean }>()
+  const byUser = new Map<number, { id: number; name: string; boosts: number; auto?: string }>()
   const add = (id: number, name: string, boosts: number) => {
     const cur = byUser.get(id) || { id, name, boosts: 0 }
     cur.boosts += boosts
@@ -50,21 +50,25 @@ export async function topBoosters(days = DAYS) {
     .slice(0, TOP)
   // 🔁 badge for people with Auto-Boost on
   try {
-    const on: any[] = await ChatModel.find({ chatId: { $in: top.map((u) => u.id) }, autoBoost: { $gt: 0 } }).select('chatId')
-    const ids = new Set<number>(on.map((c) => c.chatId))
-    top.forEach((u) => (u.auto = ids.has(u.id)))
+    const on: any[] = await ChatModel.find({ chatId: { $in: top.map((u) => u.id) }, autoBoost: { $gt: 0 } }).select('chatId autoBoostCount')
+    const badge = new Map<number, string>()
+    on.forEach((c) => {
+      const t = require('./referral').tierOf(c.autoBoostCount || 0)
+      badge.set(c.chatId, t ? `🔁 ${t.name}` : '🔁')
+    })
+    top.forEach((u) => (u.auto = badge.get(u.id) || ''))
   } catch (err) {
     console.error(err)
   }
   return top
 }
 
-function rankingText(list: { name: string; boosts: number; auto?: boolean }[]) {
+function rankingText(list: { name: string; boosts: number; auto?: string }[]) {
   const lines = list.map(
     (u, i) =>
-      `${MEDALS[i]} <b>${esc(u.name || 'Anonymous')}</b>${u.auto ? ' 🔁' : ''} · ${u.boosts} ${u.boosts > 1 ? 'boosts' : 'boost'}`
+      `${MEDALS[i]} <b>${esc(u.name || 'Anonymous')}</b>${u.auto ? ` ${u.auto}` : ''} · ${u.boosts} ${u.boosts > 1 ? 'boosts' : 'boost'}`
   )
-  return `🏆 <b>Top Boosters of the week</b>\n\n${lines.join('\n')}\n\n🔁 = Auto-Boost on\n🚀 Want to be on the list? Boost your odds in the next giveaway!`
+  return `🏆 <b>Top Boosters of the week</b>\n\n${lines.join('\n')}\n\n🔁 = Auto-Boost on · Bronze 10 · Silver 50 · Gold 100 giveaways\n🚀 Want to be on the list? Boost your odds in the next giveaway!`
 }
 
 async function postRanking(telegram: any) {
