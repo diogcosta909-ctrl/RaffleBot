@@ -1541,10 +1541,9 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   })
 
   // Bot owner: Stars earned and who paid
-  bot.command('stars', async (ctx) => {
-    if (ctx.chat.type !== 'private') return
-    if (ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
-    const ownerChat = await findChat(ctx.from.id)
+  // Owner stats are split in several commands: /stars (summary), /pagos, /embudo, /statsall, /statsauto
+  const buildStats = async (ownerId: number) => {
+    const ownerChat = await findChat(ownerId)
     const since = ownerChat.statsResetAt
     const sinceMatch: any = since ? { createdAt: { $gte: since } } : {}
     const totals = await PaymentModel.aggregate([
@@ -1672,21 +1671,84 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     } catch {
       autoText = ''
     }
-    const text =
+    let autoLine = ''
+    try {
+      const on = await ChatModel.countDocuments({ autoBoost: { $gt: 0 } })
+      const com: any[] = await require('../models/creditTx').CreditTxModel.aggregate([
+        { $match: { method: 'invite_commission' } },
+        { $group: { _id: null, n: { $sum: '$delta' } } },
+      ])
+      autoLine = `🔁 Auto-Boost activos: <b>${on}</b> · 👥 Comisión de invitados: <b>${(com[0] && com[0].n) || 0}</b> Boosts\n`
+    } catch {
+      autoLine = ''
+    }
+    const head =
       `⭐ <b>Stars</b>\n\n` +
       `Total: <b>${applied.stars}⭐</b> (${applied.count} pagos)\n` +
       `Devueltas: ${refunded.stars}⭐ (${refunded.count})\n` +
       (cryptoEnabled()
         ? `🪙 Crypto: <b>${formatUnits(cryptoTotal.units)} USDT</b> (${cryptoTotal.count} pagos)\n`
         : '') +
-      `\n` +
-      funnelText +
-      multiText +
-      `<b>Últimos pagos</b>\n` +
-      (lines.length ? lines.join('\n') : 'Aún no hay pagos.')
-    await ctx.replyWithHTML(text, { disable_web_page_preview: true })
-    // Auto-Boost numbers go in their own message (Telegram limits one message to 4096 characters)
-    if (autoText) await ctx.replyWithHTML(autoText.trim(), { disable_web_page_preview: true })
+      `👆 Pagaron: <b>${payers}</b> personas\n` +
+      autoLine +
+      `\n👇 Más detalle`
+    return {
+      head,
+      pagos: `<b>Últimos pagos</b>\n` + (lines.length ? lines.join('\n') : 'Aún no hay pagos.'),
+      embudo: funnelText.trim(),
+      statsall: multiText.trim(),
+      statsauto: autoText.trim(),
+    }
+  }
+  const STATS_KEYBOARD = {
+    inline_keyboard: [
+      [
+        { text: '💳 Pagos', callback_data: 'st~pagos' },
+        { text: '🧭 Embudo', callback_data: 'st~embudo' },
+      ],
+      [
+        { text: '🎯 Boost All', callback_data: 'st~statsall' },
+        { text: '🔁 Auto-Boost', callback_data: 'st~statsauto' },
+      ],
+      [{ text: '👥 Top invitadores', callback_data: 'st~topinvite' }],
+    ],
+  }
+  const sendStats = async (ctx: any, kind: string) => {
+    const owner = parseInt(process.env.ADMIN, 10)
+    if (!ctx.from || ctx.from.id !== owner) return
+    if (kind === 'topinvite') {
+      const text = await require('./referral').topInviteText()
+      return ctx.replyWithHTML(text, { disable_web_page_preview: true })
+    }
+    const parts: any = await buildStats(owner)
+    if (kind === 'stars') {
+      return ctx.replyWithHTML(parts.head, { disable_web_page_preview: true, reply_markup: STATS_KEYBOARD })
+    }
+    const body = parts[kind]
+    if (!body) return ctx.reply('Sin datos todavía.')
+    return ctx.replyWithHTML(body, { disable_web_page_preview: true })
+  }
+  ;['stars', 'pagos', 'embudo', 'statsall', 'statsauto'].forEach((cmd) => {
+    bot.command(cmd, async (ctx) => {
+      if (ctx.chat.type !== 'private') return
+      try {
+        await sendStats(ctx, cmd)
+      } catch (err) {
+        console.error(err)
+      }
+    })
+  })
+  bot.action(/^st~(pagos|embudo|statsall|statsauto|topinvite)$/, async (ctx) => {
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    try {
+      await sendStats(ctx, (ctx as any).match[1])
+    } catch (err) {
+      console.error(err)
+    }
   })
 
   // Bot owner: reset the /stars stats to 0 (data is kept, only the counting start changes)
