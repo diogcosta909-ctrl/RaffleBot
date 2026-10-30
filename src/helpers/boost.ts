@@ -1556,28 +1556,45 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       .limit(20)
     const esc = (t: string) =>
       t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    const lines = last.map((pay: any) => {
-      const date = pay.createdAt
-        ? (() => {
-            const parts: any = {}
-            new Intl.DateTimeFormat('en-GB', {
-              timeZone: 'Europe/Paris',
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              hourCycle: 'h23',
-            } as any)
-              .formatToParts(new Date(pay.createdAt))
-              .forEach((x) => (parts[x.type] = x.value))
-            return `${parts.day}/${parts.month} - ${parts.hour}:${parts.minute}`
-          })()
-        : ''
-      const who = `<a href="tg://user?id=${pay.userId}">${esc(
-        pay.userName || `${pay.userId}`
-      )}</a>`
-      return `${date} · ${who} · ${pay.stars}⭐`
+    const fmtDate = (d: any) => {
+      if (!d) return ''
+      const parts: any = {}
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Paris',
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      } as any)
+        .formatToParts(new Date(d))
+        .forEach((x) => (parts[x.type] = x.value))
+      return `${parts.day}/${parts.month} - ${parts.hour}:${parts.minute}`
+    }
+    const link = (userId: number, name: string) => `<a href="tg://user?id=${userId}">${esc(name)}</a>`
+    // Stars and USDT payments together, newest first
+    const lastCrypto: any[] = await CryptoOrderModel.find({ status: 'paid', ...sinceMatch })
+      .sort({ createdAt: -1 })
+      .limit(20)
+    const feed: { at: number; line: string }[] = []
+    last.forEach((pay: any) => {
+      const at = pay.createdAt ? +new Date(pay.createdAt) : 0
+      feed.push({ at, line: `${fmtDate(pay.createdAt)} · ${link(pay.userId, pay.userName || `${pay.userId}`)} · ${pay.stars}⭐` })
     })
+    lastCrypto.forEach((o: any) => {
+      const when = o.paidAt || o.createdAt
+      const name = o.username
+        ? `@${o.username}`
+        : `${o.firstName || ''}${o.lastName ? ` ${o.lastName}` : ''}`.trim() || `${o.userId}`
+      feed.push({
+        at: when ? +new Date(when) : 0,
+        line: `${fmtDate(when)} · ${link(o.userId, name)} · 🪙 ${formatUnits(o.amountUnits)} USDT`,
+      })
+    })
+    const lines = feed
+      .sort((x, y) => y.at - x.at)
+      .slice(0, 20)
+      .map((f) => f.line)
     // Funnel: unique people per step
     const funnel = await BoostEventModel.aggregate([
       { $match: sinceMatch },
