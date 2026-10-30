@@ -31,7 +31,6 @@ async function sendStart(ctx: ContextMessageUpdate) {
     reply_markup: {
       inline_keyboard: [
         [{ text: loc('start_boost_btn', chat.language), callback_data: 'r~0' }],
-        [{ text: loc('start_boostall_btn', chat.language), callback_data: 'ba~0' }],
         [{ text: '🔁 Auto-Boost', callback_data: 'ab~m' }],
         [{ text: '👥 Invite & earn 10%', callback_data: 'inv~' }],
       ],
