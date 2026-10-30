@@ -392,6 +392,35 @@ async function markRechargeAfterWarn(userId: number) {
   }
 }
 
+/** After a pack purchase with Auto-Boost off: one message to turn it on with a single tap */
+export function offerAfterPurchase(userId: number) {
+  if (!tg) return
+  setTimeout(async () => {
+    try {
+      const chat: any = await ChatModel.findOne({ chatId: userId }).select('credits autoBoost')
+      if (!chat || chat.autoBoost > 0 || (chat.credits || 0) <= 0) return
+      void trackAuto('offer_sent', userId)
+      await send(
+        userId,
+        `🔁 <b>Want your Boosts to work on their own?</b>\n\n` +
+          `Turn on Auto-Boost and we boost every giveaway you join, automatically.\n` +
+          `💰 Your Boosts: ${chat.credits}\n\n` +
+          `How many Boosts per giveaway? 👇`,
+        [
+          [
+            { text: '🚀 1 Boost', callback_data: 'abo~1' },
+            { text: '🚀 2 Boosts', callback_data: 'abo~2' },
+            { text: '🚀 3 Boosts', callback_data: 'abo~3' },
+          ],
+          [{ text: 'Not now', callback_data: 'abx~' }],
+        ]
+      )
+    } catch (err) {
+      console.error('Auto-Boost offer failed', err)
+    }
+  }, 4000)
+}
+
 const giving = new Set<number>()
 
 /** Credits arrived (recharge or code): resume a paused Auto-Boost and give the one-time gift */
@@ -515,7 +544,8 @@ export async function autoBoostText() {
       `${L('Sin Boosts al abrir', `${noBal7}`)}\n` +
       `${L('Pulsaron Buy Boosts', `${buy7} 👆 · ${buyUsers7} 👥`)}\n` +
       `${L('Eligieron un pack', `${pack7} 👆 · ${packUsers7} 👥`)}\n` +
-      `${L('Compraron tras un aviso', `${await cnt('recharge_after_warn', d7)}`)}\n\n` +
+      `${L('Compraron tras un aviso', `${await cnt('recharge_after_warn', d7)}`)}\n` +
+      `${L('Oferta tras compra', `${await cnt('offer_sent', d7)} enviadas · ${await cnt('offer_pick', d7)} activaron`)}\n\n` +
       `<b>🩺 Salud</b>\n` +
       `${L('Apagados solos', `${await cnt('off_auto')}`)}\n` +
       `${L('Reanudados al recargar', `${await cnt('resumed')}`)}\n` +
@@ -586,6 +616,26 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
       await setBoosts(ctx, parseInt((ctx as any).match[1], 10))
     } catch (err) {
       console.error(err)
+    }
+  })
+
+  // The one-tap offer after a purchase
+  bot.action(/^abo~([1-3])$/, async (ctx) => {
+    await answer(ctx)
+    try {
+      void trackAuto('offer_pick', ctx.from.id)
+      await setBoosts(ctx, parseInt((ctx as any).match[1], 10))
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  bot.action('abx~', async (ctx) => {
+    await answer(ctx)
+    try {
+      await ctx.deleteMessage()
+    } catch {
+      // already gone
     }
   })
 

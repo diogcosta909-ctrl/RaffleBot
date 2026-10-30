@@ -76,6 +76,14 @@ export async function addCredits(
       console.error('Auto-Boost resume failed', err)
     }
   }
+  // Auto-Boost off: after buying a pack, offer to turn it on with one tap
+  if (n > 0 && tx.type === 'topup' && !(chat.autoBoost > 0)) {
+    try {
+      require('./autoBoost').offerAfterPurchase(userId)
+    } catch (err) {
+      console.error('Auto-Boost offer failed', err)
+    }
+  }
   return balance
 }
 

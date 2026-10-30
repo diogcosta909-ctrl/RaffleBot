@@ -112,6 +112,16 @@ async function nameOf(telegram: any, id: number) {
  * "\n🏆 Top boosters\n🥇 Ana · 5 boosts…" for the raffle message
  * (starts with a line break; empty when nobody has boosted)
  */
+/** True when the person has Auto-Boost on (🔁 badge in the top boosters) */
+async function hasAutoBoost(userId: number) {
+  try {
+    const c: any = await require('../models/chat').ChatModel.findOne({ chatId: userId }).select('autoBoost')
+    return !!(c && c.autoBoost > 0)
+  } catch {
+    return false
+  }
+}
+
 export async function topBoostersText(
   telegram: any,
   raffleId: any,
@@ -137,8 +147,9 @@ export async function topBoostersText(
     for (let i = 0; i < top.length; i++) {
       const name = await nameOf(telegram, top[i][0])
       const extra = Math.round(top[i][1] * step)
+      const auto = await hasAutoBoost(top[i][0])
       lines.push(
-        `${MEDALS[i]} ${esc(name)} · ${loc('top_entries', language).replace('$n', `${extra}`)}`
+        `${MEDALS[i]} ${esc(name)}${auto ? ' 🔁' : ''} · ${loc('top_entries', language).replace('$n', `${extra}`)}`
       )
     }
     return `\n${loc('top_boosters', language)}\n${lines.join('\n')}`

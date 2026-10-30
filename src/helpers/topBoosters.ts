@@ -3,7 +3,7 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { CreditTxModel } from '../models/creditTx'
-import { findChat } from '../models/chat'
+import { ChatModel, findChat } from '../models/chat'
 
 const TZ = 'Europe/Andorra'
 const DAYS = 7
@@ -15,9 +15,9 @@ const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 /** Top boosters of the last days (Stars and USDT together, counted in boosts) */
 export async function topBoosters(days = DAYS) {
   const since = new Date(Date.now() - days * 24 * 3600 * 1000)
-  const byUser = new Map<number, { name: string; boosts: number }>()
+  const byUser = new Map<number, { id: number; name: string; boosts: number; auto?: boolean }>()
   const add = (id: number, name: string, boosts: number) => {
-    const cur = byUser.get(id) || { name, boosts: 0 }
+    const cur = byUser.get(id) || { id, name, boosts: 0 }
     cur.boosts += boosts
     if (name) cur.name = name
     byUser.set(id, cur)
@@ -44,18 +44,27 @@ export async function topBoosters(days = DAYS) {
     createdAt: { $gte: since },
   })
   for (const t of spends) add(t.userId, t.name || '', -t.delta)
-  return Array.from(byUser.values())
+  const top = Array.from(byUser.values())
     .filter((u) => u.boosts > 0)
     .sort((a, b) => b.boosts - a.boosts)
     .slice(0, TOP)
+  // 🔁 badge for people with Auto-Boost on
+  try {
+    const on: any[] = await ChatModel.find({ chatId: { $in: top.map((u) => u.id) }, autoBoost: { $gt: 0 } }).select('chatId')
+    const ids = new Set<number>(on.map((c) => c.chatId))
+    top.forEach((u) => (u.auto = ids.has(u.id)))
+  } catch (err) {
+    console.error(err)
+  }
+  return top
 }
 
-function rankingText(list: { name: string; boosts: number }[]) {
+function rankingText(list: { name: string; boosts: number; auto?: boolean }[]) {
   const lines = list.map(
     (u, i) =>
-      `${MEDALS[i]} <b>${esc(u.name || 'Anonymous')}</b> · ${u.boosts} ${u.boosts > 1 ? 'boosts' : 'boost'}`
+      `${MEDALS[i]} <b>${esc(u.name || 'Anonymous')}</b>${u.auto ? ' 🔁' : ''} · ${u.boosts} ${u.boosts > 1 ? 'boosts' : 'boost'}`
   )
-  return `🏆 <b>Top Boosters of the week</b>\n\n${lines.join('\n')}\n\n🚀 Want to be on the list? Boost your odds in the next giveaway!`
+  return `🏆 <b>Top Boosters of the week</b>\n\n${lines.join('\n')}\n\n🔁 = Auto-Boost on\n🚀 Want to be on the list? Boost your odds in the next giveaway!`
 }
 
 async function postRanking(telegram: any) {
