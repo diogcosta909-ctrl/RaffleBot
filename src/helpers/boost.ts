@@ -1700,6 +1700,46 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       statsauto: autoText.trim(),
     }
   }
+  // Boosts used per period: with Boosts balance, paid directly with Stars or USDT, and how many by Auto-Boost
+  const spendText = async () => {
+    const DAY = 24 * 3600 * 1000
+    const periods: [string, number][] = [['24 h', 1], ['7 días', 7], ['15 días', 15], ['30 días', 30]]
+    const CreditTx = require('../models/creditTx').CreditTxModel
+    const Auto = require('../models/autoBoostEvent').AutoBoostEventModel
+    const blocks: string[] = []
+    for (const [label, days] of periods) {
+      const from = new Date(Date.now() - days * DAY)
+      const cr: any[] = await CreditTx.aggregate([
+        { $match: { type: 'spend', createdAt: { $gte: from } } },
+        { $group: { _id: null, n: { $sum: { $multiply: ['$delta', -1] } }, users: { $addToSet: '$userId' } } },
+      ])
+      const st: any[] = await PaymentModel.aggregate([
+        { $match: { status: 'applied', raffleId: { $ne: 'topup' }, createdAt: { $gte: from } } },
+        { $group: { _id: null, n: { $sum: '$boosts' }, stars: { $sum: '$stars' } } },
+      ])
+      const us: any[] = await CryptoOrderModel.aggregate([
+        { $match: { status: 'paid', raffleId: { $ne: 'topup' }, createdAt: { $gte: from } } },
+        { $group: { _id: null, n: { $sum: '$boosts' } } },
+      ])
+      const au: any[] = await Auto.aggregate([
+        { $match: { type: 'applied', createdAt: { $gte: from } } },
+        { $group: { _id: null, n: { $sum: '$k' }, raffles: { $sum: 1 } } },
+      ])
+      const c = (cr[0] && cr[0].n) || 0
+      const sN = (st[0] && st[0].n) || 0
+      const uN = (us[0] && us[0].n) || 0
+      const a = (au[0] && au[0].n) || 0
+      blocks.push(
+        `<b>📅 ${label}</b>\n` +
+          `🚀 Total: <b>${c + sN + uN}</b> Boosts\n` +
+          `💰 Con saldo: ${c} (${a} por Auto-Boost)\n` +
+          `⭐ Stars directo: ${sN} (${(st[0] && st[0].stars) || 0}⭐)\n` +
+          `🪙 USDT directo: ${uN}\n` +
+          `👥 Personas con saldo: ${(cr[0] && cr[0].users.length) || 0} · 🎁 Sorteos con Auto-Boost: ${(au[0] && au[0].raffles) || 0}`
+      )
+    }
+    return `<b>💸 BOOSTS GASTADOS</b>\n\n${blocks.join('\n\n')}`
+  }
   const STATS_KEYBOARD = {
     inline_keyboard: [
       [
@@ -1710,12 +1750,16 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         { text: '🎯 Boost All', callback_data: 'st~statsall' },
         { text: '🔁 Auto-Boost', callback_data: 'st~statsauto' },
       ],
-      [{ text: '👥 Top invitadores', callback_data: 'st~topinvite' }],
+      [
+        { text: '💸 Gasto', callback_data: 'st~gasto' },
+        { text: '👥 Top invitadores', callback_data: 'st~topinvite' },
+      ],
     ],
   }
   const sendStats = async (ctx: any, kind: string) => {
     const owner = parseInt(process.env.ADMIN, 10)
     if (!ctx.from || ctx.from.id !== owner) return
+    if (kind === 'gasto') return ctx.replyWithHTML(await spendText(), { disable_web_page_preview: true })
     if (kind === 'topinvite') {
       const text = await require('./referral').topInviteText()
       return ctx.replyWithHTML(text, { disable_web_page_preview: true })
@@ -1728,7 +1772,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     if (!body) return ctx.reply('Sin datos todavía.')
     return ctx.replyWithHTML(body, { disable_web_page_preview: true })
   }
-  ;['stars', 'pagos', 'embudo', 'statsall', 'statsauto'].forEach((cmd) => {
+  ;['stars', 'pagos', 'embudo', 'statsall', 'statsauto', 'gasto'].forEach((cmd) => {
     bot.command(cmd, async (ctx) => {
       if (ctx.chat.type !== 'private') return
       try {
@@ -1738,7 +1782,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       }
     })
   })
-  bot.action(/^st~(pagos|embudo|statsall|statsauto|topinvite)$/, async (ctx) => {
+  bot.action(/^st~(pagos|embudo|statsall|statsauto|topinvite|gasto)$/, async (ctx) => {
     try {
       await ctx.answerCbQuery()
     } catch {
