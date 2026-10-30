@@ -212,7 +212,7 @@ async function setBoosts(ctx: any, n: number) {
     { text: '🚀 Change Boosts', callback_data: 'ab~m' },
     { text: '🛡 Daily limit', callback_data: 'abl~m' },
   ])
-  keyboard.push([{ text: '👥 Invite friends · +1 Boost', callback_data: 'inv~' }])
+  keyboard.push([{ text: '👥 Invite friends · earn 10%', callback_data: 'inv~' }])
   keyboard.push([{ text: 'Turn off', callback_data: 'ab~0' }])
   return ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
 }
@@ -494,6 +494,18 @@ async function sweep() {
 }
 
 /** Numbers for the owner's /stars */
+async function commissionTotal() {
+  try {
+    const r: any[] = await CreditTxModel.aggregate([
+      { $match: { method: 'invite_commission' } },
+      { $group: { _id: null, n: { $sum: '$delta' } } },
+    ])
+    return (r[0] && r[0].n) || 0
+  } catch {
+    return 0
+  }
+}
+
 export async function autoBoostText() {
   try {
     const now = Date.now()
@@ -564,7 +576,8 @@ export async function autoBoostText() {
       `${L('Premios de racha (10 seguidos)', `${await cnt('streak_reward')}`)}\n` +
       `${L('Abrieron /invite', `${await cnt('invite_open')}`)}\n` +
       `${L('Entraron por invitación', `${await cnt('ref_join')}`)}\n` +
-      `${L('Invitaciones premiadas', `${await cnt('ref_reward')}`)}\n\n`
+      `${L('Invitados con regalo (+1)', `${await cnt('ref_reward')}`)}\n` +
+      `${L('Boosts regalados en comisión', `${await commissionTotal()}`)}\n\n`
     )
   } catch (err) {
     console.error(err)

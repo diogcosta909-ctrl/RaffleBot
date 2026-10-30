@@ -79,6 +79,7 @@ export async function addCredits(
   // Invited friend: the first pack purchase may complete the invite reward
   if (n > 0 && tx.type === 'topup') {
     try {
+      require('./referral').inviteCommission(userId, n)
       require('./referral').checkReferral(userId)
     } catch (err) {
       console.error('Referral check failed', err)

@@ -83,6 +83,9 @@ export class Chat extends Typegoose {
   referredBy?: number
   @prop({ default: false })
   referralRewarded?: boolean
+  // Invite commission: 10% of the Boosts bought by invited friends (fractions wait here until they reach 1)
+  @prop({ default: 0 })
+  refPending?: number
   // Telegram @username in lowercase (saved when the person writes to the bot)
   @prop({ index: true })
   username?: string

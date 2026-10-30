@@ -5,11 +5,12 @@ import { CreditTxModel } from '../models/creditTx'
 import { trackAuto } from '../models/autoBoostEvent'
 import { addCredits } from './credits'
 
-// Invite friends: when a friend joins with your link, buys Boosts and turns Auto-Boost on, you both get +1 free Boost.
+// Invite friends: you get 10% of every Boost your friend buys, for life. The friend gets +1 free Boost on buying and turning on Auto-Boost.
 // Streak and tiers: every 10 giveaways in a row boosted by Auto-Boost = +1 free Boost.
 // Texts are in English (they are sent to the users of the bot).
 
-export const REFERRAL_MAX = Math.max(1, parseInt(process.env.REFERRAL_MAX || '10', 10) || 10)
+// Share of the Boosts bought by an invited friend that the person who invited gets (lifetime, in Boosts)
+export const REFERRAL_PCT = Math.max(0, parseInt(process.env.REFERRAL_PCT || '10', 10) || 0)
 export const STREAK_EVERY = 10
 
 let tg: any = null
@@ -109,29 +110,50 @@ export async function checkReferral(userId: number) {
       { $set: { referralRewarded: true } }
     )
     if (!claim || !claim.nModified) return
-    const done = await ChatModel.countDocuments({ referredBy: refId, referralRewarded: true })
     await addCredits(userId, 1, { type: 'code', method: 'invite_friend', free: 1 })
     void trackAuto('ref_reward', userId, { n: refId })
     await send(userId, `🎁 <b>Welcome gift</b>\n\nYou bought Boosts and turned on Auto-Boost, so you get <b>+1 free Boost</b> 🚀`)
-    if (done <= REFERRAL_MAX) {
-      await addCredits(refId, 1, { type: 'code', method: 'invite_reward', free: 1 })
-      await send(
-        refId,
-        `🎉 <b>Your friend joined Auto-Boost</b>\n\n🎁 <b>+1 free Boost</b> added to your balance\n👥 Rewarded invites: ${done}/${REFERRAL_MAX}`,
-        [[{ text: '👥 Invite more friends', callback_data: 'inv~' }]]
-      )
-    }
   } catch (err) {
     console.error('Referral reward failed', err)
   }
 }
 
-export function inviteText(userId: number, invited: number, rewarded: number) {
+/** A friend bought a pack: the person who invited gets 10% of those Boosts (fractions add up until 1) */
+export async function inviteCommission(userId: number, boosts: number) {
+  try {
+    if (!REFERRAL_PCT || !(boosts > 0)) return
+    const me: any = await ChatModel.findOne({ chatId: userId }).select('referredBy')
+    if (!me || !me.referredBy) return
+    const refId = me.referredBy
+    const inv: any = await ChatModel.findOneAndUpdate(
+      { chatId: refId },
+      { $inc: { refPending: (boosts * REFERRAL_PCT) / 100 } },
+      { new: true }
+    )
+    if (!inv) return
+    const pay = Math.floor(Math.round((inv.refPending || 0) * 1000) / 1000)
+    if (pay < 1) return
+    const took: any = await ChatModel.updateOne({ chatId: refId, refPending: { $gte: pay } }, { $inc: { refPending: -pay } })
+    if (!took || !took.nModified) return
+    await addCredits(refId, pay, { type: 'code', method: 'invite_commission', ref: `${userId}` })
+    void trackAuto('ref_commission', refId, { k: pay, n: userId })
+    await send(
+      refId,
+      `🎉 <b>Your friend bought Boosts</b>\n\n💰 <b>+${pay} ${pay === 1 ? 'Boost' : 'Boosts'}</b> for you · ${REFERRAL_PCT}% of every purchase, for life`,
+      [[{ text: '👥 Invite more friends', callback_data: 'inv~' }]]
+    )
+  } catch (err) {
+    console.error('Invite commission failed', err)
+  }
+}
+
+export function inviteText(userId: number, invited: number, buyers: number, earned: number) {
   return (
     `👥 <b>Invite friends</b>\n\n` +
-    `Share your link. When a friend buys Boosts and turns on Auto-Boost, you both get <b>+1 free Boost</b>.\n\n` +
+    `Share your link and get <b>${REFERRAL_PCT}% of every Boost your friends buy, for life</b>. Paid in Boosts, never expire.\n` +
+    `Your friend gets <b>+1 free Boost</b> when they buy and turn on Auto-Boost.\n\n` +
     `🔗 <code>${link(userId)}</code>\n\n` +
-    `👆 Joined: <b>${invited}</b>\n🎁 Rewarded: <b>${rewarded}/${REFERRAL_MAX}</b>`
+    `👆 Joined: <b>${invited}</b>\n🛒 Bought: <b>${buyers}</b>\n💰 Boosts earned: <b>${earned}</b>`
   )
 }
 
@@ -140,10 +162,17 @@ export function setupReferral(bot: Telegraf<ContextMessageUpdate>) {
   const show = async (ctx: any) => {
     const userId = ctx.from.id
     const invited = await ChatModel.countDocuments({ referredBy: userId })
-    const rewarded = await ChatModel.countDocuments({ referredBy: userId, referralRewarded: true })
+    const ids: any[] = await ChatModel.find({ referredBy: userId }).select('chatId')
+    const paid: any[] = ids.length
+      ? await CreditTxModel.distinct('userId', { userId: { $in: ids.map((c) => c.chatId) }, type: 'topup' } as any)
+      : []
+    const earn: any[] = await CreditTxModel.aggregate([
+      { $match: { userId, method: 'invite_commission' } },
+      { $group: { _id: null, n: { $sum: '$delta' } } },
+    ])
     void trackAuto('invite_open', userId)
     const share = `https://t.me/share/url?url=${encodeURIComponent(link(userId))}&text=${encodeURIComponent('Boost your chances in giveaways 🚀')}`
-    await ctx.replyWithHTML(inviteText(userId, invited, Math.min(rewarded, REFERRAL_MAX)), {
+    await ctx.replyWithHTML(inviteText(userId, invited, paid.length, (earn[0] && earn[0].n) || 0), {
       disable_web_page_preview: true,
       reply_markup: { inline_keyboard: [[{ text: '📤 Share link', url: share }]] },
     } as any)
