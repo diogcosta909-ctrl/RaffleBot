@@ -8,6 +8,7 @@ import { checkIfAdmin } from './checkAdmin'
  *   /postbutton        → 🎯 Boost All
  *   /postbutton both   → 🎯 Boost All + 🚀 Buy Boosts
  *   /postbutton boost  → 🚀 Buy Boosts
+ *   /postbutton spin   → 🎡 Spin the wheel (daily spin)
  * The original post and the command are deleted when the bot is allowed to.
  */
 export function setupPostButton(bot: Telegraf<ContextMessageUpdate>) {
@@ -18,12 +19,13 @@ export function setupPostButton(bot: Telegraf<ContextMessageUpdate>) {
     if (!msg) return
     const body = ((msg.text || '') as string).replace(/^\/postbutton(@\w+)?\s*/i, '')
     const first = body.split(/\s+/)[0].toLowerCase()
-    const kind = ['both', 'boost', 'all'].indexOf(first) >= 0 ? first : 'all'
-    const text = ['both', 'boost', 'all'].indexOf(first) >= 0 ? body.slice(first.length).trim() : body.trim()
+    const kind = ['both', 'boost', 'all', 'spin'].indexOf(first) >= 0 ? first : 'all'
+    const text = ['both', 'boost', 'all', 'spin'].indexOf(first) >= 0 ? body.slice(first.length).trim() : body.trim()
     const bot_ = process.env.USERNAME
     const all = { text: '🎯 Boost All', url: `https://t.me/${bot_}?start=boostall` }
     const buy = { text: '🚀 Buy Boosts', url: `https://t.me/${bot_}?start=recharge` }
-    const rows = kind === 'boost' ? [[buy]] : kind === 'both' ? [[all], [buy]] : [[all]]
+    const spin = { text: '🎡 Spin the wheel', url: `https://t.me/${bot_}?start=spin` }
+    const rows = kind === 'spin' ? [[spin]] : kind === 'boost' ? [[buy]] : kind === 'both' ? [[all], [buy]] : [[all]]
     const reply_markup = { inline_keyboard: rows }
     const reply = msg.reply_to_message
     try {
