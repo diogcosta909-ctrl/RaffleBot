@@ -60,7 +60,7 @@ function pickVideo(prize: number) {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-function roll(maxPrize: number, guaranteed: boolean) {
+function roll(maxPrize: number) {
   const t = prizeTable().filter((r) => r.prize <= maxPrize)
   const rows = t.length ? t : [{ prize: 0, weight: 1 }]
   const total = rows.reduce((a, r) => a + r.weight, 0)
@@ -73,7 +73,6 @@ function roll(maxPrize: number, guaranteed: boolean) {
     }
     x -= r.weight
   }
-  if (guaranteed && prize < 1) prize = 1
   return prize
 }
 
@@ -165,7 +164,7 @@ async function spin(ctx: any, fromButton: boolean) {
   // Daily cap: when it is reached only the smallest prize can come out
   const given: any[] = await WheelSpinModel.aggregate([{ $match: { day: today } }, { $group: { _id: null, n: { $sum: '$prize' } } }])
   const capped = ((given[0] && given[0].n) || 0) >= DAILY_CAP
-  const prize = roll(capped ? 1 : 1000, streak % 7 === 0)
+  const prize = roll(capped ? 1 : 1000)
   await WheelSpinModel.create({ userId, prize, streak, day: today })
   // The wheel video (falls back to a text animation when the video is missing or fails)
   let msg: any = null
@@ -203,14 +202,12 @@ async function spin(ctx: any, fromButton: boolean) {
     balance = await addCredits(userId, prize, { type: 'code', method: 'wheel', free: prize })
     void feedNotice(ctx, prize, streak)
   }
-  const left = 7 - (streak % 7)
   const text =
     `🎡 <b>Daily spin</b>\n\n` +
     (prize > 0
       ? `🎉 <b>You won +${prize} ${prize === 1 ? 'Boost' : 'Boosts'}!</b>\n`
       : `😅 <b>No prize today</b>\nTry again tomorrow.\n`) +
     `\n🔥 <b>Streak:</b> ${streak} ${streak === 1 ? 'day' : 'days'}` +
-    (streak % 7 === 0 ? ` · bonus day done!` : ` · ${left} ${left === 1 ? 'day' : 'days'} to a guaranteed Boost`) +
     `\n💰 <b>Your Boosts:</b> ${balance}` +
     (prize > 0 && FREE_DAYS > 0 ? `\n⏳ Free Boosts last ${FREE_DAYS} days` : '') +
     `\n\n⏳ <b>Next spin in:</b> ${untilMidnight()}`
