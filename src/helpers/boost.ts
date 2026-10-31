@@ -1758,7 +1758,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
           `<b>⭐ Stars directo:</b> ${sN} (${(st[0] && st[0].stars) || 0}⭐)\n` +
           `<b>🪙 USDT directo:</b> ${uN}\n` +
           `<b>👥 Personas con saldo:</b> ${(cr[0] && cr[0].users.length) || 0}\n` +
-          `<b>🎁 Sorteos con Auto-Boost:</b> ${(au[0] && au[0].raffles) || 0}\n` +
+          `<b>🎁 Sorteos con Auto-Boost:</b> ${(au[0] && au[0].raffles) || 0}\n\n` +
           `<b>💵 Ingresos:</b> $${income.toFixed(2)} (⭐ ${sIn - sBack} · 🪙 $${usdIn.toFixed(2)})\n` +
           `<b>🎀 Regalado:</b> ${given} Boosts (≈ $${givenUsd.toFixed(2)})\n` +
           `<b>✅ Beneficio:</b> ${profit < 0 ? '-' : ''}$${Math.abs(profit).toFixed(2)}`
