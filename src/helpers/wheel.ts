@@ -94,6 +94,47 @@ async function edit(ctx: any, msg: any, text: string, keyboard?: any[]) {
   }
 }
 
+/** Public feed notice (BOOST_FEED_CHAT) when somebody wins on the wheel, with a button to spin */
+async function feedNotice(ctx: any, prize: number, streak: number) {
+  const feed = (process.env.BOOST_FEED_CHAT || '').trim()
+  if (!feed || prize <= 0) return
+  const u = ctx.from
+  const name = u.username ? `@${u.username}` : `${u.first_name || ''}${u.last_name ? ` ${u.last_name}` : ''}`.trim() || 'Someone'
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const caption =
+    `🎡 <b>${esc(name)}</b> won <b>+${prize} ${prize === 1 ? 'Boost' : 'Boosts'}</b> on the daily spin!\n` +
+    `🔥 ${streak} ${streak === 1 ? 'day' : 'days'} streak · spin free every day`
+  const extra: any = {
+    caption,
+    parse_mode: 'HTML',
+    disable_notification: true,
+    reply_markup: { inline_keyboard: [[{ text: '🎡 Spin the wheel', url: `https://t.me/${process.env.USERNAME}?start=spin` }]] },
+  }
+  try {
+    let sent = false
+    try {
+      const image = await require('./boostImage').renderWheelImage({ name, prize, streak })
+      await ctx.telegram.sendPhoto(feed, { source: image }, extra)
+      sent = true
+    } catch (err) {
+      console.error('Wheel image failed, sending text', err)
+    }
+    if (!sent) {
+      await ctx.telegram.sendMessage(feed, caption, {
+        parse_mode: 'HTML',
+        disable_notification: true,
+        reply_markup: extra.reply_markup,
+      } as any)
+    }
+  } catch (err) {
+    console.error('Wheel feed notice failed', err)
+  }
+}
+
+export async function spinFromStart(ctx: any) {
+  return spin(ctx, false)
+}
+
 async function spin(ctx: any, fromButton: boolean) {
   const userId = ctx.from.id
   const chat: any = await findChat(userId)
@@ -158,7 +199,10 @@ async function spin(ctx: any, fromButton: boolean) {
     await wait(700)
   }
   let balance = await getCredits(userId)
-  if (prize > 0) balance = await addCredits(userId, prize, { type: 'code', method: 'wheel', free: prize })
+  if (prize > 0) {
+    balance = await addCredits(userId, prize, { type: 'code', method: 'wheel', free: prize })
+    void feedNotice(ctx, prize, streak)
+  }
   const left = 7 - (streak % 7)
   const text =
     `🎡 <b>Daily spin</b>\n\n` +

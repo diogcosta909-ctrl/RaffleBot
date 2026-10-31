@@ -48,11 +48,12 @@ const THEMES: Record<string, Theme> = {
   multi: { chip: 'BOOST ALL', a: '#ff9f43', l: '#ffd2a1', b0: '#2a1a0a', b1: '#120a02' },
   pack: { chip: 'PACK', a: '#3ddc84', l: '#a6f2c4', b0: '#0b2a1c', b1: '#3a2a06' },
   code: { chip: 'GIFT CODE', a: '#d36bff', l: '#efc4ff', b0: '#2a0f4a', b1: '#12061f' },
+  wheel: { chip: 'DAILY SPIN', a: '#ffb347', l: '#ffe0b0', b0: '#2a1046', b1: '#0e0620' },
   win: { chip: 'WINNER', a: '#ffd34a', l: '#fff0b3', b0: '#3a2a06', b1: '#140d02' },
   pay: { chip: 'PAY', a: '#26c28f', l: '#9af0cf', b0: '#0d2a24', b1: '#06130f' },
 }
 
-type Hero = 'stars' | 'usdt' | 'bolts' | 'bolt1' | 'loop' | 'cards' | 'coins' | 'gift' | 'trophy'
+type Hero = 'stars' | 'usdt' | 'bolts' | 'bolt1' | 'loop' | 'cards' | 'coins' | 'gift' | 'trophy' | 'wheel'
 
 function starPath(x: any, cx: number, cy: number, r: number) {
   x.beginPath()
@@ -192,6 +193,37 @@ function drawHero(x: any, kind: Hero, cx: number, cy: number, count?: number) {
     stack(cx - 76, cy + 40, 3)
     stack(cx + 76, cy + 46, 4)
     stack(cx, cy + 56, 6)
+  } else if (kind === 'wheel') {
+    const cols = ['#2a3550', '#3f6df0', '#222c46', '#9b5cf6', '#2a3550', '#3f6df0', '#222c46', '#f5b301']
+    x.beginPath()
+    x.arc(cx, cy + 16, 76, 0, Math.PI * 2)
+    x.fillStyle = '#ffd34a'
+    x.fill()
+    cols.forEach((c, i) => {
+      x.beginPath()
+      x.moveTo(cx, cy + 16)
+      x.arc(cx, cy + 16, 68, (-90 + i * 45) * (Math.PI / 180), (-90 + (i + 1) * 45) * (Math.PI / 180))
+      x.closePath()
+      x.fillStyle = c
+      x.fill()
+      x.lineWidth = 2
+      x.strokeStyle = '#0a1030'
+      x.stroke()
+    })
+    x.beginPath()
+    x.arc(cx, cy + 16, 14, 0, Math.PI * 2)
+    x.fillStyle = '#ffd34a'
+    x.fill()
+    x.beginPath()
+    x.moveTo(cx, cy - 44)
+    x.lineTo(cx - 12, cy - 76)
+    x.lineTo(cx + 12, cy - 76)
+    x.closePath()
+    x.fillStyle = '#ff5a6e'
+    x.fill()
+    x.lineWidth = 3
+    x.strokeStyle = '#fff'
+    x.stroke()
   } else if (kind === 'gift') {
     x.fillStyle = '#e48bff'
     x.beginPath()
@@ -415,6 +447,19 @@ export async function renderRechargeImage(info: {
     big: `+${total}`,
     label: total === 1 ? 'BOOST' : 'BOOSTS',
     foot: `${paid ? `paid ${paid}` : 'ready to boost'}${bonus > 0 ? ` · ${bonus} free` : ''}`,
+  })
+}
+
+/** Daily spin prize (public feed) */
+export async function renderWheelImage(info: { name: string; prize: number; streak: number }): Promise<Buffer> {
+  return renderCard({
+    theme: 'wheel',
+    hero: 'wheel',
+    title: drawableName(info.name) || 'Someone',
+    sub: 'won on the daily spin',
+    big: `+${info.prize}`,
+    label: info.prize === 1 ? 'FREE BOOST' : 'FREE BOOSTS',
+    foot: `${plural(info.streak, 'day', 'days')} streak`,
   })
 }
 

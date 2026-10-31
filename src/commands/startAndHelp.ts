@@ -17,6 +17,10 @@ export function setupStartAndHelp(bot: Telegraf<ContextMessageUpdate>) {
     if (ctx.chat.type !== 'private' && START_COMMAND === 'start') {
       return next()
     }
+    // Deep link from the feed: /start spin opens the daily spin
+    if (ctx.chat.type === 'private' && /^\/start(?:@\w+)?\s+spin$/.test((ctx.message && ctx.message.text) || '')) {
+      return require('../helpers/wheel').spinFromStart(ctx)
+    }
     const m = /^\/start(?:@\w+)?\s+(ref_\d+)$/.exec((ctx.message && ctx.message.text) || '')
     if (m) await registerReferral(ctx.from.id, m[1])
     return sendStart(ctx)
