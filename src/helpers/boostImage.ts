@@ -109,11 +109,13 @@ function tetherGlyph(x: any) {
 
 function drawHero(x: any, kind: Hero, cx: number, cy: number, count?: number) {
   if (kind === 'stars') {
-    ;[-60, 60].forEach((dx) => {
+    // one Boost = one star
+    const single = count === 1
+    ;(single ? [0] : [-60, 60]).forEach((dx) => {
       const g = x.createLinearGradient(0, cy - 50, 0, cy + 50)
       g.addColorStop(0, '#ffe27a')
       g.addColorStop(1, '#f5a30a')
-      starPath(x, cx + dx, cy, 56)
+      starPath(x, cx + dx, cy, single ? 68 : 56)
       x.fillStyle = g
       x.fill()
       x.lineWidth = 3
@@ -349,7 +351,7 @@ export async function renderBoostImage(info: {
       sub: 'won a giveaway with a Boost',
       big: `${info.entries}`,
       label: 'ENTRIES',
-      foot: `Boost paid with ${how}`,
+      foot: info.credits ? 'Boost used from balance' : `Boost paid with ${how}`,
     })
   }
   let theme = 'stars'
@@ -404,7 +406,7 @@ export async function renderRechargeImage(info: {
 }): Promise<Buffer> {
   const bonus = info.bonus || 0
   const total = Math.max(1, Math.round(info.credits + bonus))
-  const paid = plain(info.paid)
+  const paid = plain(info.paid).replace(/(\d+)\s*stars?/gi, (_m: string, n: string) => `${n} ${n === '1' ? 'Star' : 'Stars'}`)
   return renderCard({
     theme: 'pack',
     hero: 'coins',
@@ -443,7 +445,7 @@ export async function renderMultiImage(info: {
     hero: 'cards',
     heroCount: info.giveaways,
     title: drawableName(info.name) || 'Someone',
-    sub: `boosted ${info.giveaways} giveaways`,
+    sub: `boosted ${plural(info.giveaways, 'giveaway', 'giveaways')}`,
     big: `${info.boosts}`,
     label: info.boosts === 1 ? 'BOOST USED' : 'BOOSTS USED',
     foot: `${info.per} in each · paid with ${how}`,
