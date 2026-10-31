@@ -10,14 +10,14 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 // Daily spin: one free spin per day with small Boost prizes. Texts are in English (sent to the users).
-// WHEEL_PRIZES="Boosts:weight,..." (default 0:85,1:12,2:2.5,5:0.5), WHEEL_DAILY_CAP = max Boosts given per day (default 300)
+// WHEEL_PRIZES="Boosts:weight,..." (default 0:92,1:6.5,2:1.2,5:0.3), WHEEL_DAILY_CAP = max Boosts given per day (default 300)
 
 const TZ = 'Europe/Andorra'
 const BOOST_USD = parseFloat(process.env.BOOST_USD || '0.015') || 0.015
 const DAILY_CAP = Math.max(1, parseInt(process.env.WHEEL_DAILY_CAP || '300', 10) || 300)
 
 function prizeTable(): { prize: number; weight: number }[] {
-  const raw = process.env.WHEEL_PRIZES || '0:85,1:12,2:2.5,5:0.5'
+  const raw = process.env.WHEEL_PRIZES || '0:92,1:6.5,2:1.2,5:0.3'
   const rows = raw
     .split(',')
     .map((p) => p.split(':'))
