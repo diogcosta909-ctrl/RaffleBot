@@ -83,6 +83,11 @@ export class Chat extends Typegoose {
   referredBy?: number
   @prop({ default: false })
   referralRewarded?: boolean
+  // Daily spin: last day (Andorra time) the person spun and the days in a row
+  @prop()
+  wheelDay?: string
+  @prop({ default: 0 })
+  wheelStreak?: number
   // Invite commission: 10% of the Boosts bought by invited friends (fractions wait here until they reach 1)
   @prop({ default: 0 })
   refPending?: number

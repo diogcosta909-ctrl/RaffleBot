@@ -32,6 +32,7 @@ import { setupOwnerReport, alertOwner } from './helpers/ownerReport'
 import { setupBalances } from './helpers/balances'
 import { setupAutoBoost } from './helpers/autoBoost'
 import { setupReferral } from './helpers/referral'
+import { setupWheel } from './helpers/wheel'
 import { setupPostButton } from './helpers/postButton'
 import { setupUserLookup } from './helpers/userLookup'
 import { setupCleanup } from './helpers/cleanup'
@@ -69,6 +70,7 @@ setupOwnerReport(bot)
 setupBalances(bot)
 setupAutoBoost(bot)
 setupReferral(bot)
+setupWheel(bot)
 setupPostButton(bot)
 setupCleanup()
 
