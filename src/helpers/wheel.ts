@@ -160,12 +160,17 @@ async function spin(ctx: any, fromButton: boolean) {
     { $set: { wheelDay: today, wheelStreak: streak } },
     { new: true }
   )
-  if (!claim) return
+  if (!claim) {
+    return ctx.replyWithHTML(`🎡 <b>Daily spin</b>\n\nYou already spun today.\n⏳ <b>Next spin in:</b> ${untilMidnight()}`)
+  }
   // Daily cap: when it is reached only the smallest prize can come out
   const given: any[] = await WheelSpinModel.aggregate([{ $match: { day: today } }, { $group: { _id: null, n: { $sum: '$prize' } } }])
   const capped = ((given[0] && given[0].n) || 0) >= DAILY_CAP
   const prize = roll(capped ? 1 : 1000)
   await WheelSpinModel.create({ userId, prize, streak, day: today })
+  // The prize is paid now, so a restart or an error during the animation can never lose it
+  let balance = await getCredits(userId)
+  if (prize > 0) balance = await addCredits(userId, prize, { type: 'code', method: 'wheel', free: prize })
   // The wheel video (falls back to a text animation when the video is missing or fails)
   let msg: any = null
   let isVideo = false
@@ -197,11 +202,7 @@ async function spin(ctx: any, fromButton: boolean) {
     await edit(ctx, msg, `🎡 <b>Daily spin</b>\n\nSpinning... 🎰`)
     await wait(700)
   }
-  let balance = await getCredits(userId)
-  if (prize > 0) {
-    balance = await addCredits(userId, prize, { type: 'code', method: 'wheel', free: prize })
-    void feedNotice(ctx, prize, streak)
-  }
+  if (prize > 0) void feedNotice(ctx, prize, streak)
   const text =
     `🎡 <b>Daily spin</b>\n\n` +
     (prize > 0
