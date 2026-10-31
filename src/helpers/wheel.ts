@@ -179,7 +179,7 @@ async function spin(ctx: any, fromButton: boolean) {
       if (sent && sent.animation && !videoIds.has(video)) videoIds.set(video, sent.animation.file_id)
       msg = sent
       isVideo = true
-      await wait(5000)
+      await wait(4800)
     } catch (err) {
       console.error('Wheel video failed', err)
       videoIds.delete(video)
@@ -212,13 +212,30 @@ async function spin(ctx: any, fromButton: boolean) {
     (prize > 0 && FREE_DAYS > 0 ? `\n⏳ Free Boosts last ${FREE_DAYS} days` : '') +
     `\n\n⏳ <b>Next spin in:</b> ${untilMidnight()}`
   if (isVideo) {
+    const markup = { inline_keyboard: keyboardAfter(prize > 0) }
+    // The video would loop forever: swap it for a still picture of the final wheel, with the result as caption
+    const still = path.join(WHEEL_DIR, `${video}.png`)
+    if (fs.existsSync(still)) {
+      try {
+        await ctx.telegram.editMessageMedia(
+          msg.chat.id,
+          msg.message_id,
+          undefined,
+          { type: 'photo', media: { source: fs.readFileSync(still) }, caption: text, parse_mode: 'HTML' } as any,
+          { parse_mode: 'HTML', reply_markup: markup } as any
+        )
+        return
+      } catch (err) {
+        console.error('Wheel still failed, editing the caption', err)
+      }
+    }
     try {
       await ctx.telegram.editMessageCaption(msg.chat.id, msg.message_id, undefined, text, {
         parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: keyboardAfter(prize > 0) },
+        reply_markup: markup,
       } as any)
     } catch (err) {
-      await ctx.replyWithHTML(text, { reply_markup: { inline_keyboard: keyboardAfter(prize > 0) } } as any)
+      await ctx.replyWithHTML(text, { reply_markup: markup } as any)
     }
     return
   }
