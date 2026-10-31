@@ -1731,11 +1731,12 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
       const a = (au[0] && au[0].n) || 0
       blocks.push(
         `<b>📅 ${label}</b>\n` +
-          `🚀 Total: <b>${c + sN + uN}</b> Boosts\n` +
-          `💰 Con saldo: ${c} (${a} por Auto-Boost)\n` +
-          `⭐ Stars directo: ${sN} (${(st[0] && st[0].stars) || 0}⭐)\n` +
-          `🪙 USDT directo: ${uN}\n` +
-          `👥 Personas con saldo: ${(cr[0] && cr[0].users.length) || 0} · 🎁 Sorteos con Auto-Boost: ${(au[0] && au[0].raffles) || 0}`
+          `<b>🚀 Total:</b> ${c + sN + uN} Boosts\n` +
+          `<b>💰 Con saldo:</b> ${c} (${a} por Auto-Boost)\n` +
+          `<b>⭐ Stars directo:</b> ${sN} (${(st[0] && st[0].stars) || 0}⭐)\n` +
+          `<b>🪙 USDT directo:</b> ${uN}\n` +
+          `<b>👥 Personas con saldo:</b> ${(cr[0] && cr[0].users.length) || 0}\n` +
+          `<b>🎁 Sorteos con Auto-Boost:</b> ${(au[0] && au[0].raffles) || 0}`
       )
     }
     return `<b>💸 BOOSTS GASTADOS</b>\n\n${blocks.join('\n\n')}`
