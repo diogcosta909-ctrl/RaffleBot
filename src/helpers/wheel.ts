@@ -6,16 +6,18 @@ import { CreditTxModel } from '../models/creditTx'
 import { addCredits, getCredits, FREE_DAYS } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText } from './terms'
 import { loc } from './locale'
+import * as fs from 'fs'
+import * as path from 'path'
 
 // Daily spin: one free spin per day with small Boost prizes. Texts are in English (sent to the users).
-// WHEEL_PRIZES="Boosts:weight,..." (default 0:75,1:20,2:4,5:1), WHEEL_DAILY_CAP = max Boosts given per day (default 300)
+// WHEEL_PRIZES="Boosts:weight,..." (default 0:85,1:12,2:2.5,5:0.5), WHEEL_DAILY_CAP = max Boosts given per day (default 300)
 
 const TZ = 'Europe/Andorra'
 const BOOST_USD = parseFloat(process.env.BOOST_USD || '0.015') || 0.015
 const DAILY_CAP = Math.max(1, parseInt(process.env.WHEEL_DAILY_CAP || '300', 10) || 300)
 
 function prizeTable(): { prize: number; weight: number }[] {
-  const raw = process.env.WHEEL_PRIZES || '0:75,1:20,2:4,5:1'
+  const raw = process.env.WHEEL_PRIZES || '0:85,1:12,2:2.5,5:0.5'
   const rows = raw
     .split(',')
     .map((p) => p.split(':'))
@@ -37,6 +39,23 @@ function untilMidnight() {
   const h = Math.floor(left / 3600)
   const m = Math.floor((left % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${Math.max(1, m)}m`
+}
+
+// Wheel videos (assets/wheel): one per landing slice. Telegram file ids are kept after the first upload
+const WHEEL_DIR = path.join(__dirname, '..', '..', 'assets', 'wheel')
+const VIDEOS: { [prize: number]: string[] } = {
+  0: ['nada1', 'nada2', 'nada3', 'nada4'],
+  1: ['p11', 'p12'],
+  2: ['p21'],
+  5: ['p51'],
+}
+const videoIds = new Map<string, string>()
+
+function pickVideo(prize: number) {
+  const list = VIDEOS[prize]
+  if (!list) return ''
+  const name = list[Math.floor(Math.random() * list.length)]
+  return fs.existsSync(path.join(WHEEL_DIR, `${name}.mp4`)) ? name : ''
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -107,16 +126,37 @@ async function spin(ctx: any, fromButton: boolean) {
   const capped = ((given[0] && given[0].n) || 0) >= DAILY_CAP
   const prize = roll(capped ? 1 : 1000, streak % 7 === 0)
   await WheelSpinModel.create({ userId, prize, streak, day: today })
-  // Little animation
+  // The wheel video (falls back to a text animation when the video is missing or fails)
   let msg: any = null
-  if (fromButton) {
-    await edit(ctx, null, `🎡 <b>Daily spin</b>\n\nSpinning...`)
-  } else {
-    msg = await ctx.replyWithHTML(`🎡 <b>Daily spin</b>\n\nSpinning...`)
+  let isVideo = false
+  const video = pickVideo(prize)
+  if (video) {
+    try {
+      const sent: any = await ctx.replyWithAnimation(
+        videoIds.get(video) || { source: fs.readFileSync(path.join(WHEEL_DIR, `${video}.mp4`)) },
+        { caption: `🎡 <b>Daily spin</b>\n\nSpinning...`, parse_mode: 'HTML' } as any
+      )
+      if (sent && sent.animation && !videoIds.has(video)) videoIds.set(video, sent.animation.file_id)
+      msg = sent
+      isVideo = true
+      await wait(5000)
+    } catch (err) {
+      console.error('Wheel video failed', err)
+      videoIds.delete(video)
+      msg = null
+      isVideo = false
+    }
   }
-  await wait(700)
-  await edit(ctx, msg, `🎡 <b>Daily spin</b>\n\nSpinning... 🎰`)
-  await wait(700)
+  if (!isVideo) {
+    if (fromButton) {
+      await edit(ctx, null, `🎡 <b>Daily spin</b>\n\nSpinning...`)
+    } else {
+      msg = await ctx.replyWithHTML(`🎡 <b>Daily spin</b>\n\nSpinning...`)
+    }
+    await wait(700)
+    await edit(ctx, msg, `🎡 <b>Daily spin</b>\n\nSpinning... 🎰`)
+    await wait(700)
+  }
   let balance = await getCredits(userId)
   if (prize > 0) balance = await addCredits(userId, prize, { type: 'code', method: 'wheel', free: prize })
   const left = 7 - (streak % 7)
@@ -130,6 +170,17 @@ async function spin(ctx: any, fromButton: boolean) {
     `\n💰 <b>Your Boosts:</b> ${balance}` +
     (prize > 0 && FREE_DAYS > 0 ? `\n⏳ Free Boosts last ${FREE_DAYS} days` : '') +
     `\n\n⏳ <b>Next spin in:</b> ${untilMidnight()}`
+  if (isVideo) {
+    try {
+      await ctx.telegram.editMessageCaption(msg.chat.id, msg.message_id, undefined, text, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: keyboardAfter(prize > 0) },
+      } as any)
+    } catch (err) {
+      await ctx.replyWithHTML(text, { reply_markup: { inline_keyboard: keyboardAfter(prize > 0) } } as any)
+    }
+    return
+  }
   await edit(ctx, msg, text, keyboardAfter(prize > 0))
 }
 
