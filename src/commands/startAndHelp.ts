@@ -42,7 +42,7 @@ async function sendStart(ctx: ContextMessageUpdate) {
       inline_keyboard: [
         [{ text: loc('start_boost_btn', chat.language), callback_data: 'r~0' }],
         [{ text: '🔁 Auto-Boost', callback_data: 'ab~m' }],
-        [{ text: '🎡 Daily spin · free Boosts', callback_data: 'wh~' }],
+        [{ text: '🎡 Daily spin · win free Boosts', callback_data: 'wh~' }],
         [{ text: '👥 Invite & earn 10%', callback_data: 'inv~' }],
       ],
     },
