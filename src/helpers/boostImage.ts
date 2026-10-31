@@ -123,7 +123,9 @@ function drawHero(x: any, kind: Hero, cx: number, cy: number, count?: number) {
   } else if (kind === 'usdt') {
     coin(x, cx, cy, 58, '#3ad6a2', '#1c9a72', tetherGlyph(x))
   } else if (kind === 'bolts') {
-    ;[-60, 60].forEach((dx) => coin(x, cx + dx, cy, 50, '#6d98ff', '#3a5fe0', (a, b, r) => bolt(x, a, b, r, '#fff')))
+    // one Boost = one coin
+    const dxs = count === 1 ? [0] : [-60, 60]
+    dxs.forEach((dx) => coin(x, cx + dx, cy, count === 1 ? 62 : 50, '#6d98ff', '#3a5fe0', (a, b, r) => bolt(x, a, b, r, '#fff')))
   } else if (kind === 'bolt1') {
     coin(x, cx, cy, 62, '#ff9be3', '#b13fd1', (a, b, r) => bolt(x, a, b, r, '#fff'))
   } else if (kind === 'loop') {
@@ -366,6 +368,7 @@ export async function renderBoostImage(info: {
   return renderCard({
     theme,
     hero,
+    heroCount: boosts,
     title: name,
     sub,
     big: `${info.entries}`,
