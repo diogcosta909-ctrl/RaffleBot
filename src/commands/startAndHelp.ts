@@ -42,7 +42,12 @@ async function sendStart(ctx: ContextMessageUpdate) {
       ],
     },
   }
-  const text = loc('start_text', chat.language)
+  let text = loc('start_text', chat.language)
+  const count = await require('../helpers/autoBoost').autoBoostCountLine()
+  if (count) {
+    const i = text.indexOf('\n\n👇')
+    text = i >= 0 ? `${text.slice(0, i)}\n${count}${text.slice(i)}` : `${text}\n\n${count}`
+  }
   if (startPhotoId || fs.existsSync(START_IMAGE)) {
     try {
       const sent: any = await ctx.replyWithPhoto(startPhotoId || { source: fs.readFileSync(START_IMAGE) }, Object.assign({ caption: text }, extra))

@@ -44,6 +44,22 @@ const giveawayWord = (n: number) => (n === 1 ? 'giveaway' : 'giveaways')
 const creditWord = (n: number) => (n === 1 ? 'Boost' : 'Boosts')
 const dayOf = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ })
 
+// Public counter: people with Auto-Boost on (hidden under AUTOBOOST_SHOW_MIN so a tiny number never shows)
+const SHOW_MIN = Math.max(0, parseInt(process.env.AUTOBOOST_SHOW_MIN || '3', 10) || 0)
+let countCache = { n: 0, at: 0 }
+export async function autoBoostCountLine(): Promise<string> {
+  try {
+    if (Date.now() - countCache.at > 60 * 1000) {
+      countCache = { n: await ChatModel.countDocuments({ autoBoost: { $gt: 0 } }), at: Date.now() }
+    }
+    const n = countCache.n
+    if (n < Math.max(1, SHOW_MIN)) return ''
+    return `🔁 <b>${n.toLocaleString('en-US')}</b> ${n === 1 ? 'person has' : 'people have'} Auto-Boost on`
+  } catch {
+    return ''
+  }
+}
+
 /** One button to the recharge screen (numbered packs with both prices) */
 function packButtons() {
   return [[{ text: '💳 Buy Boosts', callback_data: 'abr~' }]]
@@ -133,6 +149,7 @@ async function showMenu(ctx: any, edit = false) {
     `🔁 <b>Auto-Boost</b>\n\n` +
     `Boost every giveaway you join, automatically.\n` +
     `Paid with your Boosts. Free Boosts are used first.\n\n` +
+    ((await autoBoostCountLine()) ? `${await autoBoostCountLine()}\n\n` : '') +
     (n ? `Now: <b>ON · ${n} ${boostWord(n)} per giveaway</b>\n\n` : '') +
     `How many Boosts per giveaway?`
   const keyboard: any[] = [
