@@ -1701,6 +1701,8 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
   }
   // Boosts used per period: with Boosts balance, paid directly with Stars or USDT, and how many by Auto-Boost
+  const STAR_USD = parseFloat(process.env.STAR_USD || '0.013') || 0.013
+  const BOOST_USD = parseFloat(process.env.BOOST_USD || '0.015') || 0.015
   const spendText = async () => {
     const DAY = 24 * 3600 * 1000
     const periods: [string, number][] = [['24 h', 1], ['7 días', 7], ['15 días', 15], ['30 días', 30]]
@@ -1725,6 +1727,26 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         { $match: { type: 'applied', createdAt: { $gte: from } } },
         { $group: { _id: null, n: { $sum: '$k' }, raffles: { $sum: 1 } } },
       ])
+      // Money in (Stars and USDT paid in the period, minus Stars refunded) and Boosts given away
+      const starsPaid: any[] = await PaymentModel.aggregate([
+        { $match: { status: { $in: ['applied', 'refunded'] }, createdAt: { $gte: from } } },
+        { $group: { _id: '$status', stars: { $sum: '$stars' } } },
+      ])
+      const usdtPaid: any[] = await CryptoOrderModel.aggregate([
+        { $match: { status: 'paid', createdAt: { $gte: from } } },
+        { $group: { _id: null, units: { $sum: '$amountUnits' } } },
+      ])
+      const givenTx: any[] = await CreditTx.aggregate([
+        { $match: { delta: { $gt: 0 }, createdAt: { $gte: from }, $or: [{ free: { $gt: 0 } }, { method: 'invite_commission' }] } },
+        { $group: { _id: null, n: { $sum: { $cond: [{ $eq: ['$method', 'invite_commission'] }, '$delta', '$free'] } } } },
+      ])
+      const sIn = ((starsPaid.find((x) => x._id === 'applied') || {}).stars || 0)
+      const sBack = ((starsPaid.find((x) => x._id === 'refunded') || {}).stars || 0)
+      const usdIn = ((usdtPaid[0] && usdtPaid[0].units) || 0) / 10000
+      const income = (sIn - sBack) * STAR_USD + usdIn
+      const given = (givenTx[0] && givenTx[0].n) || 0
+      const givenUsd = given * BOOST_USD
+      const profit = income - givenUsd
       const c = (cr[0] && cr[0].n) || 0
       const sN = (st[0] && st[0].n) || 0
       const uN = (us[0] && us[0].n) || 0
@@ -1736,10 +1758,13 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
           `<b>⭐ Stars directo:</b> ${sN} (${(st[0] && st[0].stars) || 0}⭐)\n` +
           `<b>🪙 USDT directo:</b> ${uN}\n` +
           `<b>👥 Personas con saldo:</b> ${(cr[0] && cr[0].users.length) || 0}\n` +
-          `<b>🎁 Sorteos con Auto-Boost:</b> ${(au[0] && au[0].raffles) || 0}`
+          `<b>🎁 Sorteos con Auto-Boost:</b> ${(au[0] && au[0].raffles) || 0}\n` +
+          `<b>💵 Ingresos:</b> $${income.toFixed(2)} (⭐ ${sIn - sBack} · 🪙 $${usdIn.toFixed(2)})\n` +
+          `<b>🎀 Regalado:</b> ${given} Boosts (≈ $${givenUsd.toFixed(2)})\n` +
+          `<b>✅ Beneficio:</b> ${profit < 0 ? '-' : ''}$${Math.abs(profit).toFixed(2)}`
       )
     }
-    return `<b>💸 BOOSTS GASTADOS</b>\n\n${blocks.join('\n\n')}`
+    return `<b>💸 BOOSTS GASTADOS</b>\n\n${blocks.join('\n\n')}\n\n<i>Beneficio = cobrado (Stars a $${STAR_USD}, USDT) menos Boosts regalados al valor de $${BOOST_USD}</i>`
   }
   const STATS_KEYBOARD = {
     inline_keyboard: [
