@@ -140,16 +140,21 @@ function drawHero(x: any, kind: Hero, cx: number, cy: number, count?: number) {
     x.stroke()
     x.lineCap = 'butt'
     x.fillStyle = '#5ee7ff'
-    x.beginPath()
-    x.moveTo(cx - 66, cy + 14)
-    x.lineTo(cx - 28, cy + 26)
-    x.lineTo(cx - 52, cy + 52)
-    x.fill()
-    x.beginPath()
-    x.moveTo(cx + 66, cy - 14)
-    x.lineTo(cx + 28, cy - 26)
-    x.lineTo(cx + 52, cy - 52)
-    x.fill()
+    // arrow heads at the end of each arc, pointing along the circle (clockwise)
+    ;[Math.PI * 0.95, Math.PI * 1.95].forEach((th) => {
+      const px = cx + 56 * Math.cos(th)
+      const py = cy + 56 * Math.sin(th)
+      const tx = -Math.sin(th)
+      const ty = Math.cos(th)
+      const nx = Math.cos(th)
+      const ny = Math.sin(th)
+      x.beginPath()
+      x.moveTo(px + tx * 26, py + ty * 26)
+      x.lineTo(px + nx * 23, py + ny * 23)
+      x.lineTo(px - nx * 23, py - ny * 23)
+      x.closePath()
+      x.fill()
+    })
     bolt(x, cx, cy, 44, '#ffd34a')
   } else if (kind === 'cards') {
     ;[[14, 0.18], [7, 0.18], [0, 0.35]].forEach(([o, al]) => {
