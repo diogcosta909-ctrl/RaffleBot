@@ -75,6 +75,10 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '$n $b in your giveaway.',
     es: '$n $b en tu sorteo.',
   },
+  autoboost_button: {
+    en: '🔄 Auto-Boost',
+    es: '🔄 Auto-Boost',
+  },
   boost_all_button: {
     en: '🎯 Boost All',
     es: '🎯 Boost All',

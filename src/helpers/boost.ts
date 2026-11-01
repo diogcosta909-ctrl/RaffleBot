@@ -222,8 +222,8 @@ export function boostButton(raffle: Raffle & { id?: string }, language: string) 
       callback_data: `b~${raffle.id}`,
     },
     {
-      text: loc('boost_all_button', language),
-      url: `https://t.me/${process.env.USERNAME}?start=boostall`,
+      text: loc('autoboost_button', language),
+      url: `https://t.me/${process.env.USERNAME}?start=autoboost`,
     },
   ]
 }

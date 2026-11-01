@@ -671,6 +671,17 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
   })
 
+  // Deep link from the giveaway message button: /start autoboost opens the Auto-Boost menu
+  bot.use(async (ctx, next) => {
+    const text = ctx.message && ctx.message.text
+    if (!text || !/^\/start autoboost$/.test(text) || ctx.chat.type !== 'private') return next()
+    try {
+      await showMenu(ctx)
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
   bot.action('ab~m', async (ctx) => {
     await answer(ctx)
     try {
