@@ -319,12 +319,13 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
   await trackBoost({ type: 'menu', userId: ctx.from.id, raffleId })
   const left = maxBoosts() - res.used
   const credits = await getCredits(ctx.from.id)
-  // Without direct payment only the packs the balance can cover are offered
-  const options = BOOST_OPTIONS.filter((n) => n <= left && (directBuy() || credits >= n))
+  // Without direct payment the packs the balance can't cover stay visible and send the user to top up
+  const options = BOOST_OPTIONS.filter((n) => n <= left)
+  const affordable = options.filter((n) => credits >= n)
   // Chance of winning now and after each pack (same formula as the draw)
   const base = entryValueOf(res.raffle)
   const totals = await raffleTotals(res.raffle._id, base, BOOST_STEP)
-  if (!directBuy() && !options.length) return sendNeedBoosts(ctx, res, raffleId, credits, totals, base)
+  if (!directBuy() && !affordable.length) return sendNeedBoosts(ctx, res, raffleId, credits, totals, base)
   // One button per pack when there is a single payment method (2 columns); Stars + USDT keep one row per pack
   const single = !(starsEnabled() && cryptoEnabled())
   const optionRows: any[] = options.map((n) => {
@@ -338,6 +339,9 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
           callback_data: `w~${raffleId}~${n}`,
         },
       ]
+    }
+    if (!directBuy()) {
+      return [{ text: `${creditsLabel(n, res.language)} • top up`, callback_data: `tu~${raffleId}~${n}` }]
     }
     const row: any[] = []
     if (starsEnabled()) {
@@ -391,6 +395,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
           n,
           entries: pctLabel(n, 'en', stepOf(res.raffle)),
           useBalance: credits >= n,
+          topUp: !directBuy() && credits < n,
           usdt: crypto ? cryptoPriceLabel(n) : undefined,
           stars: !crypto || starsEnabled() ? n * BOOST_PRICE : undefined,
           chance: totals ? pct(chanceOf(totals, res.value, base, BOOST_STEP, n * mult)) : undefined,
@@ -2112,6 +2117,26 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     await acceptTerms(ctx.from.id)
     try {
       await sendBoostOptions(ctx, raffleId)
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // A pack the balance can't cover was tapped: send the user to top up Boosts
+  bot.action(/^tu~([a-f0-9]{24})~(\d+)$/, async (ctx) => {
+    const raffleId = (ctx as any).match[1]
+    try {
+      await ctx.answerCbQuery()
+    } catch {
+      // do nothing
+    }
+    try {
+      const res: any = await validateBoost(raffleId, ctx.from.id)
+      if (res.error) return ctx.reply(errorText(res.error, res.language))
+      const credits = await getCredits(ctx.from.id)
+      const base = entryValueOf(res.raffle)
+      const totals = await raffleTotals(res.raffle._id, base, BOOST_STEP)
+      await sendNeedBoosts(ctx, res, raffleId, credits, totals, base)
     } catch (err) {
       console.error(err)
     }

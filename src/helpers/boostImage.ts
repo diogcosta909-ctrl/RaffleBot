@@ -1053,7 +1053,7 @@ export async function renderOptionsImage(info: {
   giveaway?: string
   banner?: string // e.g. "x2 Boost day"
   chanceNow?: string
-  options: { n: number; entries: string; usdt?: string; stars?: number; useBalance?: boolean; chance?: string }[]
+  options: { n: number; entries: string; usdt?: string; stars?: number; useBalance?: boolean; topUp?: boolean; chance?: string }[]
   used: number
   max: number
   credits: number
@@ -1093,6 +1093,8 @@ export async function renderOptionsImage(info: {
     pillBox(x, px + 50, py + 172, 280, 46, 'rgba(255,210,60,0.18)', plain(o.entries), '#ffd23c', '26px InterX')
     if (o.useBalance) {
       txt(x, 'Use your balance', px + 190, py + 268, '34px InterX', '#3ddc84')
+    } else if (o.topUp) {
+      txt(x, 'Top up to use', px + 190, py + 268, '34px InterX', '#ff9a50')
     } else if (o.usdt) {
       txt(x, `$${o.usdt} USDT`, px + 190, py + 268, '38px InterX', '#26c28f')
     } else if (o.stars) {
