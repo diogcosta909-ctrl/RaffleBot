@@ -496,3 +496,113 @@ export async function renderMultiImage(info: {
     foot: `${info.per} in each · paid with ${how}`,
   })
 }
+
+/** Buy Boosts screen: one card per pack, with the free bonus and the promo banner only when a bonus is active */
+export async function renderBuyImage(info: {
+  packs: { n: number; bonus: number; stars: number; usdt?: string; popular?: boolean }[]
+  perBoost: string // "+20 entries"
+  promo?: string // banner text, empty = no banner
+}): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const W = 1280
+  const hasUsdt = info.packs.some((p) => !!p.usdt)
+  const cardW = 380
+  const cardH = hasUsdt ? 330 : 290
+  const gap = 25
+  const rows = Math.ceil(info.packs.length / 3)
+  const top = info.promo ? 320 : 240
+  const H = top + rows * (cardH + gap) + 40
+  const canvas = createCanvas(W, H)
+  const x = canvas.getContext('2d')
+  const bg = x.createLinearGradient(0, 0, W, H)
+  bg.addColorStop(0, '#0b1020')
+  bg.addColorStop(1, '#1b1240')
+  x.fillStyle = bg
+  x.fillRect(0, 0, W, H)
+  const glow = x.createRadialGradient(640, 120, 20, 640, 120, 600)
+  glow.addColorStop(0, 'rgba(255,170,50,0.22)')
+  glow.addColorStop(1, 'rgba(255,170,50,0)')
+  x.fillStyle = glow
+  x.fillRect(0, 0, W, H)
+  const rr = (px: number, py: number, w: number, h: number, r: number) => {
+    x.beginPath()
+    x.moveTo(px + r, py)
+    x.arcTo(px + w, py, px + w, py + h, r)
+    x.arcTo(px + w, py + h, px, py + h, r)
+    x.arcTo(px, py + h, px, py, r)
+    x.arcTo(px, py, px + w, py, r)
+    x.closePath()
+  }
+  x.textAlign = 'center'
+  x.textBaseline = 'alphabetic'
+  bolt(x, 430, 85, 50, '#ffd23c')
+  x.fillStyle = '#fff'
+  x.font = '70px InterX'
+  x.fillText('Buy Boosts', 660, 115)
+  x.fillStyle = '#b8c4ee'
+  x.font = '32px InterB'
+  x.fillText(`Each Boost = ${plain(info.perBoost)}  ·  they never expire`, 640, 170)
+  if (info.promo) {
+    x.fillStyle = '#ff3d5a'
+    rr(150, 205, 980, 64, 32)
+    x.fill()
+    x.fillStyle = '#fff'
+    x.font = '30px InterX'
+    x.fillText(plain(info.promo).toUpperCase(), 640, 247)
+  }
+  info.packs.forEach((p, i) => {
+    const col = i % 3
+    const row = Math.floor(i / 3)
+    // last row centred when it is not full
+    const inRow = Math.min(3, info.packs.length - row * 3)
+    const offset = (3 - inRow) * ((cardW + gap) / 2)
+    const px = 50 + col * (cardW + gap) + offset
+    const py = top + row * (cardH + gap)
+    x.fillStyle = 'rgba(255,255,255,0.08)'
+    rr(px, py, cardW, cardH, 30)
+    x.fill()
+    x.strokeStyle = p.popular ? '#ffd23c' : 'rgba(255,255,255,0.14)'
+    x.lineWidth = p.popular ? 4 : 2
+    x.stroke()
+    if (p.popular) {
+      x.fillStyle = '#ffd23c'
+      rr(px + 90, py - 18, 200, 38, 19)
+      x.fill()
+      x.fillStyle = '#2a1a00'
+      x.font = '20px InterX'
+      x.fillText('MOST POPULAR', px + cardW / 2, py + 8)
+    }
+    x.fillStyle = '#fff'
+    x.font = '96px InterX'
+    x.fillText(`${p.n}`, px + cardW / 2, py + 120)
+    x.fillStyle = '#b8c4ee'
+    x.font = '28px InterB'
+    x.fillText(p.n === 1 ? 'Boost' : 'Boosts', px + cardW / 2, py + 158)
+    let y = py + 200
+    if (p.bonus > 0) {
+      x.fillStyle = 'rgba(255,210,60,0.18)'
+      rr(px + 80, py + 178, 220, 46, 23)
+      x.fill()
+      x.fillStyle = '#ffd23c'
+      x.font = '28px InterX'
+      x.fillText(`+${p.bonus} FREE`, px + cardW / 2, py + 210)
+      y = py + 275
+    } else {
+      y = py + 230
+    }
+    x.fillStyle = '#fff'
+    x.font = '34px InterX'
+    const label = `${p.stars}`
+    const tw = x.measureText(label).width
+    x.fillText(label, px + cardW / 2 - 18, y)
+    starPath(x, px + cardW / 2 - 18 + tw / 2 + 22, y - 11, 14)
+    x.fillStyle = '#ffc43c'
+    x.fill()
+    if (p.usdt) {
+      x.fillStyle = '#9fa8d6'
+      x.font = '24px InterB'
+      x.fillText(`or $${p.usdt} USDT`, px + cardW / 2, y + 37)
+    }
+  })
+  return canvas.toBuffer('image/png')
+}

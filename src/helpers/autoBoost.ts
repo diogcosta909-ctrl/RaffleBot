@@ -25,6 +25,7 @@ import {
   BOOST_STEP,
   BOOST_PRICE,
   sendRecharge,
+  editScreen,
 } from './boost'
 
 // Auto-Boost: Boosts paid with credits and added automatically to every giveaway a person joins.
@@ -699,7 +700,8 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
       const chat: any = await findChat(ctx.from.id)
       const row: any[] = [{ text: `⭐ ${n * BOOST_PRICE} Stars`, callback_data: `ts~${n}~${raffleId}` }]
       if (cryptoEnabled()) row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `tc~${n}~${raffleId}` })
-      await ctx.editMessageText(
+      await editScreen(
+        ctx,
         `💳 <b>${packText(n, chat.language)}</b>\n\nHow do you want to pay? 👇`,
         {
           parse_mode: 'HTML',

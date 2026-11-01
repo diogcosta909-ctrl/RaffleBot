@@ -6,7 +6,7 @@ import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { MultiBoostModel } from '../models/multiBoost'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { CREDIT_PACKS, bonusFor, bonusForPay, bestBonus, getCredits, addCredits, removeCredits, spendCreditsSplit } from './credits'
+import { CREDIT_PACKS, CREDIT_POPULAR, bonusFor, bonusForPay, bestBonus, getCredits, addCredits, removeCredits, spendCreditsSplit } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -962,12 +962,27 @@ function packNumberKeyboard(raffleId: string, lang: string) {
   return rows
 }
 
+/** Edits the message the button was pressed on; a photo cannot become text, so it is replaced by a new message */
+export async function editScreen(ctx: ContextMessageUpdate, text: string, extra: any) {
+  const msg: any = ctx.callbackQuery && ctx.callbackQuery.message
+  if (msg && msg.photo) {
+    try {
+      await ctx.deleteMessage()
+    } catch {
+      // cannot delete: the photo stays
+    }
+    await ctx.replyWithHTML(text, extra)
+    return
+  }
+  await ctx.editMessageText(text, extra)
+}
+
 /** Edits the message the button was pressed on (sends a new one if it cannot be edited) */
 async function showScreen(ctx: ContextMessageUpdate, text: string, keyboard: any[], edit: boolean) {
   const extra: any = { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
   if (edit) {
     try {
-      await ctx.editMessageText(text, extra)
+      await editScreen(ctx, text, extra)
       return
     } catch (err) {
       const msg = `${(err && (err.description || err.message)) || ''}`
@@ -996,7 +1011,6 @@ export async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, 
   try {
     const lang = (await findChat(ctx.from.id)).language
     const credits = await getCredits(ctx.from.id)
-    const both = cryptoEnabled()
     const text = loc('recharge_text', lang)
       .replace('$pct', pctLabel(1, lang))
       .replace('$packs', packList(lang))
@@ -1006,9 +1020,76 @@ export async function sendRecharge(ctx: ContextMessageUpdate, raffleId: string, 
     if (raffleId !== '0') {
       keyboard.push([{ text: loc('topup_back', lang), callback_data: `b~${raffleId}` }])
     }
+    // Photo with the packs (drawn from the live config); the plain text screen is the fallback
+    if (await sendRechargePhoto(ctx, lang, credits, keyboard)) {
+      if (edit) {
+        try {
+          await ctx.deleteMessage()
+        } catch {
+          // cannot delete: the old screen stays
+        }
+      }
+      return
+    }
     await showScreen(ctx, text, keyboard, edit)
   } catch (err) {
     console.error(err)
+  }
+}
+
+const buyPhotoIds = new Map<string, string>()
+
+/** Banner for the Buy Boosts photo: only while a pack bonus is active */
+function promoBanner() {
+  const withBonus = CREDIT_PACKS.filter((n) => bonusFor(n) > 0)
+  if (!withBonus.length) return ''
+  const pcts = withBonus.map((n) => Math.round((bonusFor(n) / n) * 100))
+  const same = pcts.every((x) => x === pcts[0])
+  const minPack = Math.min(...withBonus)
+  return same
+    ? `24H ONLY: +${pcts[0]}% FREE BOOSTS ON PACKS OF ${minPack}+`
+    : `24H ONLY: UP TO +${Math.max(...pcts)}% FREE BOOSTS`
+}
+
+async function sendRechargePhoto(ctx: ContextMessageUpdate, lang: string, credits: number, keyboard: any[]) {
+  try {
+    const crypto = cryptoEnabled()
+    const info = {
+      packs: CREDIT_PACKS.map((n) => ({
+        n,
+        bonus: bonusFor(n),
+        stars: n * BOOST_PRICE,
+        usdt: crypto ? cryptoPriceLabel(n) : undefined,
+        popular: n === CREDIT_POPULAR,
+      })),
+      perBoost: pctLabel(1, 'en'),
+      promo: promoBanner(),
+    }
+    const key = JSON.stringify(info)
+    const caption = loc('recharge_text', lang)
+      .replace('$pct', pctLabel(1, lang))
+      .replace('$packs', '')
+      .replace('$n', `${credits}`)
+      .replace('$choose', loc('choose_pack', lang))
+      .replace(/\n{3,}/g, '\n\n')
+    const extra: any = { caption, parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
+    const cached = buyPhotoIds.get(key)
+    if (cached) {
+      try {
+        await ctx.replyWithPhoto(cached, extra)
+        return true
+      } catch {
+        buyPhotoIds.delete(key)
+      }
+    }
+    const image = await require('./boostImage').renderBuyImage(info)
+    const sent: any = await ctx.replyWithPhoto({ source: image } as any, extra)
+    const photos = sent && sent.photo
+    if (photos && photos.length) buyPhotoIds.set(key, photos[photos.length - 1].file_id)
+    return true
+  } catch (err) {
+    console.error('recharge photo failed', err)
+    return false
   }
 }
 
