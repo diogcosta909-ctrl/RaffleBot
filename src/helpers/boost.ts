@@ -298,7 +298,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
       return [
         {
           text: single
-            ? `💰 ${creditsLabel(n, res.language)}`
+            ? `${creditsLabel(n, res.language)} • balance`
             : `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
           callback_data: `w~${raffleId}~${n}`,
         },
@@ -308,7 +308,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
     if (starsEnabled()) {
       row.push({
         text: single
-          ? `${creditsLabel(n, res.language)} · ${n * BOOST_PRICE}⭐`
+          ? `${creditsLabel(n, res.language)} • ${n * BOOST_PRICE} Stars`
           : `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
         callback_data: `b~${raffleId}~${n}`,
       })
@@ -316,7 +316,7 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
     if (cryptoEnabled()) {
       row.push({
         text: single
-          ? `🪙 ${creditsLabel(n, res.language)} · $${cryptoPriceLabel(n)}`
+          ? `${creditsLabel(n, res.language)} • $${cryptoPriceLabel(n)}`
           : `🪙 ${cryptoPriceLabel(n)} USDT`,
         callback_data: `c~${raffleId}~${n}`,
       })
