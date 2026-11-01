@@ -22,7 +22,8 @@ import {
   CRYPTO_EXPIRY_MIN,
 } from './cryptoPay'
 import { getChatIdForConfig } from './getChatIdForConfig'
-import { raffleTotals, chanceOf, oddsLine, oddsChangeLine } from './odds'
+import { raffleTotals, chanceOf, oddsLine, oddsChangeLine, pct } from './odds'
+import { showPhoto } from './photoScreen'
 import { loc } from './locale'
 import { starsEnabled } from './payMode'
 import { resolveUser } from './userLookup'
@@ -327,6 +328,31 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
     proofLine = await require('./proof').winnersBoostLine()
   } catch (err) {
     console.error(err)
+  }
+  // Photo screen: everything in the picture, the actions in the buttons (text screen if it fails)
+  if (options.length) {
+    try {
+      const crypto = cryptoEnabled()
+      const mult = multiplierOf(res.raffle)
+      const image = await require('./boostImage').renderOptionsImage({
+        banner: mult !== 1 ? `x${+mult.toFixed(2)} Boost day` : undefined,
+        chanceNow: totals ? pct(chanceOf(totals, res.value, base, BOOST_STEP)) : undefined,
+        options: options.map((n) => ({
+          n,
+          entries: pctLabel(n, 'en', stepOf(res.raffle)),
+          useBalance: credits >= n,
+          usdt: crypto ? cryptoPriceLabel(n) : undefined,
+          stars: !crypto || starsEnabled() ? n * BOOST_PRICE : undefined,
+          chance: totals ? pct(chanceOf(totals, res.value, base, BOOST_STEP, n * mult)) : undefined,
+        })),
+        used: res.used,
+        max: maxBoosts(),
+        credits,
+      })
+      if (await showPhoto(ctx, image, keyboard)) return
+    } catch (err) {
+      console.error(err)
+    }
   }
   return ctx.reply(
     `${multiplierNote(res.raffle, res.language)}${
@@ -1179,6 +1205,17 @@ async function showPickMulti(ctx: ContextMessageUpdate, scope: string, edit = fa
   return showScreen(ctx, all === 1 ? loc('multi_pick_one', lang) : loc('multi_pick', lang).replace('$k', `${all}`), keyboard, edit)
 }
 
+const chatTitles = new Map<number, string>()
+/** Title of the channel or group of a giveaway (cached) */
+async function chatTitle(ctx: any, chatId: number) {
+  const cached = chatTitles.get(chatId)
+  if (cached) return cached
+  const c: any = await ctx.telegram.getChat(chatId)
+  const title = `${c.title || ''}`
+  if (title) chatTitles.set(chatId, title)
+  return title
+}
+
 /** Payment screen for n boosts in each selected giveaway */
 async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number, edit = false) {
   const userId = ctx.from.id
@@ -1206,6 +1243,41 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
     keyboard.push([{ text: loc('recharge_button', lang), callback_data: 'r~0' }])
   }
   keyboard.push([{ text: loc('multi_btn_back', lang), callback_data: `ba~${scope}` }])
+  try {
+    const crypto = cryptoEnabled()
+    const mult = multiplierOf()
+    const shown = picked.slice(0, 5)
+    const rows: any[] = []
+    for (const x of shown) {
+      let name = `Giveaway`
+      try {
+        name = (await chatTitle(ctx, x.raffle.chatId)) || name
+      } catch {
+        // keep the generic name
+      }
+      const totals = await raffleTotals(x.raffle._id, entryValueOf(x.raffle), stepOf(x.raffle))
+      const value = x.used * mult
+      rows.push({
+        name,
+        now: totals ? pct(chanceOf(totals, value, entryValueOf(x.raffle), BOOST_STEP)) : undefined,
+        after: totals ? pct(chanceOf(totals, value, entryValueOf(x.raffle), BOOST_STEP, n * mult)) : undefined,
+      })
+    }
+    const image = await require('./boostImage').renderMultiPayImage({
+      rows,
+      more: picked.length - shown.length,
+      n,
+      k,
+      total,
+      useBalance: credits >= total,
+      usdt: crypto ? cryptoPriceLabel(total) : undefined,
+      stars: !crypto || starsEnabled() ? total * BOOST_PRICE : undefined,
+      credits,
+    })
+    if (await showPhoto(ctx, image, keyboard, edit)) return
+  } catch (err) {
+    console.error(err)
+  }
   const text = loc(k === 1 ? 'multi_pay_one' : 'multi_pay', lang)
     .replace('$n', `${n}`)
     .replace('$b', boostWord(n))

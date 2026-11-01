@@ -615,3 +615,268 @@ export async function renderBuyImage(info: {
   })
   return canvas.toBuffer('image/png')
 }
+
+// ---------- Photo screens (information in the picture, actions in the buttons) ----------
+
+function scene(H: number, glow: string) {
+  const { createCanvas } = loadCanvas()
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  const bg = x.createLinearGradient(0, 0, 1280, H)
+  bg.addColorStop(0, '#0b1020')
+  bg.addColorStop(1, '#1b1240')
+  x.fillStyle = bg
+  x.fillRect(0, 0, 1280, H)
+  const g = x.createRadialGradient(640, 120, 20, 640, 120, 620)
+  g.addColorStop(0, glow)
+  g.addColorStop(1, 'rgba(0,0,0,0)')
+  x.fillStyle = g
+  x.fillRect(0, 0, 1280, H)
+  x.textBaseline = 'alphabetic'
+  return { canvas, x }
+}
+
+function rrect(x: any, px: number, py: number, w: number, h: number, r: number) {
+  x.beginPath()
+  x.moveTo(px + r, py)
+  x.arcTo(px + w, py, px + w, py + h, r)
+  x.arcTo(px + w, py + h, px, py + h, r)
+  x.arcTo(px, py + h, px, py, r)
+  x.arcTo(px, py, px + w, py, r)
+  x.closePath()
+}
+
+function txt(x: any, t: string, px: number, py: number, font: string, col: string, align = 'center') {
+  x.textAlign = align
+  x.font = font
+  x.fillStyle = col
+  x.fillText(t, px, py)
+}
+
+function panel(x: any, px: number, py: number, w: number, h: number, stroke?: string) {
+  x.fillStyle = 'rgba(255,255,255,0.08)'
+  rrect(x, px, py, w, h, 28)
+  x.fill()
+  x.strokeStyle = stroke || 'rgba(255,255,255,0.14)'
+  x.lineWidth = stroke ? 4 : 2
+  x.stroke()
+}
+
+function pillBox(x: any, px: number, py: number, w: number, h: number, fill: string, t: string, col: string, font: string) {
+  x.fillStyle = fill
+  rrect(x, px, py, w, h, h / 2)
+  x.fill()
+  txt(x, t, px + w / 2, py + h * 0.68, font, col)
+}
+
+function barBox(x: any, px: number, py: number, w: number, h: number, frac: number, c0: string, c1: string) {
+  x.fillStyle = 'rgba(255,255,255,0.1)'
+  rrect(x, px, py, w, h, h / 2)
+  x.fill()
+  const g = x.createLinearGradient(px, 0, px + w, 0)
+  g.addColorStop(0, c0)
+  g.addColorStop(1, c1)
+  x.fillStyle = g
+  rrect(x, px, py, Math.max(h, w * Math.max(0, Math.min(1, frac))), h, h / 2)
+  x.fill()
+}
+
+function loopArrows(x: any, cx: number, cy: number, r: number, col: string, lw: number) {
+  x.strokeStyle = col
+  x.lineWidth = lw
+  x.lineCap = 'round'
+  for (const a of [0.35, Math.PI + 0.35]) {
+    x.beginPath()
+    x.arc(cx, cy, r, a, a + Math.PI - 0.7)
+    x.stroke()
+    const e = a + Math.PI - 0.7
+    const px = cx + r * Math.cos(e)
+    const py = cy + r * Math.sin(e)
+    const t = e + Math.PI / 2
+    const k = lw * 1.9
+    x.fillStyle = col
+    x.beginPath()
+    x.moveTo(px + k * Math.cos(t), py + k * Math.sin(t))
+    x.lineTo(px + k * 0.73 * Math.cos(t + 2.3), py + k * 0.73 * Math.sin(t + 2.3))
+    x.lineTo(px + k * 0.73 * Math.cos(t - 2.3), py + k * 0.73 * Math.sin(t - 2.3))
+    x.closePath()
+    x.fill()
+  }
+}
+
+/** Boost menu of one giveaway: packs with the chance after each, progress and balance */
+export async function renderOptionsImage(info: {
+  giveaway?: string
+  banner?: string // e.g. "x2 Boost day"
+  chanceNow?: string
+  options: { n: number; entries: string; usdt?: string; stars?: number; useBalance?: boolean; chance?: string }[]
+  used: number
+  max: number
+  credits: number
+}): Promise<Buffer> {
+  const rows = Math.max(1, Math.ceil(info.options.length / 3))
+  const hasTop = !!info.chanceNow
+  const bannerH = info.banner ? 80 : 0
+  const topH = hasTop ? 190 : 0
+  const H = 215 + bannerH + topH + rows * 345 + 270 + 40
+  const { canvas, x } = scene(H, 'rgba(255,170,50,0.22)')
+  bolt(x, 300, 85, 50, '#ffd23c')
+  txt(x, 'Boost this giveaway', 700, 115, '66px InterX', '#fff')
+  if (info.giveaway) txt(x, plain(info.giveaway), 640, 170, '32px InterB', '#b8c4ee')
+  let y = 215
+  if (info.banner) {
+    pillBox(x, 300, y, 680, 56, '#ff3d5a', plain(info.banner).toUpperCase(), '#fff', '28px InterX')
+    y += bannerH
+  }
+  if (hasTop) {
+    panel(x, 90, y, 1100, 170)
+    txt(x, 'YOUR CHANCE TO WIN', 640, y + 47, '24px InterB', '#9fa8d6')
+    txt(x, plain(info.chanceNow), 640, y + 135, '88px InterX', '#ffd23c')
+    y += topH
+  }
+  const best = info.options.length > 2 ? 1 : -1
+  info.options.forEach((o, i) => {
+    const col = i % 3
+    const row = Math.floor(i / 3)
+    const inRow = Math.min(3, info.options.length - row * 3)
+    const off = (3 - inRow) * 202
+    const px = 60 + col * 405 + off
+    const py = y + 30 + row * 345
+    panel(x, px, py, 380, 315, i === best ? '#ffd23c' : undefined)
+    if (i === best) pillBox(x, px + 90, py - 18, 200, 38, '#ffd23c', 'BEST VALUE', '#2a1a00', '20px InterX')
+    txt(x, `${o.n}`, px + 190, py + 115, '104px InterX', '#fff')
+    txt(x, o.n === 1 ? 'Boost' : 'Boosts', px + 190, py + 153, '28px InterB', '#b8c4ee')
+    pillBox(x, px + 50, py + 172, 280, 46, 'rgba(255,210,60,0.18)', plain(o.entries), '#ffd23c', '26px InterX')
+    if (o.useBalance) {
+      txt(x, 'Use your balance', px + 190, py + 268, '34px InterX', '#3ddc84')
+    } else if (o.usdt) {
+      txt(x, `$${o.usdt} USDT`, px + 190, py + 268, '38px InterX', '#26c28f')
+    } else if (o.stars) {
+      txt(x, `${o.stars} Stars`, px + 190, py + 268, '38px InterX', '#ffc43c')
+    }
+    if (o.chance) txt(x, `chance ${plain(o.chance)}`, px + 190, py + 300, '22px InterB', '#9fa8d6')
+  })
+  y += 30 + rows * 345
+  panel(x, 60, y, 1160, 110)
+  txt(x, 'Boosted so far', 100, y + 68, '28px InterB', '#b8c4ee', 'left')
+  barBox(x, 400, y + 40, 500, 26, info.max > 0 ? info.used / info.max : 0, '#ffb020', '#ff6a3d')
+  txt(x, `${info.used} / ${info.max}`, 1180, y + 75, '40px InterX', '#ffd23c', 'right')
+  y += 135
+  panel(x, 60, y, 1160, 110)
+  txt(x, 'Your Boosts', 100, y + 68, '28px InterB', '#b8c4ee', 'left')
+  txt(x, `${info.credits}`, 1180, y + 77, '48px InterX', '#ffd23c', 'right')
+  return canvas.toBuffer('image/png')
+}
+
+/** Auto-Boost menu: state, Boosts per giveaway, limit and progress to the next free Boost */
+export async function renderAutoImage(info: {
+  n: number // Boosts per giveaway, 0 = off
+  credits: number
+  limit: number
+  giveaways: number
+  streak: number
+  every: number
+  people?: string
+}): Promise<Buffer> {
+  const { canvas, x } = scene(1010, 'rgba(0,214,170,0.28)')
+  loopArrows(x, 640, 150, 66, '#00e6b4', 11)
+  bolt(x, 640, 150, 38, '#ffd23c')
+  txt(x, 'Auto-Boost', 640, 290, '72px InterX', '#fff')
+  if (info.n > 0) pillBox(x, 440, 315, 400, 56, 'rgba(0,230,180,0.2)', `ON  -  ${info.n} per giveaway`, '#00e6b4', '30px InterX')
+  else pillBox(x, 490, 315, 300, 56, 'rgba(255,255,255,0.1)', 'OFF', '#9fa8d6', '32px InterX')
+  panel(x, 90, 410, 540, 150)
+  txt(x, 'GIVEAWAYS BOOSTED', 360, 455, '22px InterB', '#9fa8d6')
+  txt(x, `${info.giveaways}`, 360, 530, '80px InterX', '#fff')
+  panel(x, 650, 410, 540, 150)
+  txt(x, 'DAILY LIMIT', 920, 455, '22px InterB', '#9fa8d6')
+  txt(x, `${info.limit} Boosts`, 920, 530, '64px InterX', '#fff')
+  panel(x, 90, 590, 1100, 170)
+  txt(x, 'NEXT FREE BOOST', 130, 640, '24px InterB', '#9fa8d6', 'left')
+  txt(x, `${info.streak} / ${info.every} giveaways`, 1150, 640, '28px InterX', '#ffd23c', 'right')
+  barBox(x, 130, 670, 1020, 34, info.every > 0 ? info.streak / info.every : 0, '#00e6b4', '#ffd23c')
+  txt(x, `Your Boosts: ${info.credits}`, 640, 740, '28px InterB', '#b8c4ee')
+  txt(x, 'Choose how many Boosts we add to each giveaway you join', 640, 830, '28px InterB', '#8c97c4')
+  if (info.people) txt(x, plain(info.people), 640, 880, '26px InterB', '#00e6b4')
+  return canvas.toBuffer('image/png')
+}
+
+/** Invite screen: what the friends did and what you earned */
+export async function renderInviteImage(info: {
+  pct: number
+  invited: number
+  buyers: number
+  earned: number
+  link: string
+}): Promise<Buffer> {
+  const { canvas, x } = scene(960, 'rgba(255,170,50,0.2)')
+  txt(x, `Invite & earn ${info.pct}%`, 640, 125, '72px InterX', '#fff')
+  txt(x, `${info.pct}% of every Boost your friends buy, for life`, 640, 180, '32px InterB', '#b8c4ee')
+  const stats: [string, string][] = [
+    ['JOINED', `${info.invited}`],
+    ['BOUGHT', `${info.buyers}`],
+    ['EARNED', `${info.earned}`],
+  ]
+  stats.forEach((s, i) => {
+    const px = 60 + i * 405
+    panel(x, px, 240, 380, 200)
+    txt(x, s[0], px + 190, 292, '24px InterB', '#9fa8d6')
+    txt(x, s[1], px + 190, 392, '96px InterX', i === 2 ? '#ffd23c' : '#fff')
+    if (i === 2) txt(x, 'Boosts', px + 190, 425, '24px InterB', '#9fa8d6')
+  })
+  panel(x, 60, 480, 1160, 160)
+  txt(x, 'YOUR LINK', 100, 530, '22px InterB', '#9fa8d6', 'left')
+  x.fillStyle = 'rgba(0,0,0,0.3)'
+  rrect(x, 100, 552, 1080, 64, 16)
+  x.fill()
+  txt(x, plain(info.link), 640, 596, '30px InterB', '#fff')
+  panel(x, 60, 670, 1160, 130, '#ffd23c')
+  txt(x, 'Your friend gets +1 FREE Boost', 640, 735, '40px InterX', '#ffd23c')
+  txt(x, 'when they buy and turn on Auto-Boost', 640, 777, '26px InterB', '#b8c4ee')
+  txt(x, 'Paid in Boosts that never expire', 640, 860, '28px InterB', '#8c97c4')
+  return canvas.toBuffer('image/png')
+}
+
+/** Boost all giveaways: the giveaways, the chance in each and the total to pay */
+export async function renderMultiPayImage(info: {
+  rows: { name: string; now?: string; after?: string }[]
+  more: number
+  n: number
+  k: number
+  total: number
+  usdt?: string
+  stars?: number
+  useBalance: boolean
+  credits: number
+}): Promise<Buffer> {
+  const rows = info.rows.length
+  const H = 250 + rows * 130 + 20 + 215 + 125 + 60
+  const { canvas, x } = scene(H, 'rgba(255,150,60,0.25)')
+  bolt(x, 250, 85, 50, '#ffd23c')
+  txt(x, 'Boost all giveaways', 700, 115, '66px InterX', '#fff')
+  txt(x, 'Same Boosts in every giveaway you joined', 640, 170, '30px InterB', '#b8c4ee')
+  info.rows.forEach((r, i) => {
+    const y = 215 + i * 130
+    panel(x, 60, y, 1160, 110)
+    txt(x, plain(r.name) || 'Giveaway', 100, y + 68, '32px InterX', '#fff', 'left')
+    if (r.now && r.after) {
+      txt(x, plain(r.now), 860, y + 68, '32px InterB', '#9fa8d6', 'right')
+      txt(x, '>', 900, y + 68, '34px InterX', '#ffd23c')
+      txt(x, plain(r.after), 1180, y + 70, '44px InterX', '#ffd23c', 'right')
+    }
+  })
+  let y = 215 + rows * 130
+  if (info.more > 0) {
+    txt(x, `+ ${info.more} more`, 640, y + 35, '26px InterB', '#9fa8d6')
+    y += 50
+  }
+  panel(x, 60, y + 10, 1160, 215, '#ffd23c')
+  txt(x, `${info.n} ${info.n === 1 ? 'Boost' : 'Boosts'} in each`, 640, y + 80, '44px InterX', '#fff')
+  txt(x, `${info.k} giveaways x ${info.n} = ${info.total} ${info.total === 1 ? 'Boost' : 'Boosts'}`, 640, y + 125, '28px InterB', '#b8c4ee')
+  if (info.useBalance) txt(x, 'Paid with your Boosts', 640, y + 195, '54px InterX', '#3ddc84')
+  else if (info.usdt) txt(x, `$${info.usdt} USDT`, 640, y + 195, '60px InterX', '#26c28f')
+  else if (info.stars) txt(x, `${info.stars} Stars`, 640, y + 195, '60px InterX', '#ffc43c')
+  panel(x, 60, y + 245, 1160, 100)
+  txt(x, 'Your Boosts', 100, y + 307, '28px InterB', '#b8c4ee', 'left')
+  txt(x, `${info.credits}`, 1180, y + 313, '48px InterX', '#ffd23c', 'right')
+  return canvas.toBuffer('image/png')
+}

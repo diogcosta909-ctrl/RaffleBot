@@ -1,4 +1,5 @@
 // Dependencies
+import { showPhoto } from './photoScreen'
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { ChatModel } from '../models/chat'
 import { CreditTxModel } from '../models/creditTx'
@@ -234,6 +235,26 @@ export function setupReferral(bot: Telegraf<ContextMessageUpdate>) {
     ])
     void trackAuto('invite_open', userId)
     const share = `https://t.me/share/url?url=${encodeURIComponent(link(userId))}&text=${encodeURIComponent('Boost your chances in giveaways 🚀')}`
+    // Photo screen: numbers in the picture, share and copy as buttons (text screen if it fails)
+    try {
+      const earned = (earn[0] && earn[0].n) || 0
+      const image = await require('./boostImage').renderInviteImage({
+        pct: REFERRAL_PCT,
+        invited,
+        buyers: paid.length,
+        earned,
+        link: link(userId),
+      })
+      const ok = await showPhoto(ctx, image, [
+        [
+          { text: '📤 Share link', url: share },
+          { text: '📋 Copy link', copy_text: { text: link(userId) } },
+        ],
+      ])
+      if (ok) return
+    } catch (err) {
+      console.error(err)
+    }
     await ctx.replyWithHTML(inviteText(userId, invited, paid.length, (earn[0] && earn[0].n) || 0), {
       disable_web_page_preview: true,
       reply_markup: { inline_keyboard: [[{ text: '📤 Share link', url: share }]] },

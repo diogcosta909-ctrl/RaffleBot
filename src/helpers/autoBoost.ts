@@ -12,7 +12,7 @@ import { raffleTotals, chanceOf, pct } from './odds'
 import { cryptoEnabled, cryptoPriceLabel } from './cryptoPay'
 import { expireFreeCredits } from './freeExpiry'
 import { loc } from './locale'
-import { streakStep, streakReset, checkReferral } from './referral'
+import { streakStep, streakReset, checkReferral , STREAK_EVERY } from './referral'
 import {
   validateBoost,
   notifyOwner,
@@ -28,6 +28,7 @@ import {
   sendRecharge,
   editScreen,
 } from './boost'
+import { showPhoto } from './photoScreen'
 
 // Auto-Boost: Boosts paid with credits and added automatically to every giveaway a person joins.
 // Texts are in English (they are sent to the users of the bot).
@@ -120,7 +121,7 @@ async function needBoosts(ctx: any, edit: boolean) {
   const keyboard: any[] = [[{ text: '💳 Buy Boosts', callback_data: 'abr~' }]]
   if (edit) {
     try {
-      await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
+      await editScreen(ctx, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
       return
     } catch (err) {
       if (/not modified/i.test(`${(err && (err.description || err.message)) || ''}`)) return
@@ -130,7 +131,7 @@ async function needBoosts(ctx: any, edit: boolean) {
 }
 
 /** Auto-Boost screen: choose how many Boosts per giveaway */
-async function showMenu(ctx: any, edit = false) {
+async function showMenu(ctx: any, edit = false, track = true) {
   const userId = ctx.from.id
   const chat: any = await findChat(userId)
   if (!(await hasAcceptedTerms(userId))) {
@@ -146,7 +147,7 @@ async function showMenu(ctx: any, edit = false) {
     void trackAuto('open_nobal', userId)
     return needBoosts(ctx, edit)
   }
-  void trackAuto('open', userId)
+  if (track) void trackAuto('open', userId)
   const text =
     `🔁 <b>Auto-Boost</b>\n\n` +
     `Boost every giveaway you join, automatically.\n` +
@@ -156,15 +157,37 @@ async function showMenu(ctx: any, edit = false) {
     `How many Boosts per giveaway?`
   const keyboard: any[] = [
     [
-      { text: '🚀 1 Boost', callback_data: 'ab~1' },
-      { text: '🚀 2 Boosts', callback_data: 'ab~2' },
-      { text: '🚀 3 Boosts', callback_data: 'ab~3' },
+      { text: `${n === 1 ? '✅ ' : ''}🚀 1 Boost`, callback_data: 'ab~1' },
+      { text: `${n === 2 ? '✅ ' : ''}🚀 2 Boosts`, callback_data: 'ab~2' },
+      { text: `${n === 3 ? '✅ ' : ''}🚀 3 Boosts`, callback_data: 'ab~3' },
     ],
   ]
-  if (n) keyboard.push([{ text: 'Turn off', callback_data: 'ab~0' }])
+  if (n) {
+    keyboard.push([
+      { text: '🛡 Daily limit', callback_data: 'abl~m' },
+      { text: '👥 Invite · earn 10%', callback_data: 'inv~' },
+    ])
+    keyboard.push([{ text: 'Turn off', callback_data: 'ab~0' }])
+  }
+  // Photo screen first; the text screen below is the fallback
+  try {
+    const people = ((await autoBoostCountLine()) || '').replace(/<[^>]+>/g, '')
+    const image = await require('./boostImage').renderAutoImage({
+      n,
+      credits: await getCredits(userId),
+      limit: chat.autoBoostLimit || DEFAULT_LIMIT,
+      giveaways: chat.autoBoostCount || 0,
+      streak: (chat.autoBoostStreak || 0) % STREAK_EVERY,
+      every: STREAK_EVERY,
+      people: people || undefined,
+    })
+    if (await showPhoto(ctx, image, keyboard, edit)) return
+  } catch (err) {
+    console.error(err)
+  }
   if (edit) {
     try {
-      await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
+      await editScreen(ctx, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
       return
     } catch (err) {
       if (/not modified/i.test(`${(err && (err.description || err.message)) || ''}`)) return
@@ -179,7 +202,7 @@ async function setBoosts(ctx: any, n: number) {
     await ChatModel.updateOne({ chatId: userId }, { $set: { autoBoost: 0, autoBoostMissed: 0 }, $unset: { autoBoostPausedAt: 1 } })
     void trackAuto('off_manual', userId)
     void streakReset(userId)
-    return ctx.editMessageText('🔁 <b>Auto-Boost is OFF</b>\n\nYou can turn it on again anytime.', {
+    return editScreen(ctx, '🔁 <b>Auto-Boost is OFF</b>\n\nYou can turn it on again anytime.', {
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: [[{ text: '🔁 Turn on', callback_data: 'ab~m' }]] },
     })
@@ -216,6 +239,13 @@ async function setBoosts(ctx: any, n: number) {
       console.error(err)
     }
   }
+  // The menu photo refreshes with the new state (selection, balance, limit)
+  try {
+    await showMenu(ctx, true, false)
+    return
+  } catch (err) {
+    console.error(err)
+  }
   const text =
     `✅ <b>Auto-Boost is ON</b>\n\n` +
     `🚀 ${n} ${boostWord(n)} in every giveaway you join\n` +
@@ -233,7 +263,7 @@ async function setBoosts(ctx: any, n: number) {
   ])
   keyboard.push([{ text: '👥 Invite friends · earn 10%', callback_data: 'inv~' }])
   keyboard.push([{ text: 'Turn off', callback_data: 'ab~0' }])
-  return ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
+  return editScreen(ctx, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })
 }
 
 async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
