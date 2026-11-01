@@ -260,22 +260,8 @@ function errorText(key: string, language = 'en') {
 
 /** Someone with no Boosts pressed Boost: they have to top up first (no direct payment to one giveaway) */
 async function sendNeedBoosts(ctx: ContextMessageUpdate, res: any, raffleId: string, credits: number, totals: any, base: number) {
-  // The packs themselves (2 columns), so topping up is one tap; Auto-Boost on its own line below
-  const crypto = cryptoEnabled()
-  const cells: any[] = CREDIT_PACKS.map((n) => {
-    const bonus = bonusFor(n)
-    const price = crypto
-      ? starsEnabled()
-        ? `${n * BOOST_PRICE}⭐ / $${cryptoPriceLabel(n)}`
-        : `$${cryptoPriceLabel(n)}`
-      : `${n * BOOST_PRICE} Stars`
-    return {
-      text: `${n}${bonus ? ` +${bonus}` : ''} ${n === 1 && !bonus ? 'Boost' : 'Boosts'} • ${price}`,
-      callback_data: !starsEnabled() ? `tc~${n}~${raffleId}` : crypto ? `ap~${n}~${raffleId}` : `ts~${n}~${raffleId}`,
-    }
-  })
-  const keyboard: any[] = []
-  for (let i = 0; i < cells.length; i += 2) keyboard.push(cells.slice(i, i + 2))
+  // One "Buy Boosts" button (opens the packs screen); Auto-Boost on its own line below
+  const keyboard: any[] = [[{ text: `${loc('recharge_button', res.language)} 🚀`, callback_data: `r~${raffleId}` }]]
   try {
     const status = await require('./autoBoost').autoBoostStatus(ctx.from.id)
     keyboard.push([{ text: status.button, callback_data: 'ab~m' }])

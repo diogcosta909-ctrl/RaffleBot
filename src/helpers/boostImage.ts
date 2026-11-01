@@ -1268,7 +1268,7 @@ export async function renderNeedBoostsImage(info: { credits: number }): Promise<
   x.stroke()
   center('YOUR BALANCE', 430, '24px InterX', '#d9c8ff', 8)
   txt(x, `${Math.max(0, Math.round(info.credits))}`, 640, 575, '150px InterX', wGold(x, 560, 450, 720, 575) as any)
-  center('CHOOSE A PACK BELOW', 705, '24px InterX', '#ffc83c', 6)
+  center('TAP BUY BOOSTS BELOW', 705, '24px InterX', '#ffc83c', 6)
   x.strokeStyle = '#ffc83c'
   x.lineWidth = 10
   x.lineCap = 'round'
