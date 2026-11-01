@@ -290,12 +290,16 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
   // Chance of winning now and after each pack (same formula as the draw)
   const base = entryValueOf(res.raffle)
   const totals = await raffleTotals(res.raffle._id, base, BOOST_STEP)
-  const keyboard: any[] = options.map((n) => {
+  // One button per pack when there is a single payment method (2 columns); Stars + USDT keep one row per pack
+  const single = !(starsEnabled() && cryptoEnabled())
+  const optionRows: any[] = options.map((n) => {
     // With enough credits only the credits button is shown for that pack
     if (credits >= n) {
       return [
         {
-          text: `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+          text: single
+            ? `💰 ${creditsLabel(n, res.language)}`
+            : `💰 ${creditsLabel(n, res.language)} · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
           callback_data: `w~${raffleId}~${n}`,
         },
       ]
@@ -303,21 +307,32 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
     const row: any[] = []
     if (starsEnabled()) {
       row.push({
-        text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+        text: single
+          ? `${creditsLabel(n, res.language)} · ${n * BOOST_PRICE}⭐`
+          : `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
         callback_data: `b~${raffleId}~${n}`,
       })
     }
     if (cryptoEnabled()) {
       row.push({
-        text: starsEnabled()
-          ? `🪙 ${cryptoPriceLabel(n)} USDT`
-          : `🪙 ${cryptoPriceLabel(n)} USDT · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
+        text: single
+          ? `🪙 ${creditsLabel(n, res.language)} · $${cryptoPriceLabel(n)}`
+          : `🪙 ${cryptoPriceLabel(n)} USDT`,
         callback_data: `c~${raffleId}~${n}`,
       })
     }
     return row
   })
-  keyboard.push([{ text: loc('recharge_button', res.language), callback_data: `r~${raffleId}` }])
+  const buyButton = { text: `${loc('recharge_button', res.language)} 🚀`, callback_data: `r~${raffleId}` }
+  const keyboard: any[] = []
+  if (optionRows.every((r) => r.length === 1)) {
+    // 2 columns; with an odd number of packs "Buy Boosts" fills the last row
+    const cells: any[] = optionRows.map((r) => r[0]).concat([buyButton])
+    for (let i = 0; i < cells.length; i += 2) keyboard.push(cells.slice(i, i + 2))
+  } else {
+    optionRows.forEach((r) => keyboard.push(r))
+    keyboard.push([buyButton])
+  }
   let autoLine = ''
   let proofLine = ''
   try {
