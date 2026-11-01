@@ -1134,12 +1134,7 @@ async function sendRechargePhoto(ctx: ContextMessageUpdate, lang: string, credit
       promo: promoBanner(),
     }
     const key = JSON.stringify(info)
-    const caption = loc('recharge_text', lang)
-      .replace('$pct', pctLabel(1, lang))
-      .replace('$packs', '')
-      .replace('$n', `${credits}`)
-      .replace('$choose', loc('choose_pack', lang))
-      .replace(/\n{3,}/g, '\n\n')
+    const caption = loc('recharge_caption', lang).replace('$n', creditsLabel(credits, lang))
     const extra: any = { caption, parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
     const cached = buyPhotoIds.get(key)
     if (cached) {

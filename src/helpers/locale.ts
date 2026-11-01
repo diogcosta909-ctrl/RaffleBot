@@ -630,6 +630,10 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '💰 Your Boosts: $n',
     es: '💰 Tus Boosts: $n',
   },
+  recharge_caption: {
+    en: '💰 $n · Pick a pack 👇',
+    es: '💰 $n · Elige un pack 👇',
+  },
   recharge_button: {
     en: 'Buy Boosts',
     es: 'Buy Boosts',
