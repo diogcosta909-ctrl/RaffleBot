@@ -114,11 +114,17 @@ export async function autoBoostStatus(userId: number) {
 
 /** Auto-Boost can only be turned on with Boosts in the balance */
 async function needBoosts(ctx: any, edit: boolean) {
+  const keyboard: any[] = [[{ text: '💳 Buy Boosts', callback_data: 'abr~' }]]
+  try {
+    const image = await require('./boostImage').renderAutoNeedImage()
+    if (await showPhoto(ctx, image, keyboard, edit, '🔁 Auto-Boost needs Boosts. Buy some first 👇')) return
+  } catch (err) {
+    console.error(err)
+  }
   const text =
     `🔁 <b>Auto-Boost</b>\n\n` +
     `Boost every giveaway you join, automatically.\n\n` +
     `💰 You have 0 Boosts. Buy Boosts first, then turn Auto-Boost on 👇`
-  const keyboard: any[] = [[{ text: '💳 Buy Boosts', callback_data: 'abr~' }]]
   if (edit) {
     try {
       await editScreen(ctx, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } })

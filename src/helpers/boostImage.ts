@@ -1114,6 +1114,79 @@ export async function renderOptionsImage(info: {
   return canvas.toBuffer('image/png')
 }
 
+/** Auto-Boost page when the balance is empty: buy Boosts first */
+export async function renderAutoNeedImage(): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const H = 900
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  x.fillStyle = '#12082e'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(200, 100, 700, 'rgba(255,90,170,0.32)')
+  glow(1100, 800, 800, 'rgba(70,90,255,0.45)')
+  glow(640, 230, 280, 'rgba(255,200,80,0.3)')
+  const center = (t: string, py: number, font: string, col: any, sp: number) => {
+    x.font = font
+    let w = 0
+    for (const ch of t.split('')) w += x.measureText(ch).width + sp
+    spaced(x, t, 640 - (w - sp) / 2, py, font, col, sp)
+  }
+  const gold = wGold(x, 540, 130, 740, 330)
+  x.strokeStyle = gold
+  x.fillStyle = gold
+  x.lineWidth = 22
+  x.lineCap = 'round'
+  for (const a0 of [0.3, Math.PI + 0.3]) {
+    const a1 = a0 + Math.PI - 0.75
+    x.beginPath()
+    x.arc(640, 230, 100, a0, a1)
+    x.stroke()
+    const ex = 640 + 100 * Math.cos(a1)
+    const ey = 230 + 100 * Math.sin(a1)
+    const t = a1 + Math.PI / 2
+    x.beginPath()
+    x.moveTo(ex + Math.cos(t) * 35, ey + Math.sin(t) * 35)
+    x.lineTo(ex + Math.cos(t + 2.5) * 42, ey + Math.sin(t + 2.5) * 42)
+    x.lineTo(ex + Math.cos(t - 2.5) * 42, ey + Math.sin(t - 2.5) * 42)
+    x.closePath()
+    x.fill()
+  }
+  bolt(x, 640, 230, 66, '#ffc83c')
+  txt(x, 'Auto-Boost', 640, 440, '104px InterX', '#ffffff')
+  txt(x, 'Boost every giveaway you join, automatically', 640, 498, '32px InterB', '#d9c8ff')
+  x.fillStyle = 'rgba(255,255,255,0.07)'
+  rrect(x, 340, 560, 600, 130, 34)
+  x.fill()
+  x.lineWidth = 3
+  x.strokeStyle = 'rgba(255,200,80,0.5)'
+  rrect(x, 340, 560, 600, 130, 34)
+  x.stroke()
+  center('YOUR BALANCE', 605, '20px InterX', '#d9c8ff', 6)
+  txt(x, '0 Boosts', 640, 665, '58px InterX', wGold(x, 520, 610, 760, 665) as any)
+  center('BUY BOOSTS FIRST', 745, '24px InterX', '#ffc83c', 6)
+  x.strokeStyle = '#ffc83c'
+  x.lineWidth = 10
+  x.lineJoin = 'round'
+  ;[0, 34].forEach((d, i) => {
+    x.globalAlpha = i ? 1 : 0.45
+    x.beginPath()
+    x.moveTo(606, 770 + d)
+    x.lineTo(640, 798 + d)
+    x.lineTo(674, 770 + d)
+    x.stroke()
+  })
+  x.globalAlpha = 1
+  return canvas.toBuffer('image/png')
+}
+
 /** Auto-Boost menu: state, Boosts per giveaway, limit and progress to the next free Boost */
 export async function renderAutoImage(info: {
   n: number // Boosts per giveaway, 0 = off
