@@ -12,3 +12,8 @@ export function starsEnabled() {
 export function termsRequired() {
   return process.env.TERMS_REQUIRED !== '0'
 }
+
+/** Paying a Boost straight to one giveaway. Off by default: people top up Boosts and boost from the balance (DIRECT_BUY="1" brings it back) */
+export function directBuy() {
+  return process.env.DIRECT_BUY === '1'
+}

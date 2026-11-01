@@ -846,6 +846,7 @@ export async function renderMultiPayImage(info: {
   usdt?: string
   stars?: number
   useBalance: boolean
+  topUp?: boolean
   credits: number
 }): Promise<Buffer> {
   const rows = info.rows.length
@@ -873,10 +874,40 @@ export async function renderMultiPayImage(info: {
   txt(x, `${info.n} ${info.n === 1 ? 'Boost' : 'Boosts'} in each`, 640, y + 80, '44px InterX', '#fff')
   txt(x, `${info.k} giveaways x ${info.n} = ${info.total} ${info.total === 1 ? 'Boost' : 'Boosts'}`, 640, y + 125, '28px InterB', '#b8c4ee')
   if (info.useBalance) txt(x, 'Paid with your Boosts', 640, y + 195, '54px InterX', '#3ddc84')
+  else if (info.topUp) txt(x, 'Top up Boosts first', 640, y + 195, '54px InterX', '#ffb020')
   else if (info.usdt) txt(x, `$${info.usdt} USDT`, 640, y + 195, '60px InterX', '#26c28f')
   else if (info.stars) txt(x, `${info.stars} Stars`, 640, y + 195, '60px InterX', '#ffc43c')
   panel(x, 60, y + 245, 1160, 100)
   txt(x, 'Your Boosts', 100, y + 307, '28px InterB', '#b8c4ee', 'left')
   txt(x, `${info.credits}`, 1180, y + 313, '48px InterX', '#ffd23c', 'right')
+  return canvas.toBuffer('image/png')
+}
+
+/** Boost menu of a giveaway for someone without Boosts: top up first */
+export async function renderNeedBoostsImage(info: {
+  chanceNow?: string
+  packN: number
+  chanceAfter?: string
+  credits: number
+}): Promise<Buffer> {
+  const { canvas, x } = scene(900, 'rgba(255,170,50,0.25)')
+  bolt(x, 300, 85, 50, '#ffd23c')
+  txt(x, 'Boost this giveaway', 700, 115, '66px InterX', '#fff')
+  panel(x, 90, 215, 1100, 250, '#ffd23c')
+  txt(x, 'Top up Boosts', 640, 330, '84px InterX', '#ffd23c')
+  txt(x, 'to boost this giveaway', 640, 395, '40px InterB', '#fff')
+  txt(x, 'Boosts never expire and work in any giveaway', 640, 440, '26px InterB', '#b8c4ee')
+  if (info.chanceNow && info.chanceAfter) {
+    panel(x, 90, 500, 1100, 210)
+    txt(x, 'YOUR CHANCE TO WIN', 640, 548, '24px InterB', '#9fa8d6')
+    txt(x, plain(info.chanceNow), 390, 650, '88px InterX', '#fff')
+    txt(x, '>', 640, 635, '60px InterX', '#ffd23c')
+    txt(x, plain(info.chanceAfter), 890, 650, '88px InterX', '#ffd23c')
+    txt(x, 'now', 390, 688, '22px InterB', '#9fa8d6')
+    txt(x, `with ${info.packN} Boosts`, 890, 688, '22px InterB', '#9fa8d6')
+  }
+  panel(x, 60, 750, 1160, 110)
+  txt(x, 'Your Boosts', 100, 812, '28px InterB', '#b8c4ee', 'left')
+  txt(x, `${info.credits}`, 1180, 822, '48px InterX', '#ffd23c', 'right')
   return canvas.toBuffer('image/png')
 }

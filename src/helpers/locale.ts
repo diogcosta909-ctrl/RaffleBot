@@ -75,6 +75,10 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     en: '$n $b in your giveaway.',
     es: '$n $b en tu sorteo.',
   },
+  need_boosts: {
+    en: '🚀 To boost this giveaway, top up Boosts first.\nBoosts never expire and work in any giveaway.',
+    es: '🚀 Para boostear este sorteo, recarga Boosts primero.\nLos Boosts no caducan y sirven en cualquier sorteo.',
+  },
   autoboost_button: {
     en: '🔄 Auto-Boost',
     es: '🔄 Auto-Boost',

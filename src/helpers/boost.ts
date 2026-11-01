@@ -25,7 +25,7 @@ import { getChatIdForConfig } from './getChatIdForConfig'
 import { raffleTotals, chanceOf, oddsLine, oddsChangeLine, pct } from './odds'
 import { showPhoto } from './photoScreen'
 import { loc } from './locale'
-import { starsEnabled } from './payMode'
+import { starsEnabled, directBuy } from './payMode'
 import { resolveUser } from './userLookup'
 
 // Config (env overridable): 1 Star = +0.3 weight (x1.3), max 10 boosts per user per raffle
@@ -258,6 +258,31 @@ function errorText(key: string, language = 'en') {
   return loc(key, language).replace('$max', `${maxBoosts()}`)
 }
 
+/** Someone with no Boosts pressed Boost: they have to top up first (no direct payment to one giveaway) */
+async function sendNeedBoosts(ctx: ContextMessageUpdate, res: any, raffleId: string, credits: number, totals: any, base: number) {
+  const keyboard: any[] = [[{ text: `${loc('recharge_button', res.language)} 🚀`, callback_data: `r~${raffleId}` }]]
+  try {
+    const status = await require('./autoBoost').autoBoostStatus(ctx.from.id)
+    keyboard.push([{ text: status.button, callback_data: 'ab~m' }])
+  } catch (err) {
+    console.error(err)
+  }
+  try {
+    const pack = CREDIT_PACKS[0] || 5
+    const mult = multiplierOf(res.raffle)
+    const image = await require('./boostImage').renderNeedBoostsImage({
+      chanceNow: totals ? pct(chanceOf(totals, res.value, base, BOOST_STEP)) : undefined,
+      packN: pack,
+      chanceAfter: totals ? pct(chanceOf(totals, res.value, base, BOOST_STEP, pack * mult)) : undefined,
+      credits,
+    })
+    if (await showPhoto(ctx, image, keyboard)) return
+  } catch (err) {
+    console.error(err)
+  }
+  return ctx.reply(loc('need_boosts', res.language), { reply_markup: { inline_keyboard: keyboard } })
+}
+
 /** Private chat: show the boost packs the user can still buy */
 export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: string) {
   const res = await validateBoost(raffleId, ctx.from.id)
@@ -285,11 +310,13 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
   }
   await trackBoost({ type: 'menu', userId: ctx.from.id, raffleId })
   const left = maxBoosts() - res.used
-  const options = BOOST_OPTIONS.filter((n) => n <= left)
   const credits = await getCredits(ctx.from.id)
+  // Without direct payment only the packs the balance can cover are offered
+  const options = BOOST_OPTIONS.filter((n) => n <= left && (directBuy() || credits >= n))
   // Chance of winning now and after each pack (same formula as the draw)
   const base = entryValueOf(res.raffle)
   const totals = await raffleTotals(res.raffle._id, base, BOOST_STEP)
+  if (!directBuy() && !options.length) return sendNeedBoosts(ctx, res, raffleId, credits, totals, base)
   // One button per pack when there is a single payment method (2 columns); Stars + USDT keep one row per pack
   const single = !(starsEnabled() && cryptoEnabled())
   const optionRows: any[] = options.map((n) => {
@@ -1251,8 +1278,8 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
   if (credits >= total) {
     keyboard.push([{ text: `💰 ${creditsLabel(total, lang)}`, callback_data: `bp~w~${multi._id}` }])
   } else {
-    if (starsEnabled()) keyboard.push([{ text: `⭐ ${total * BOOST_PRICE} Stars`, callback_data: `bp~s~${multi._id}` }])
-    if (cryptoEnabled()) {
+    if (starsEnabled() && directBuy()) keyboard.push([{ text: `⭐ ${total * BOOST_PRICE} Stars`, callback_data: `bp~s~${multi._id}` }])
+    if (cryptoEnabled() && directBuy()) {
       keyboard.push([{ text: `🪙 ${cryptoPriceLabel(total)} USDT`, callback_data: `bp~c~${multi._id}` }])
     }
     keyboard.push([{ text: loc('recharge_button', lang), callback_data: 'r~0' }])
@@ -1285,8 +1312,9 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
       k,
       total,
       useBalance: credits >= total,
-      usdt: crypto ? cryptoPriceLabel(total) : undefined,
-      stars: !crypto || starsEnabled() ? total * BOOST_PRICE : undefined,
+      topUp: credits < total && !directBuy(),
+      usdt: directBuy() && crypto ? cryptoPriceLabel(total) : undefined,
+      stars: directBuy() && (!crypto || starsEnabled()) ? total * BOOST_PRICE : undefined,
       credits,
     })
     if (await showPhoto(ctx, image, keyboard, edit)) return
@@ -2090,6 +2118,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     } catch {
       // do nothing
     }
+    if (!directBuy()) return sendBoostOptions(ctx, raffleId)
     if (!BOOST_OPTIONS.includes(n)) return
     try {
       await sendBoostInvoice(ctx, raffleId, n)
@@ -2107,6 +2136,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     } catch {
       // do nothing
     }
+    if (!directBuy()) return sendBoostOptions(ctx, raffleId)
     if (!cryptoEnabled() || !BOOST_OPTIONS.includes(n)) return
     try {
       const res: any = await validateBoost(raffleId, ctx.from.id, n)
@@ -2311,6 +2341,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     } catch {
       // do nothing
     }
+    if (!directBuy() && method !== 'w') return
     try {
       const userId = ctx.from.id
       const lang = (await findChat(userId)).language
