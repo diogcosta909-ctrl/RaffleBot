@@ -386,34 +386,198 @@ export async function renderBoostImage(info: {
       foot: info.credits ? 'Boost used from balance' : `Boost paid with ${how}`,
     })
   }
-  let theme = 'stars'
-  let hero: Hero = 'stars'
-  let paid = `paid ${plural(info.stars, 'Star', 'Stars')}`
-  if (info.credits && info.gift) {
-    theme = 'gift'
-    hero = 'bolt1'
-    paid = `${plural(boosts, 'gift Boost', 'gift Boosts')}`
-  } else if (info.credits) {
-    theme = info.auto ? 'auto' : 'credits'
-    hero = info.auto ? 'loop' : 'bolts'
-    paid = info.auto ? `${plural(boosts, 'Boost', 'Boosts')} applied` : `paid with ${plural(boosts, 'Boost', 'Boosts')}`
-  } else if (info.crypto) {
-    theme = 'usdt'
-    hero = 'usdt'
-    paid = `paid ${plain(`${info.usdt || ''}`)} USDT`.replace('  ', ' ')
-  }
+  const mult = info.mult && info.mult > 1 ? info.mult : 1
   const sub = info.auto ? 'was boosted automatically' : info.gift ? 'used a free gift Boost' : 'boosted a giveaway'
-  const added = info.added && info.added > 0 ? `+${Math.round(info.added)} entries · ` : ''
-  return renderCard({
-    theme,
-    hero,
-    heroCount: boosts,
-    title: name,
+  return renderLaunchCard({
+    name,
+    boosts,
     sub,
-    big: `${info.entries}`,
-    label: 'ENTRIES NOW',
-    foot: `${added}${paid}`,
+    added: info.added && info.added > 0 ? Math.round(info.added) : 0,
+    total: info.entries,
+    auto: !!info.auto,
+    mult,
   })
+}
+
+type Tier = { label: string; glow: string; col: string; rk: number[][]; fx: number; gold: boolean }
+function tierOf(n: number): Tier {
+  if (n >= 25) return { label: 'ULTRA BOOST x25', glow: 'rgba(255,200,80,0.7)', col: '#ffd23c', rk: [[1010, 320, 1.2]], fx: 2, gold: true }
+  if (n >= 10)
+    return { label: 'MEGA BOOST x10', glow: 'rgba(255,190,60,0.6)', col: '#ffc83c', rk: [[850, 360, 0.5], [1020, 270, 1.0], [1200, 360, 0.5]], fx: 1, gold: true }
+  if (n >= 5)
+    return {
+      label: 'POWER BOOST x5',
+      glow: 'rgba(255,70,140,0.55)',
+      col: '#ff6ab0',
+      rk: [[800, 370, 0.5], [890, 330, 0.65], [1000, 280, 0.8], [1110, 330, 0.65], [1200, 370, 0.5]],
+      fx: 0,
+      gold: false,
+    }
+  if (n >= 3)
+    return { label: 'TRIPLE BOOST', glow: 'rgba(255,100,70,0.55)', col: '#ff8a60', rk: [[800, 330, 0.7], [960, 290, 0.8], [1120, 330, 0.7]], fx: 0, gold: false }
+  if (n === 2) return { label: 'DOUBLE BOOST', glow: 'rgba(255,120,40,0.55)', col: '#ff9a50', rk: [[900, 300, 0.85], [1070, 330, 0.85]], fx: 0, gold: false }
+  return { label: 'BOOSTED', glow: 'rgba(255,120,40,0.5)', col: '#ff9a50', rk: [[980, 300, 1.0]], fx: 0, gold: false }
+}
+
+function rand(seed: number) {
+  let r = seed
+  return () => {
+    r = (r * 9301 + 49297) % 233280
+    return r / 233280
+  }
+}
+
+function drawRocket(x: any, cx: number, cy: number, s: number, body: string, accent: string, flame: string) {
+  x.save()
+  x.translate(cx, cy)
+  x.scale(s, s)
+  const fg = x.createLinearGradient(0, 130, 0, 330)
+  fg.addColorStop(0, flame)
+  fg.addColorStop(0.5, '#ff8a1f')
+  fg.addColorStop(1, 'rgba(255,80,40,0)')
+  x.fillStyle = fg
+  x.beginPath()
+  x.moveTo(-42, 130)
+  x.quadraticCurveTo(0, 380, 42, 130)
+  x.fill()
+  x.fillStyle = 'rgba(255,245,200,0.95)'
+  x.beginPath()
+  x.moveTo(-20, 130)
+  x.quadraticCurveTo(0, 250, 20, 130)
+  x.fill()
+  x.fillStyle = accent
+  x.beginPath()
+  x.moveTo(-70, 40)
+  x.lineTo(-125, 160)
+  x.lineTo(-70, 130)
+  x.fill()
+  x.beginPath()
+  x.moveTo(70, 40)
+  x.lineTo(125, 160)
+  x.lineTo(70, 130)
+  x.fill()
+  const bg = x.createLinearGradient(-80, 0, 80, 0)
+  bg.addColorStop(0, '#c9d2ea')
+  bg.addColorStop(0.45, body)
+  bg.addColorStop(1, '#aab6d6')
+  x.fillStyle = bg
+  x.beginPath()
+  x.moveTo(0, -200)
+  x.quadraticCurveTo(95, -70, 72, 135)
+  x.lineTo(-72, 135)
+  x.quadraticCurveTo(-95, -70, 0, -200)
+  x.fill()
+  x.fillStyle = accent
+  x.beginPath()
+  x.moveTo(0, -200)
+  x.quadraticCurveTo(45, -160, 58, -105)
+  x.lineTo(-58, -105)
+  x.quadraticCurveTo(-45, -160, 0, -200)
+  x.fill()
+  x.fillStyle = '#1d2b55'
+  x.beginPath()
+  x.arc(0, -25, 36, 0, 7)
+  x.fill()
+  x.fillStyle = '#6fb6ff'
+  x.beginPath()
+  x.arc(0, -25, 28, 0, 7)
+  x.fill()
+  x.fillStyle = 'rgba(255,255,255,0.5)'
+  x.beginPath()
+  x.arc(-9, -35, 9, 0, 7)
+  x.fill()
+  x.fillStyle = accent
+  x.fillRect(-72, 95, 144, 16)
+  x.restore()
+}
+
+/** Feed image of a boost: rocket formation that grows with the number of Boosts used */
+async function renderLaunchCard(info: {
+  name: string
+  boosts: number
+  sub: string
+  added: number
+  total: number
+  auto: boolean
+  mult: number
+}): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const H = 720
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  const t = tierOf(info.boosts)
+  x.fillStyle = '#0a0e22'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(960, 720, 800, t.glow)
+  glow(200, 100, 500, 'rgba(60,90,255,0.25)')
+  const rnd = rand(3)
+  for (let i = 0; i < 60; i++) {
+    const px = rnd() * 1280
+    const py = rnd() * H
+    const sz = 1 + rnd() * 3
+    x.fillStyle = `rgba(255,255,255,${0.3 + rnd() * 0.6})`
+    x.beginPath()
+    x.arc(px, py, sz, 0, 7)
+    x.fill()
+  }
+  if (t.fx === 2) {
+    const n = 28
+    for (let i = 0; i < n; i++) {
+      const a = (i * 2 * Math.PI) / n
+      const b = a + (Math.PI / n) * 0.5
+      x.fillStyle = 'rgba(255,210,90,0.09)'
+      x.beginPath()
+      x.moveTo(1010, 330)
+      x.lineTo(1010 + 900 * Math.cos(a), 330 + 900 * Math.sin(a))
+      x.lineTo(1010 + 900 * Math.cos(b), 330 + 900 * Math.sin(b))
+      x.closePath()
+      x.fill()
+    }
+  }
+  if (t.fx > 0) {
+    const sr = rand(info.boosts * 7)
+    const n = t.fx === 2 ? 26 : 14
+    for (let i = 0; i < n; i++) {
+      const px = 620 + sr() * 660
+      const py = sr() * H
+      x.fillStyle = 'rgba(255,225,140,0.85)'
+      x.beginPath()
+      x.moveTo(px, py - 12)
+      x.lineTo(px + 4, py - 4)
+      x.lineTo(px + 12, py)
+      x.lineTo(px + 4, py + 4)
+      x.lineTo(px, py + 12)
+      x.lineTo(px - 4, py + 4)
+      x.lineTo(px - 12, py)
+      x.lineTo(px - 4, py - 4)
+      x.closePath()
+      x.fill()
+    }
+  }
+  txt(x, `${t.label}${info.auto ? '  -  AUTO' : ''}`, 90, 120, '28px InterX', t.col, 'left')
+  txt(x, info.name, 90, 215, '70px InterX', '#ffffff', 'left')
+  txt(x, info.sub, 90, 265, '32px InterB', '#a9b4e6', 'left')
+  const gold = x.createLinearGradient(90, 0, 520, 0)
+  gold.addColorStop(0, '#fff1b0')
+  gold.addColorStop(0.5, '#ffc83c')
+  gold.addColorStop(1, '#ff9a1f')
+  const big = info.added > 0 ? `+${info.added}` : `${info.total}`
+  txt(x, big, 90, 500, `${big.length > 3 ? 180 : 220}px InterX`, gold as any, 'left')
+  const foot =
+    info.added > 0
+      ? `entries  ·  ${info.total} now${info.mult > 1 ? `  ·  x${+info.mult.toFixed(2)} today` : ''}`
+      : `entries now${info.mult > 1 ? `  ·  x${+info.mult.toFixed(2)} today` : ''}`
+  txt(x, foot, 90, 580, '38px InterB', '#a9b4e6', 'left')
+  t.rk.forEach(r => drawRocket(x, r[0], r[1], r[2], '#eef1fb', t.gold ? '#d9a53a' : '#ff4a3d', t.gold ? '#ffe27a' : '#ffd23c'))
+  return canvas.toBuffer('image/png')
 }
 
 /** Payment details image of the USDT order (amount to send) */
