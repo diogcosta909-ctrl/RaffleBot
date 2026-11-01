@@ -1229,13 +1229,57 @@ export async function renderMultiPayImage(info: {
 
 /** Boost menu of a giveaway for someone without Boosts: top up first */
 export async function renderNeedBoostsImage(info: { credits: number }): Promise<Buffer> {
-  const { canvas, x } = scene(900, 'rgba(120,80,255,0.35)')
-  txt(x, 'Top up Boosts', 640, 170, '104px InterX', '#fff')
-  txt(x, 'Needed to boost giveaways', 640, 235, '34px InterB', '#b8c4ee')
-  panel(x, 240, 300, 800, 260, '#ffd23c')
-  txt(x, 'YOUR BALANCE', 640, 370, '28px InterB', '#b8c4ee')
-  txt(x, `${info.credits} Boosts`, 640, 480, '120px InterX', '#fff')
-  pillBox(x, 340, 610, 600, 76, '#ffd23c', 'Pick a pack below', '#2a1a00', '34px InterX')
-  txt(x, 'Boosts never expire  -  use them in any giveaway', 640, 770, '26px InterB', '#8c97c4')
+  const { createCanvas } = loadCanvas()
+  const H = 900
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  x.fillStyle = '#12082e'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(200, 100, 700, 'rgba(255,90,170,0.32)')
+  glow(1100, 800, 800, 'rgba(70,90,255,0.45)')
+  x.globalAlpha = 0.07
+  bolt(x, 1010, 420, 600, '#ffffff')
+  x.globalAlpha = 1
+  const center = (t: string, py: number, font: string, col: any, sp: number) => {
+    x.font = font
+    let w = 0
+    for (const ch of t.split('')) w += x.measureText(ch).width + sp
+    spaced(x, t, 640 - (w - sp) / 2, py, font, col, sp)
+  }
+  center('TOP UP', 130, '26px InterX', '#ffc83c', 12)
+  txt(x, 'Top up Boosts', 640, 250, '104px InterX', '#ffffff')
+  txt(x, 'Needed to boost giveaways', 640, 308, '34px InterB', '#d9c8ff')
+  x.fillStyle = 'rgba(255,255,255,0.07)'
+  rrect(x, 290, 370, 700, 260, 40)
+  x.fill()
+  x.lineWidth = 3
+  x.strokeStyle = 'rgba(255,200,80,0.5)'
+  rrect(x, 290, 370, 700, 260, 40)
+  x.stroke()
+  center('YOUR BALANCE', 430, '24px InterX', '#d9c8ff', 8)
+  txt(x, `${Math.max(0, Math.round(info.credits))}`, 640, 575, '150px InterX', wGold(x, 560, 450, 720, 575) as any)
+  center('CHOOSE A PACK BELOW', 705, '24px InterX', '#ffc83c', 6)
+  x.strokeStyle = '#ffc83c'
+  x.lineWidth = 10
+  x.lineCap = 'round'
+  x.lineJoin = 'round'
+  ;[0, 34].forEach((d, i) => {
+    x.globalAlpha = i ? 1 : 0.45
+    x.beginPath()
+    x.moveTo(606, 730 + d)
+    x.lineTo(640, 758 + d)
+    x.lineTo(674, 730 + d)
+    x.stroke()
+  })
+  x.globalAlpha = 1
+  txt(x, 'Boosts never expire', 640, 860, '26px InterB', '#9d93c8')
   return canvas.toBuffer('image/png')
 }
