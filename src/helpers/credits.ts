@@ -17,15 +17,29 @@ const BONUS: { [pack: number]: number } = {}
     if (pack > 0 && bonus > 0) BONUS[pack] = bonus
   })
 
+/** Optional end of the pack bonus (CREDIT_BONUS_UNTIL, ISO date, e.g. 2026-11-02T12:00:00Z). Empty = no end */
+const BONUS_UNTIL = process.env.CREDIT_BONUS_UNTIL ? new Date(process.env.CREDIT_BONUS_UNTIL).getTime() : 0
+const BONUS_GRACE_MS = 30 * 60 * 1000
+
+function bonusOpen(graceMs = 0) {
+  return !BONUS_UNTIL || isNaN(BONUS_UNTIL) || Date.now() < BONUS_UNTIL + graceMs
+}
+
+/** Bonus shown to buyers (0 once the promo ended) */
 export function bonusFor(pack: number) {
-  return BONUS[pack] || 0
+  return bonusOpen() ? BONUS[pack] || 0 : 0
+}
+
+/** Bonus applied when a payment arrives: 30 min of grace for invoices opened before the end */
+export function bonusForPay(pack: number) {
+  return bonusOpen(BONUS_GRACE_MS) ? BONUS[pack] || 0 : 0
 }
 
 /** Largest pack that comes with free bonus credits (null when no pack has a bonus) */
 export function bestBonus() {
   let best: { pack: number; bonus: number } = null
   for (const pack of CREDIT_PACKS) {
-    const bonus = BONUS[pack] || 0
+    const bonus = bonusFor(pack)
     if (bonus > 0 && (!best || pack > best.pack)) best = { pack, bonus }
   }
   return best

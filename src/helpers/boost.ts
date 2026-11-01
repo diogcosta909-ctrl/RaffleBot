@@ -6,7 +6,7 @@ import { PaymentModel } from '../models/payment'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 import { MultiBoostModel } from '../models/multiBoost'
 import { BoostEventModel, trackBoost } from '../models/boostEvent'
-import { CREDIT_PACKS, bonusFor, bestBonus, getCredits, addCredits, removeCredits, spendCreditsSplit } from './credits'
+import { CREDIT_PACKS, bonusFor, bonusForPay, bestBonus, getCredits, addCredits, removeCredits, spendCreditsSplit } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText, supportContact } from './terms'
 import {
   cryptoEnabled,
@@ -734,12 +734,12 @@ async function notifyTopup(
 /** A USDT payment was matched to an order: apply the boost like a Stars payment */
 async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
   if (order.raffleId === 'topup') {
-    const added = order.boosts + bonusFor(order.boosts)
+    const added = order.boosts + bonusForPay(order.boosts)
     const balance = await addCredits(order.userId, added, {
       type: 'topup',
       method: 'usdt',
       ref: txHash,
-      free: bonusFor(order.boosts),
+      free: bonusForPay(order.boosts),
     })
     const who = {
       id: order.userId,
@@ -2352,7 +2352,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         try {
           const what =
             order.raffleId === 'topup'
-              ? `recarga de ${order.boosts + bonusFor(order.boosts)} créditos (/addcredits ${order.userId} ${order.boosts + bonusFor(order.boosts)})`
+              ? `recarga de ${order.boosts + bonusForPay(order.boosts)} créditos (/addcredits ${order.userId} ${order.boosts + bonusForPay(order.boosts)})`
               : `${order.boosts} boosts`
           await bot.telegram.sendMessage(
             admin,
@@ -2415,10 +2415,10 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         boosts: n,
         userName: u.username ? `@${u.username}` : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`,
       })
-      const added = n + bonusFor(n)
+      const added = n + bonusForPay(n)
       let balance: number
       try {
-        balance = await addCredits(u.id, added, { type: 'topup', method: 'stars', ref: chargeId, free: bonusFor(n) })
+        balance = await addCredits(u.id, added, { type: 'topup', method: 'stars', ref: chargeId, free: bonusForPay(n) })
       } catch (err) {
         // Paid but the credits could not be saved: give the Stars back and tell the owner
         console.error('Topup credits not saved', chargeId, err)
