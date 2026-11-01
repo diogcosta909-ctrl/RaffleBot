@@ -374,18 +374,7 @@ export async function renderBoostImage(info: {
 }): Promise<Buffer> {
   const name = drawableName(info.name) || 'Someone'
   const boosts = info.boosts || 1
-  if (info.winner) {
-    const how = info.credits ? 'Boosts' : info.crypto ? 'USDT' : plural(info.stars, 'Star', 'Stars')
-    return renderCard({
-      theme: 'win',
-      hero: 'trophy',
-      title: name,
-      sub: 'won a giveaway with a Boost',
-      big: `${info.entries}`,
-      label: 'ENTRIES',
-      foot: info.credits ? 'Boost used from balance' : `Boost paid with ${how}`,
-    })
-  }
+  if (info.winner) return renderWinnerCard({ name, entries: info.entries })
   const mult = info.mult && info.mult > 1 ? info.mult : 1
   const sub = info.auto ? 'was boosted automatically' : info.gift ? 'used a free gift Boost' : 'boosted a giveaway'
   return renderLaunchCard({
@@ -397,6 +386,163 @@ export async function renderBoostImage(info: {
     auto: !!info.auto,
     mult,
   })
+}
+
+function wGold(x: any, x0: number, y0: number, x1: number, y1: number) {
+  const gr = x.createLinearGradient(x0, y0, x1, y1)
+  const stops: Array<[number, string]> = [[0, '#8a5a05'], [0.18, '#e9b53a'], [0.38, '#fff2b0'], [0.55, '#f3c24a'], [0.8, '#b8800f'], [1, '#e2a82e']]
+  stops.forEach(st => gr.addColorStop(st[0], st[1]))
+  return gr
+}
+function spaced(x: any, t: string, px: number, py: number, font: string, col: any, sp: number) {
+  x.font = font
+  x.fillStyle = col
+  x.textAlign = 'left'
+  let cx = px
+  for (const ch of t.split('')) {
+    x.fillText(ch, cx, py)
+    cx += x.measureText(ch).width + sp
+  }
+}
+function star5(x: any, cx: number, cy: number, R: number, r: number, col: string) {
+  x.fillStyle = col
+  x.beginPath()
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5
+    const rad = i % 2 ? r : R
+    x.lineTo(cx + rad * Math.cos(a), cy + rad * Math.sin(a))
+  }
+  x.closePath()
+  x.fill()
+}
+function drawTrophy(x: any, cx: number, cy: number, s: number) {
+  x.save()
+  x.translate(cx, cy)
+  x.scale(s, s)
+  x.lineWidth = 20
+  x.lineCap = 'round'
+  x.strokeStyle = wGold(x, -200, -100, 200, 100)
+  x.beginPath()
+  x.moveTo(-108, -118)
+  x.bezierCurveTo(-200, -130, -190, -10, -96, -6)
+  x.stroke()
+  x.beginPath()
+  x.moveTo(108, -118)
+  x.bezierCurveTo(200, -130, 190, -10, 96, -6)
+  x.stroke()
+  x.fillStyle = wGold(x, -120, -160, 120, 40)
+  x.beginPath()
+  x.moveTo(-122, -165)
+  x.lineTo(122, -165)
+  x.bezierCurveTo(126, -40, 80, 18, 18, 38)
+  x.lineTo(-18, 38)
+  x.bezierCurveTo(-80, 18, -126, -40, -122, -165)
+  x.closePath()
+  x.fill()
+  x.fillStyle = wGold(x, -130, -180, 130, -150)
+  rrect(x, -132, -182, 264, 26, 13)
+  x.fill()
+  const hg = x.createLinearGradient(-100, 0, -40, 0)
+  hg.addColorStop(0, 'rgba(255,255,255,0)')
+  hg.addColorStop(0.5, 'rgba(255,255,255,0.55)')
+  hg.addColorStop(1, 'rgba(255,255,255,0)')
+  x.fillStyle = hg
+  x.beginPath()
+  x.moveTo(-96, -150)
+  x.lineTo(-62, -150)
+  x.bezierCurveTo(-64, -70, -46, -10, -10, 24)
+  x.bezierCurveTo(-74, -6, -100, -70, -96, -150)
+  x.closePath()
+  x.fill()
+  star5(x, 0, -85, 46, 19, 'rgba(120,70,0,0.55)')
+  star5(x, 0, -87, 46, 19, 'rgba(255,248,210,0.8)')
+  x.fillStyle = wGold(x, -30, 0, 30, 0)
+  x.fillRect(-16, 36, 32, 52)
+  x.beginPath()
+  x.ellipse(0, 64, 30, 12, 0, 0, 7)
+  x.fill()
+  x.fillStyle = wGold(x, -80, 88, 80, 120)
+  rrect(x, -72, 86, 144, 26, 8)
+  x.fill()
+  x.fillStyle = wGold(x, -100, 110, 100, 150)
+  rrect(x, -96, 110, 192, 40, 10)
+  x.fill()
+  x.fillStyle = 'rgba(60,30,0,0.35)'
+  x.fillRect(-96, 140, 192, 10)
+  x.restore()
+}
+
+/** Feed image of a giveaway winner: award card with a gold trophy */
+async function renderWinnerCard(info: { name: string; entries: number }): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const H = 720
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  x.fillStyle = '#070914'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(640, 60, 900, 'rgba(255,190,70,0.20)')
+  glow(1180, 700, 600, 'rgba(70,90,255,0.25)')
+  glow(100, 700, 500, 'rgba(120,70,255,0.18)')
+  const rnd = rand(5)
+  for (let i = 0; i < 70; i++) {
+    const px = rnd() * 1280
+    const py = rnd() * H
+    const z = rnd()
+    x.fillStyle = `rgba(255,215,120,${0.15 + z * 0.7})`
+    x.beginPath()
+    x.arc(px, py, 0.8 + z * 2.4, 0, 7)
+    x.fill()
+  }
+  x.fillStyle = '#0e1226'
+  rrect(x, 100, 90, 1080, 540, 40)
+  x.fill()
+  const ig = x.createLinearGradient(0, 90, 0, 630)
+  ig.addColorStop(0, 'rgba(255,255,255,0.06)')
+  ig.addColorStop(1, 'rgba(255,255,255,0)')
+  x.fillStyle = ig
+  rrect(x, 100, 90, 1080, 540, 40)
+  x.fill()
+  x.lineWidth = 3
+  x.strokeStyle = wGold(x, 100, 90, 1180, 630)
+  rrect(x, 100, 90, 1080, 540, 40)
+  x.stroke()
+  x.save()
+  rrect(x, 100, 90, 1080, 540, 40)
+  x.clip()
+  const tg = x.createRadialGradient(320, 370, 10, 320, 370, 260)
+  tg.addColorStop(0, 'rgba(255,200,80,0.3)')
+  tg.addColorStop(1, 'rgba(255,200,80,0)')
+  x.fillStyle = tg
+  x.fillRect(60, 100, 520, 520)
+  x.restore()
+  drawTrophy(x, 320, 365, 1.02)
+  spaced(x, 'WINNER', 560, 205, '26px InterX', '#e9b53a', 10)
+  x.fillStyle = wGold(x, 560, 0, 760, 0)
+  x.fillRect(560, 225, 70, 4)
+  let size = 78
+  x.font = `${size}px InterX`
+  while (size > 40 && x.measureText(info.name).width > 580) {
+    size -= 4
+    x.font = `${size}px InterX`
+  }
+  txt(x, info.name, 560, 320, `${size}px InterX`, '#ffffff', 'left')
+  txt(x, 'won a giveaway', 560, 372, '32px InterB', '#9aa6cf', 'left')
+  x.fillStyle = 'rgba(255,255,255,0.1)'
+  x.fillRect(560, 420, 560, 2)
+  const num = `${Math.round(info.entries)}`
+  x.font = '110px InterX'
+  const nw = x.measureText(num).width
+  txt(x, num, 560, 540, '110px InterX', wGold(x, 560, 440, 760, 540) as any, 'left')
+  spaced(x, info.entries === 1 ? 'ENTRY' : 'ENTRIES', 560 + nw + 28, 540, '26px InterX', '#9aa6cf', 5)
+  return canvas.toBuffer('image/png')
 }
 
 type Tier = { label: string; glow: string; col: string; rk: number[][]; fx: number; gold: boolean }
