@@ -4,7 +4,11 @@ export const START_COMMAND = (process.env.START_COMMAND || 'start')
   .trim()
 
 export function loc(text: string, language: string) {
-  const value = localizations[text][language] || localizations[text].en
+  let value = localizations[text][language] || localizations[text].en
+  // Stars hidden (STARS_ENABLED="0"): the texts talk about USDT only
+  if (require('./payMode').starsEnabled() === false) {
+    value = value.replace(/(Telegram )?Stars (or|o) USDT/g, 'USDT').replace(/ with Telegram Stars or USDT/g, ' with USDT')
+  }
   return value
     .replace(/\/start\b/g, `/${START_COMMAND}`)
     .replace(/@BOTUSERNAME\b/g, `@${process.env.USERNAME}`)

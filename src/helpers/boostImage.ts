@@ -507,7 +507,7 @@ export async function renderBuyImage(info: {
   const W = 1280
   const hasUsdt = info.packs.some((p) => !!p.usdt)
   const cardW = 380
-  const cardH = hasUsdt ? 330 : 290
+  const cardH = hasUsdt || info.packs.some((p) => p.stars > 0) ? 330 : 290
   const gap = 25
   const rows = Math.ceil(info.packs.length / 3)
   const top = info.promo ? 320 : 240
@@ -592,16 +592,25 @@ export async function renderBuyImage(info: {
     }
     x.fillStyle = '#fff'
     x.font = '34px InterX'
-    const label = `${p.stars}`
-    const tw = x.measureText(label).width
-    x.fillText(label, px + cardW / 2 - 18, y)
-    starPath(x, px + cardW / 2 - 18 + tw / 2 + 22, y - 11, 14)
-    x.fillStyle = '#ffc43c'
-    x.fill()
-    if (p.usdt) {
+    if (p.stars > 0) {
+      const label = `${p.stars}`
+      const tw = x.measureText(label).width
+      x.fillText(label, px + cardW / 2 - 18, y)
+      starPath(x, px + cardW / 2 - 18 + tw / 2 + 22, y - 11, 14)
+      x.fillStyle = '#ffc43c'
+      x.fill()
+      if (p.usdt) {
+        x.fillStyle = '#9fa8d6'
+        x.font = '24px InterB'
+        x.fillText(`or $${p.usdt} USDT`, px + cardW / 2, y + 37)
+      }
+    } else if (p.usdt) {
+      x.fillStyle = '#26c28f'
+      x.font = '44px InterX'
+      x.fillText(`$${p.usdt}`, px + cardW / 2, y + 6)
       x.fillStyle = '#9fa8d6'
       x.font = '24px InterB'
-      x.fillText(`or $${p.usdt} USDT`, px + cardW / 2, y + 37)
+      x.fillText('USDT', px + cardW / 2, y + 37)
     }
   })
   return canvas.toBuffer('image/png')

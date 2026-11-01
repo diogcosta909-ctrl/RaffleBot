@@ -7,6 +7,7 @@ import { AutoBoostEventModel, trackAuto } from '../models/autoBoostEvent'
 import { CreditTxModel } from '../models/creditTx'
 import { CREDIT_PACKS, CREDIT_POPULAR, getCredits, addCredits, spendCreditsSplit, bonusFor } from './credits'
 import { acceptTerms, hasAcceptedTerms, termsText } from './terms'
+import { starsEnabled } from './payMode'
 import { raffleTotals, chanceOf, pct } from './odds'
 import { cryptoEnabled, cryptoPriceLabel } from './cryptoPay'
 import { expireFreeCredits } from './freeExpiry'
@@ -273,7 +274,11 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
   }
   const keyboard: any[] = linkRow(link)
   packButtons().forEach((r) => keyboard.push(r))
-  keyboard.push([{ text: `⭐ Boost only this one · ${BOOST_PRICE}⭐`, callback_data: `b~${raffle._id}~1` }])
+  if (starsEnabled()) {
+    keyboard.push([{ text: `⭐ Boost only this one · ${BOOST_PRICE}⭐`, callback_data: `b~${raffle._id}~1` }])
+  } else if (cryptoEnabled()) {
+    keyboard.push([{ text: `🪙 Boost only this one · ${cryptoPriceLabel(1)} USDT`, callback_data: `c~${raffle._id}~1` }])
+  }
   await send(
     userId,
     `🔁 <b>Auto-Boost paused</b>\n\n` +
@@ -698,7 +703,7 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
       } as any)
       if (recent) void trackAuto('pack_pick', ctx.from.id, { n })
       const chat: any = await findChat(ctx.from.id)
-      const row: any[] = [{ text: `⭐ ${n * BOOST_PRICE} Stars`, callback_data: `ts~${n}~${raffleId}` }]
+      const row: any[] = starsEnabled() ? [{ text: `⭐ ${n * BOOST_PRICE} Stars`, callback_data: `ts~${n}~${raffleId}` }] : []
       if (cryptoEnabled()) row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `tc~${n}~${raffleId}` })
       await editScreen(
         ctx,

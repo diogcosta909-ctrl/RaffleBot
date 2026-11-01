@@ -24,6 +24,7 @@ import {
 import { getChatIdForConfig } from './getChatIdForConfig'
 import { raffleTotals, chanceOf, oddsLine, oddsChangeLine } from './odds'
 import { loc } from './locale'
+import { starsEnabled } from './payMode'
 import { resolveUser } from './userLookup'
 
 // Config (env overridable): 1 Star = +0.3 weight (x1.3), max 10 boosts per user per raffle
@@ -180,6 +181,7 @@ export function weightedIndex(weights: number[]) {
 /** Line added to the default raffle message so everybody knows boosts exist */
 /** "1⭐" or, when crypto is on, "1⭐ / 0.02 USDT" (price of one boost unit) */
 function priceTag() {
+  if (!starsEnabled()) return `${cryptoPriceLabel(1)} USDT`
   return `${BOOST_PRICE}⭐${cryptoEnabled() ? ` / ${cryptoPriceLabel(1)} USDT` : ''}`
 }
 
@@ -297,15 +299,18 @@ export async function sendBoostOptions(ctx: ContextMessageUpdate, raffleId: stri
         },
       ]
     }
-    const row: any[] = [
-      {
+    const row: any[] = []
+    if (starsEnabled()) {
+      row.push({
         text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
         callback_data: `b~${raffleId}~${n}`,
-      },
-    ]
+      })
+    }
     if (cryptoEnabled()) {
       row.push({
-        text: `🪙 ${cryptoPriceLabel(n)} USDT`,
+        text: starsEnabled()
+          ? `🪙 ${cryptoPriceLabel(n)} USDT`
+          : `🪙 ${cryptoPriceLabel(n)} USDT · ${pctLabel(n, res.language, stepOf(res.raffle))}`,
         callback_data: `c~${raffleId}~${n}`,
       })
     }
@@ -937,7 +942,9 @@ function packList(lang: string) {
   const all = [head].concat(rows)
   const w0 = Math.max(...all.map((r) => r[0].length)) + 3
   const w1 = Math.max(...all.map((r) => r[1].length)) + 3
-  const lines = all.map((r) => `${pad(r[0], w0)}${crypto ? pad(r[1], w1) + r[2] : r[1]}`)
+  const lines = all.map((r) =>
+    !starsEnabled() ? `${pad(r[0], w0)}${r[2]}` : `${pad(r[0], w0)}${crypto ? pad(r[1], w1) + r[2] : r[1]}`
+  )
   return `<pre>${lines.join('\n')}</pre>`
 }
 
@@ -954,7 +961,7 @@ function packNumberKeyboard(raffleId: string, lang: string) {
     const bonus = bonusFor(n)
     return {
       text: `${n}${bonus ? ` +${bonus}` : ''} ${loc(n === 1 && !bonus ? 'credit_one' : 'credit_many', lang)}`,
-      callback_data: crypto ? `ap~${n}~${raffleId}` : `ts~${n}~${raffleId}`,
+      callback_data: !starsEnabled() ? `tc~${n}~${raffleId}` : crypto ? `ap~${n}~${raffleId}` : `ts~${n}~${raffleId}`,
     }
   })
   const rows: any[] = []
@@ -1058,7 +1065,7 @@ async function sendRechargePhoto(ctx: ContextMessageUpdate, lang: string, credit
       packs: CREDIT_PACKS.map((n) => ({
         n,
         bonus: bonusFor(n),
-        stars: n * BOOST_PRICE,
+        stars: starsEnabled() ? n * BOOST_PRICE : 0,
         usdt: crypto ? cryptoPriceLabel(n) : undefined,
         popular: n === CREDIT_POPULAR,
       })),
@@ -1192,7 +1199,7 @@ async function showPayMulti(ctx: ContextMessageUpdate, scope: string, n: number,
   if (credits >= total) {
     keyboard.push([{ text: `💰 ${creditsLabel(total, lang)}`, callback_data: `bp~w~${multi._id}` }])
   } else {
-    keyboard.push([{ text: `⭐ ${total * BOOST_PRICE} Stars`, callback_data: `bp~s~${multi._id}` }])
+    if (starsEnabled()) keyboard.push([{ text: `⭐ ${total * BOOST_PRICE} Stars`, callback_data: `bp~s~${multi._id}` }])
     if (cryptoEnabled()) {
       keyboard.push([{ text: `🪙 ${cryptoPriceLabel(total)} USDT`, callback_data: `bp~c~${multi._id}` }])
     }
@@ -1565,6 +1572,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     await chat.save()
     return ctx.reply(
       loc(`boost_${chat.boost}`, chat.language)
+        .replace('$price⭐', priceTag())
         .replace('$price', `${BOOST_PRICE}`)
         .replace('$mult', boostLabel(chat.language)),
       { disable_notification: true }
@@ -2673,12 +2681,14 @@ export async function remindOnce(telegram: any) {
       const res: any = await validateBoost(e.raffleId, e.userId, n)
       if (res.error) continue
       const lang = (await findChat(e.userId)).language
-      const row: any[] = [
-        {
-          text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, lang, stepOf(res.raffle))}`,
-          callback_data: `b~${e.raffleId}~${n}`,
-        },
-      ]
+      const row: any[] = starsEnabled()
+        ? [
+            {
+              text: `${n * BOOST_PRICE}⭐ · ${pctLabel(n, lang, stepOf(res.raffle))}`,
+              callback_data: `b~${e.raffleId}~${n}`,
+            },
+          ]
+        : []
       if (cryptoEnabled()) {
         row.push({ text: `🪙 ${cryptoPriceLabel(n)} USDT`, callback_data: `c~${e.raffleId}~${n}` })
       }

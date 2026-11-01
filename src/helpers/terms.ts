@@ -3,6 +3,7 @@ import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { findChat } from '../models/chat'
 import { PaymentModel } from '../models/payment'
 import { loc } from './locale'
+import { termsRequired } from './payMode'
 
 /** Who users should contact: SUPPORT_CONTACT (e.g. @mysupport) or the bot owner */
 export function supportContact() {
@@ -20,6 +21,15 @@ export function termsText(language: string) {
 /** Has this user accepted the terms (stored on their private chat) */
 export async function hasAcceptedTerms(userId: number) {
   const chat = await findChat(userId)
+  if (!termsRequired()) {
+    // TERMS_REQUIRED="0": nobody has to accept; mark them so broadcasts and stats still count everyone
+    if (!chat.termsAccepted) {
+      chat.termsAccepted = true
+      chat.termsAcceptedAt = new Date()
+      await chat.save()
+    }
+    return true
+  }
   return !!chat.termsAccepted
 }
 

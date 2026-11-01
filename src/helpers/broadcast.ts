@@ -1,4 +1,5 @@
 // Dependencies
+import { termsRequired } from './payMode'
 import { Telegraf, ContextMessageUpdate } from 'telegraf'
 import { ChatModel } from '../models/chat'
 import { PaymentModel } from '../models/payment'
@@ -36,7 +37,7 @@ function isAdmin(ctx: any) {
 async function recipients(segment = 'all'): Promise<number[]> {
   if (segment === 'me') return [parseInt(process.env.ADMIN, 10)]
   const query: any = { termsAccepted: true, chatId: { $gt: 0 } }
-  if (segment === 'everyone') delete query.termsAccepted
+  if (segment === 'everyone' || !termsRequired()) delete query.termsAccepted
   if (segment === 'noterms') query.termsAccepted = { $ne: true }
   if (segment === 'credits') query.credits = { $gt: 0 }
   const chats: any[] = await ChatModel.find(query).select('chatId')
