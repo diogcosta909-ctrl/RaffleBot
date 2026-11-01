@@ -260,14 +260,8 @@ function errorText(key: string, language = 'en') {
 
 /** Someone with no Boosts pressed Boost: they have to top up first (no direct payment to one giveaway) */
 async function sendNeedBoosts(ctx: ContextMessageUpdate, res: any, raffleId: string, credits: number, totals: any, base: number) {
-  // One "Buy Boosts" button (opens the packs screen); Auto-Boost on its own line below
+  // Just the "Buy Boosts" button (opens the packs screen)
   const keyboard: any[] = [[{ text: `${loc('recharge_button', res.language)} 🚀`, callback_data: `r~${raffleId}` }]]
-  try {
-    const status = await require('./autoBoost').autoBoostStatus(ctx.from.id)
-    keyboard.push([{ text: status.button, callback_data: 'ab~m' }])
-  } catch (err) {
-    console.error(err)
-  }
   try {
     const image = await require('./boostImage').renderNeedBoostsImage({ credits })
     if (await showPhoto(ctx, image, keyboard)) return
