@@ -434,20 +434,54 @@ export async function renderRechargeImage(info: {
   name: string
   credits: number // pack bought
   bonus?: number // free credits on top
-  paid: string // "20 stars" / "0.4 USDT"
+  paid?: string // unused (kept for callers)
 }): Promise<Buffer> {
   const bonus = info.bonus || 0
   const total = Math.max(1, Math.round(info.credits + bonus))
-  const paid = plain(info.paid).replace(/(\d+)\s*stars?/gi, (_m: string, n: string) => `${n} ${n === '1' ? 'Star' : 'Stars'}`)
-  return renderCard({
-    theme: 'pack',
-    hero: 'coins',
-    title: drawableName(info.name) || 'Someone',
-    sub: 'bought Boosts',
-    big: `+${total}`,
-    label: total === 1 ? 'BOOST' : 'BOOSTS',
-    foot: `${paid ? `paid ${paid}` : 'ready to boost'}${bonus > 0 ? ` · ${bonus} free` : ''}`,
-  })
+  const name = drawableName(info.name) || 'Someone'
+  const { createCanvas } = loadCanvas()
+  const H = 720
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  x.fillStyle = '#12082e'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(200, 100, 700, 'rgba(255,90,170,0.35)')
+  glow(1100, 650, 800, 'rgba(70,90,255,0.45)')
+  x.globalAlpha = 0.08
+  bolt(x, 990, 360, 540, '#ffffff')
+  x.globalAlpha = 1
+  pillBox(x, 90, 80, 300, 52, 'rgba(255,255,255,0.12)', 'BOOSTS PURCHASE', '#ffffff', '22px InterX')
+  const letter = (name.replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase()
+  const av = x.createLinearGradient(100, 190, 200, 290)
+  av.addColorStop(0, '#ff5aa8')
+  av.addColorStop(1, '#6a5cff')
+  x.fillStyle = av
+  x.beginPath()
+  x.arc(150, 240, 50, 0, Math.PI * 2)
+  x.fill()
+  txt(x, letter, 150, 258, '50px InterX', '#ffffff')
+  txt(x, name, 230, 235, '60px InterX', '#ffffff', 'left')
+  txt(x, 'bought Boosts', 230, 282, '32px InterB', '#d9c8ff', 'left')
+  const gold = x.createLinearGradient(90, 0, 500, 0)
+  gold.addColorStop(0, '#fff1b0')
+  gold.addColorStop(0.5, '#ffc83c')
+  gold.addColorStop(1, '#ff9a1f')
+  const big = `+${total}`
+  x.font = '230px InterX'
+  const bw = x.measureText(big).width
+  txt(x, big, 90, 540, '230px InterX', gold as any, 'left')
+  const rx = 90 + bw + 40
+  txt(x, total === 1 ? 'BOOST' : 'BOOSTS', rx, 540, '60px InterX', '#ffffff', 'left')
+  if (bonus > 0) pillBox(x, rx, 400, 250, 60, 'rgba(255,210,60,0.2)', `+${bonus} FREE`, '#ffd23c', '28px InterX')
+  return canvas.toBuffer('image/png')
 }
 
 /** Daily spin prize (public feed) */
