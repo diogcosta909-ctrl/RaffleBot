@@ -884,30 +884,14 @@ export async function renderMultiPayImage(info: {
 }
 
 /** Boost menu of a giveaway for someone without Boosts: top up first */
-export async function renderNeedBoostsImage(info: {
-  chanceNow?: string
-  packN: number
-  chanceAfter?: string
-  credits: number
-}): Promise<Buffer> {
-  const { canvas, x } = scene(900, 'rgba(255,170,50,0.25)')
-  bolt(x, 300, 85, 50, '#ffd23c')
-  txt(x, 'Boost this giveaway', 700, 115, '66px InterX', '#fff')
-  panel(x, 90, 215, 1100, 250, '#ffd23c')
-  txt(x, 'Top up Boosts', 640, 330, '84px InterX', '#ffd23c')
-  txt(x, 'to boost this giveaway', 640, 395, '40px InterB', '#fff')
-  txt(x, 'Boosts never expire and work in any giveaway', 640, 440, '26px InterB', '#b8c4ee')
-  if (info.chanceNow && info.chanceAfter) {
-    panel(x, 90, 500, 1100, 210)
-    txt(x, 'YOUR CHANCE TO WIN', 640, 548, '24px InterB', '#9fa8d6')
-    txt(x, plain(info.chanceNow), 390, 650, '88px InterX', '#fff')
-    txt(x, '>', 640, 635, '60px InterX', '#ffd23c')
-    txt(x, plain(info.chanceAfter), 890, 650, '88px InterX', '#ffd23c')
-    txt(x, 'now', 390, 688, '22px InterB', '#9fa8d6')
-    txt(x, `with ${info.packN} Boosts`, 890, 688, '22px InterB', '#9fa8d6')
-  }
-  panel(x, 60, 750, 1160, 110)
-  txt(x, 'Your Boosts', 100, 812, '28px InterB', '#b8c4ee', 'left')
-  txt(x, `${info.credits}`, 1180, 822, '48px InterX', '#ffd23c', 'right')
+export async function renderNeedBoostsImage(info: { credits: number }): Promise<Buffer> {
+  const { canvas, x } = scene(900, 'rgba(120,80,255,0.35)')
+  txt(x, 'Top up Boosts', 640, 170, '104px InterX', '#fff')
+  txt(x, 'Needed to boost giveaways', 640, 235, '34px InterB', '#b8c4ee')
+  panel(x, 240, 300, 800, 260, '#ffd23c')
+  txt(x, 'YOUR BALANCE', 640, 370, '28px InterB', '#b8c4ee')
+  txt(x, `${info.credits} Boosts`, 640, 480, '120px InterX', '#fff')
+  pillBox(x, 340, 610, 600, 76, '#ffd23c', 'Pick a pack below', '#2a1a00', '34px InterX')
+  txt(x, 'Boosts never expire  -  use them in any giveaway', 640, 770, '26px InterB', '#8c97c4')
   return canvas.toBuffer('image/png')
 }

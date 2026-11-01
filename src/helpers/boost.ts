@@ -283,14 +283,7 @@ async function sendNeedBoosts(ctx: ContextMessageUpdate, res: any, raffleId: str
     console.error(err)
   }
   try {
-    const pack = CREDIT_PACKS[0] || 5
-    const mult = multiplierOf(res.raffle)
-    const image = await require('./boostImage').renderNeedBoostsImage({
-      chanceNow: totals ? pct(chanceOf(totals, res.value, base, BOOST_STEP)) : undefined,
-      packN: pack,
-      chanceAfter: totals ? pct(chanceOf(totals, res.value, base, BOOST_STEP, pack * mult)) : undefined,
-      credits,
-    })
+    const image = await require('./boostImage').renderNeedBoostsImage({ credits })
     if (await showPhoto(ctx, image, keyboard)) return
   } catch (err) {
     console.error(err)
