@@ -774,7 +774,7 @@ async function notifyTopup(
     try {
       const name = u.username ? `@${u.username}` : `${u.first_name || u.id}${u.last_name ? ` ${u.last_name}` : ''}`
       const who = u.username ? escHtml(name) : `<a href="tg://user?id=${u.id}">${escHtml(name)}</a>`
-      const text = `💳 <b>${who} bought Boosts</b>\n${pack ? pack.label : paid} · ${creditsLabel(n, 'en')}`
+      const text = `💳 <b>${who}</b> bought <b>${creditsLabel(pack ? pack.credits : n, 'en')}</b>`
       let sent = false
       try {
         const credits = pack ? pack.credits : n
