@@ -460,33 +460,36 @@ async function markRechargeAfterWarn(userId: number) {
   }
 }
 
-/** After a pack purchase with Auto-Boost off: one message to turn it on with a single tap */
-export function offerAfterPurchase(userId: number) {
-  if (!tg) return
-  setTimeout(async () => {
-    try {
-      const chat: any = await ChatModel.findOne({ chatId: userId }).select('credits autoBoost')
-      if (!chat || chat.autoBoost > 0 || (chat.credits || 0) <= 0) return
-      void trackAuto('offer_sent', userId)
-      await send(
-        userId,
-        `🔁 <b>Want your Boosts to work on their own?</b>\n\n` +
-          `Turn on Auto-Boost and we boost every giveaway you join, automatically.\n` +
-          `💰 Your Boosts: ${chat.credits}\n\n` +
-          `How many Boosts per giveaway? 👇`,
-        [
-          [
-            { text: '🚀 1 Boost', callback_data: 'abo~1' },
-            { text: '🚀 2 Boosts', callback_data: 'abo~2' },
-            { text: '🚀 3 Boosts', callback_data: 'abo~3' },
-          ],
-          [{ text: 'Not now', callback_data: 'abx~' }],
-        ]
-      )
-    } catch (err) {
-      console.error('Auto-Boost offer failed', err)
+/**
+ * After a pack purchase with Auto-Boost off: the confirmation message carries the offer
+ * (one message, with the Boosts-per-giveaway buttons). Returns null when it should not be offered.
+ */
+export async function topupOffer(userId: number, balance: number, extraRows: any[] = []) {
+  try {
+    const chat: any = await ChatModel.findOne({ chatId: userId }).select('credits autoBoost')
+    if (!chat || chat.autoBoost > 0 || (chat.credits || 0) <= 0) return null
+    void trackAuto('offer_sent', userId)
+    const keyboard: any[] = [
+      [
+        { text: '🚀 1 Boost', callback_data: 'abo~1' },
+        { text: '🚀 2 Boosts', callback_data: 'abo~2' },
+        { text: '🚀 3 Boosts', callback_data: 'abo~3' },
+      ],
+      [{ text: 'Not now', callback_data: 'abn~' }],
+    ].concat(extraRows)
+    return {
+      keyboard,
+      text: `🔁 <b>Turn on Auto-Boost?</b>\nWe boost every giveaway you join, automatically.\n\nHow many Boosts per giveaway? 👇`,
     }
-  }, 4000)
+  } catch (err) {
+    console.error('Auto-Boost offer failed', err)
+    return null
+  }
+}
+
+/** Kept for old callers: the offer now goes inside the purchase confirmation (see topupOffer) */
+export function offerAfterPurchase(_userId: number) {
+  // no-op
 }
 
 const giving = new Set<number>()
@@ -722,6 +725,20 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
     try {
       void trackAuto('offer_pick', ctx.from.id)
       await setBoosts(ctx, parseInt((ctx as any).match[1], 10))
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
+  // "Not now" on the purchase confirmation: keep the confirmation, remove the offer
+  bot.action('abn~', async (ctx) => {
+    await answer(ctx)
+    try {
+      const balance = await getCredits(ctx.from.id)
+      const text = `✅ <b>Boosts added</b>\n💰 Your Boosts: <b>${balance}</b>`
+      const msg: any = ctx.callbackQuery && ctx.callbackQuery.message
+      if (msg && msg.photo) await ctx.editMessageCaption(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } } as any)
+      else await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } } as any)
     } catch (err) {
       console.error(err)
     }

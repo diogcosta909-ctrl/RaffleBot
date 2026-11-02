@@ -739,19 +739,41 @@ async function notifyTopup(
     // keep en
   }
   try {
-    const extra: any = { parse_mode: 'HTML' }
-    if (backId && backId !== '0') {
-      extra.reply_markup = {
-        inline_keyboard: [[{ text: loc('topup_back', lang), callback_data: `b~${backId}` }]],
+    const backRow: any[] =
+      backId && backId !== '0' ? [[{ text: loc('topup_back', lang), callback_data: `b~${backId}` }]] : []
+    const done = loc('topup_done', lang)
+      .replace('$added', creditsLabel(n, lang))
+      .replace('$n', `${balance}`)
+    // Auto-Boost off: the confirmation carries the offer (one message, with a photo)
+    const offer = await require('./autoBoost').topupOffer(u.id, balance, backRow)
+    let sentDone = false
+    if (offer) {
+      try {
+        const image = await require('./boostImage').renderTopupDoneImage({ added: n, balance })
+        await telegram.sendPhoto(
+          u.id,
+          { source: image },
+          {
+            caption: `${done}\n\n${offer.text}`,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: offer.keyboard },
+          }
+        )
+        sentDone = true
+      } catch (err) {
+        console.error('Topup photo failed, sending text', err)
+        await telegram.sendMessage(u.id, `${done}\n\n${offer.text}`, {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: offer.keyboard },
+        })
+        sentDone = true
       }
     }
-    await telegram.sendMessage(
-      u.id,
-      loc('topup_done', lang)
-        .replace('$added', creditsLabel(n, lang))
-        .replace('$n', `${balance}`),
-      extra
-    )
+    if (!sentDone) {
+      const extra: any = { parse_mode: 'HTML' }
+      if (backRow.length) extra.reply_markup = { inline_keyboard: backRow }
+      await telegram.sendMessage(u.id, done, extra)
+    }
   } catch (err) {
     console.error('Topup confirmation not sent', err)
   }

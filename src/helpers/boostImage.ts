@@ -845,6 +845,45 @@ export async function renderRechargeImage(info: {
   return canvas.toBuffer('image/png')
 }
 
+/** Private confirmation after a pack payment: Boosts added + balance */
+export async function renderTopupDoneImage(info: { added: number; balance: number }): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const H = 720
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  x.fillStyle = '#12082e'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(200, 100, 700, 'rgba(0,214,170,0.28)')
+  glow(1100, 650, 800, 'rgba(70,90,255,0.45)')
+  x.globalAlpha = 0.08
+  bolt(x, 990, 360, 540, '#ffffff')
+  x.globalAlpha = 1
+  pillBox(x, 90, 80, 380, 52, 'rgba(0,230,170,0.2)', 'PAYMENT RECEIVED', '#2de0a8', '22px InterX')
+  const gold = x.createLinearGradient(90, 0, 500, 0)
+  gold.addColorStop(0, '#fff1b0')
+  gold.addColorStop(0.5, '#ffc83c')
+  gold.addColorStop(1, '#ff9a1f')
+  const added = Math.max(1, Math.round(info.added))
+  const big = `+${added}`
+  x.font = '230px InterX'
+  const bw = x.measureText(big).width
+  txt(x, big, 90, 400, '230px InterX', gold as any, 'left')
+  const rx = 90 + bw + 40
+  txt(x, added === 1 ? 'BOOST' : 'BOOSTS', rx, 330, '60px InterX', '#ffffff', 'left')
+  txt(x, 'ADDED', rx, 400, '60px InterX', '#2de0a8', 'left')
+  pillBox(x, 90, 480, 520, 100, 'rgba(255,255,255,0.1)', `Your Boosts: ${Math.round(info.balance)}`, '#ffffff', '44px InterX')
+  txt(x, 'They never expire', 90, 640, '30px InterB', '#d9c8ff', 'left')
+  return canvas.toBuffer('image/png')
+}
+
 /** Daily spin prize (public feed) */
 export async function renderWheelImage(info: { name: string; prize: number; streak: number }): Promise<Buffer> {
   return renderCard({
