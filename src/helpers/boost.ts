@@ -644,9 +644,14 @@ export async function notifyOwner(
           ? escHtml(name)
           : `<a href="tg://user?id=${info.userId}">${escHtml(name)}</a>`
         const mult = info.boostMult || multiplierOf()
+        const head = info.auto
+          ? `🔁 <b>${who}</b> boosted with Auto-Boost`
+          : info.gift
+          ? `🎁 <b>${who}</b> used a free gift Boost`
+          : `🚀 <b>${who}</b> boosted a giveaway`
         const text =
-          `🚀 <b>${who} bought a Boost</b>\n` +
-          `${info.credits ? (info.gift ? '🎁 Gift Boosts' : '💰 Boost balance') : info.crypto ? '🪙 USDT' : `⭐ ${info.stars} Stars`} · <b>${pctLabel(info.n, 'en', step)}</b>${info.auto ? ' · 🔁 Auto-Boost' : ''}` +
+          `${head}\n` +
+          `➕ <b>${pctLabel(info.n, 'en', step)}</b>` +
           (mult > 1 ? ` 🔥 <b>x${+mult.toFixed(2)} today!</b>` : '') +
           `\n🎟 Now has <b>${entriesLabel(info.total, 'en')}</b>` +
           (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
