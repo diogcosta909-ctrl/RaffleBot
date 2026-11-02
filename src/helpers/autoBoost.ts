@@ -658,60 +658,6 @@ export function setupAutoBoost(bot: Telegraf<ContextMessageUpdate>) {
     }
   })
 
-  // Owner only: /postbutton posts a video/photo to BOOST_FEED_CHAT with a "Turn on Auto-Boost" button.
-  // Send the media with /feedpost (+ optional caption text) as its caption, or reply to it with /feedpost
-  const DEFAULT_FEED_POST =
-    '🔁 <b>Auto-Boost is here!</b>\n\nJoin a giveaway and your Boosts are applied automatically. Set it once, never miss a Boost.\n\n👇 Tap the button to turn it on'
-  const feedPost = async (ctx: any, msg: any, raw: string) => {
-    if (!ctx.from || ctx.from.id !== parseInt(process.env.ADMIN, 10) || ctx.chat.type !== 'private') return
-    const feed = (process.env.BOOST_FEED_CHAT || '').trim()
-    if (!feed) return ctx.reply('Set BOOST_FEED_CHAT first')
-    try {
-      const me = await ctx.telegram.getMe()
-      const body = raw.replace(/^\/(postbutton|feedpost)(@\w+)?/i, '').trim()
-      // First line "Button text | https://link" (or "| autoboost"), the rest is the post text
-      const lines = body.split('\n')
-      let label = '🔁 Turn on Auto-Boost'
-      let url = `https://t.me/${me.username}?start=autoboost`
-      let text = body
-      if (lines[0].indexOf('|') > 0) {
-        const parts = lines[0].split('|')
-        const u = parts[1].trim()
-        label = parts[0].trim()
-        url = /^autoboost$/i.test(u) ? url : /^https?:\/\//i.test(u) ? u : `https://${u}`
-        text = lines.slice(1).join('\n').trim()
-      }
-      const caption = text ? esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') : DEFAULT_FEED_POST
-      const extra: any = {
-        caption,
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: [[{ text: label, url }]] },
-      }
-      if (msg.video) await ctx.telegram.sendVideo(feed, msg.video.file_id, extra)
-      else if (msg.animation) await ctx.telegram.sendAnimation(feed, msg.animation.file_id, extra)
-      else if (msg.photo && msg.photo.length) await ctx.telegram.sendPhoto(feed, msg.photo[msg.photo.length - 1].file_id, extra)
-      else if (msg.document) await ctx.telegram.sendDocument(feed, msg.document.file_id, extra)
-      else return ctx.reply('Send a video or photo with /postbutton as its caption, or reply to one with /postbutton')
-      await ctx.reply('✅ Posted in the feed')
-    } catch (err) {
-      console.error('feedpost failed', err)
-      try {
-        await ctx.reply(`❌ Failed: ${err && err.message ? err.message : err}`)
-      } catch {
-        // do nothing
-      }
-    }
-  }
-  bot.command(<any>['postbutton', 'feedpost'], async (ctx: any) => {
-    const m = ctx.message
-    await feedPost(ctx, m.reply_to_message || m, m.text || '')
-  })
-  bot.on(<any>['video', 'animation', 'photo', 'document'], async (ctx: any, next: any) => {
-    const m = ctx.message
-    if (m && m.caption && /^\/(postbutton|feedpost)/i.test(m.caption)) return feedPost(ctx, m, m.caption)
-    return next()
-  })
-
   const answer = async (ctx: any) => {
     try {
       await ctx.answerCbQuery()
