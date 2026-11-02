@@ -376,7 +376,7 @@ export async function renderBoostImage(info: {
   const boosts = info.boosts || 1
   if (info.winner) return renderWinnerCard({ name, entries: info.entries })
   const mult = info.mult && info.mult > 1 ? info.mult : 1
-  const sub = info.auto ? 'was boosted automatically' : info.gift ? 'used a free gift Boost' : 'boosted a giveaway'
+  const sub = info.auto ? 'boosted with Auto-Boost' : info.gift ? 'used a free gift Boost' : 'boosted a giveaway'
   return renderLaunchCard({
     name,
     boosts,
@@ -547,7 +547,7 @@ async function renderWinnerCard(info: { name: string; entries: number }): Promis
 
 type Tier = { label: string; glow: string; col: string; rk: number[][]; fx: number; gold: boolean }
 function tierOf(n: number): Tier {
-  if (n >= 25) return { label: 'ULTRA BOOST x25', glow: 'rgba(255,200,80,0.7)', col: '#ffd23c', rk: [[1010, 320, 1.2]], fx: 2, gold: true }
+  if (n >= 25) return { label: 'ULTRA BOOST x25', glow: 'rgba(255,200,80,0.7)', col: '#ffd23c', rk: [[1010, 290, 1.0]], fx: 2, gold: true }
   if (n >= 10)
     return { label: 'MEGA BOOST x10', glow: 'rgba(255,190,60,0.6)', col: '#ffc83c', rk: [[850, 360, 0.5], [1020, 270, 1.0], [1200, 360, 0.5]], fx: 1, gold: true }
   if (n >= 5)
@@ -653,6 +653,9 @@ async function renderLaunchCard(info: {
   const x = canvas.getContext('2d')
   x.textBaseline = 'alphabetic'
   const t = tierOf(info.boosts)
+  const A = info.auto
+  const ray = A ? 'rgba(94,240,208,0.09)' : 'rgba(255,210,90,0.09)'
+  const spark = A ? 'rgba(170,255,235,0.85)' : 'rgba(255,225,140,0.85)'
   x.fillStyle = '#0a0e22'
   x.fillRect(0, 0, 1280, H)
   const glow = (cx: number, cy: number, r: number, col: string) => {
@@ -662,7 +665,7 @@ async function renderLaunchCard(info: {
     x.fillStyle = g
     x.fillRect(0, 0, 1280, H)
   }
-  glow(960, 720, 800, t.glow)
+  glow(960, 720, 800, A ? 'rgba(0,214,190,0.4)' : t.glow)
   glow(200, 100, 500, 'rgba(60,90,255,0.25)')
   const rnd = rand(3)
   for (let i = 0; i < 60; i++) {
@@ -679,7 +682,7 @@ async function renderLaunchCard(info: {
     for (let i = 0; i < n; i++) {
       const a = (i * 2 * Math.PI) / n
       const b = a + (Math.PI / n) * 0.5
-      x.fillStyle = 'rgba(255,210,90,0.09)'
+      x.fillStyle = ray
       x.beginPath()
       x.moveTo(1010, 330)
       x.lineTo(1010 + 900 * Math.cos(a), 330 + 900 * Math.sin(a))
@@ -694,7 +697,7 @@ async function renderLaunchCard(info: {
     for (let i = 0; i < n; i++) {
       const px = 620 + sr() * 660
       const py = sr() * H
-      x.fillStyle = 'rgba(255,225,140,0.85)'
+      x.fillStyle = spark
       x.beginPath()
       x.moveTo(px, py - 12)
       x.lineTo(px + 4, py - 4)
@@ -708,21 +711,69 @@ async function renderLaunchCard(info: {
       x.fill()
     }
   }
-  txt(x, `${t.label}${info.auto ? '  -  AUTO' : ''}`, 90, 120, '28px InterX', t.col, 'left')
+  if (!A || info.boosts >= 2) txt(x, t.label, 90, 120, '28px InterX', A ? '#5ef0d0' : t.col, 'left')
   txt(x, info.name, 90, 215, '70px InterX', '#ffffff', 'left')
-  txt(x, info.sub, 90, 265, '32px InterB', '#a9b4e6', 'left')
+  txt(x, info.sub, 90, 265, '32px InterB', A ? '#9ee8dc' : '#a9b4e6', 'left')
   const gold = x.createLinearGradient(90, 0, 520, 0)
-  gold.addColorStop(0, '#fff1b0')
-  gold.addColorStop(0.5, '#ffc83c')
-  gold.addColorStop(1, '#ff9a1f')
+  gold.addColorStop(0, A ? '#d6fff6' : '#fff1b0')
+  gold.addColorStop(0.5, A ? '#5ef0d0' : '#ffc83c')
+  gold.addColorStop(1, A ? '#19b8d8' : '#ff9a1f')
   const big = info.added > 0 ? `+${info.added}` : `${info.total}`
   txt(x, big, 90, 500, `${big.length > 3 ? 180 : 220}px InterX`, gold as any, 'left')
   const foot =
     info.added > 0
       ? `entries  ·  ${info.total} now${info.mult > 1 ? `  ·  x${+info.mult.toFixed(2)} today` : ''}`
       : `entries now${info.mult > 1 ? `  ·  x${+info.mult.toFixed(2)} today` : ''}`
-  txt(x, foot, 90, 580, '38px InterB', '#a9b4e6', 'left')
-  t.rk.forEach(r => drawRocket(x, r[0], r[1], r[2], '#eef1fb', t.gold ? '#d9a53a' : '#ff4a3d', t.gold ? '#ffe27a' : '#ffd23c'))
+  txt(x, foot, 90, 580, '38px InterB', A ? '#9ee8dc' : '#a9b4e6', 'left')
+  t.rk.forEach(r =>
+    drawRocket(
+      x,
+      r[0],
+      r[1],
+      r[2],
+      '#eef1fb',
+      A ? '#00c9a0' : t.gold ? '#d9a53a' : '#ff4a3d',
+      A ? '#7af0ff' : t.gold ? '#ffe27a' : '#ffd23c'
+    )
+  )
+  if (A) {
+    // "AUTO-BOOST" stamp with the loop arrows
+    const label = 'AUTO-BOOST'
+    x.font = '46px InterX'
+    const tw = x.measureText(label).width
+    const w = tw + 170
+    x.save()
+    x.translate(Math.min(990, 1235 - w / 2), info.boosts >= 25 ? 610 : 560)
+    x.rotate(-0.2)
+    x.strokeStyle = '#5ef0d0'
+    x.lineWidth = 8
+    rrect(x, -w / 2, -62, w, 124, 22)
+    x.stroke()
+    x.lineWidth = 3
+    rrect(x, -w / 2 + 12, -50, w - 24, 100, 14)
+    x.stroke()
+    x.lineWidth = 8
+    x.lineCap = 'round'
+    x.fillStyle = '#5ef0d0'
+    for (const a0 of [0.3, Math.PI + 0.3]) {
+      const a1 = a0 + Math.PI - 0.75
+      const cx = -w / 2 + 62
+      x.beginPath()
+      x.arc(cx, 0, 32, a0, a1)
+      x.stroke()
+      const ex = cx + 32 * Math.cos(a1)
+      const ey = 32 * Math.sin(a1)
+      const tg = a1 + Math.PI / 2
+      x.beginPath()
+      x.moveTo(ex + Math.cos(tg) * 13, ey + Math.sin(tg) * 13)
+      x.lineTo(ex + Math.cos(tg + 2.5) * 16, ey + Math.sin(tg + 2.5) * 16)
+      x.lineTo(ex + Math.cos(tg - 2.5) * 16, ey + Math.sin(tg - 2.5) * 16)
+      x.closePath()
+      x.fill()
+    }
+    txt(x, label, -w / 2 + 110 + tw / 2, 18, '46px InterX', '#5ef0d0')
+    x.restore()
+  }
   return canvas.toBuffer('image/png')
 }
 
