@@ -535,8 +535,8 @@ export async function notifyBoostWin(
       ? escHtml(`@${winner.username}`)
       : `<a href="tg://user?id=${winner.id}">${escHtml(winner.name)}</a>`
     const text =
-      `🏆 <b>${who} won a giveaway with a Boost!</b>\n` +
-      `${info.credits ? '💰 Paid with Boosts' : info.crypto ? '🪙 Paid in USDT' : `⭐ ${info.stars} Stars`} · <b>${entriesLabel(info.entries, 'en')}</b>` +
+      `🏆 <b>${who}</b> won with a Boost!\n` +
+      `➕ Boosted to <b>${entriesLabel(info.entries, 'en')}</b>` +
       (link ? `\n🔗 <a href="${link}">Giveaway</a>` : '')
     let sent = false
     try {
