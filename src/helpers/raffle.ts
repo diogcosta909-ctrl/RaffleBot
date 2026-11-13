@@ -282,7 +282,7 @@ export async function refreshRaffleMessage(
   }
   const boostLine = lines.length ? `\n${lines.join('\n')}` : ''
   // The top boosters list is hidden: the message only shows the boosts counter
-  const top = ''
+  const top: string = ''
   // Custom raffle messages get the multiplier line too (the default one has it in boostNote)
   const multNote = raffle.boostEnabled ? multiplierNote(raffle, chat.language) : ''
   let text: string
