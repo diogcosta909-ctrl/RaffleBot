@@ -199,8 +199,7 @@ async function showPass(ctx: any, edit: boolean, src = 'menu') {
       options: passOptions(),
       step: BOOST_STEP,
       style: 'c',
-      value: passValue(),
-      active: active ? `ACTIVE · UNTIL ${dateLabel(chat.passUntil).toUpperCase()}` : '',
+      active: active ? `ACTIVE · UNTIL ${dateLabel(chat.passUntil).toUpperCase()}` : 'NEW · MONTHLY PASS',
     })
     if (await showPhoto(ctx, image, keyboard, edit, caption)) return
   } catch (err) {
