@@ -80,8 +80,8 @@ export const localizations: { [index: string]: { [index: string]: string } } = {
     es: '🚀 Para boostear este sorteo, recarga Boosts primero.\nLos Boosts no caducan y sirven en cualquier sorteo.',
   },
   autoboost_button: {
-    en: '🪎 Monthly Pass',
-    es: '🪎 Monthly Pass',
+    en: 'Monthly Pass',
+    es: 'Monthly Pass',
   },
   boost_all_button: {
     en: '🎯 Boost All',
