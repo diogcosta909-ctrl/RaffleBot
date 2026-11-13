@@ -223,7 +223,7 @@ export function boostButton(raffle: Raffle & { id?: string }, language: string) 
     },
     {
       text: loc('autoboost_button', language),
-      url: `https://t.me/${process.env.USERNAME}?start=autoboost`,
+      url: `https://t.me/${process.env.USERNAME}?start=pass`,
     },
   ]
 }
