@@ -176,8 +176,11 @@ async function showPass(ctx: any, edit: boolean, src = 'menu') {
   const active = passActive(chat)
   const text =
     `👑 <b>Monthly Pass</b>\n\n` +
-    `We <b>boost every giveaway you join</b>, automatically.\n` +
-    `<b>30 days</b> · <b>no limits</b> · <b>1 Boost = ${BOOST_STEP} entries</b>\n\n` +
+    `One payment. <b>30 days</b>. Zero effort.\n` +
+    `We <b>boost every giveaway you join</b>, automatically.\n\n` +
+    `✅ <b>1 Boost = ${BOOST_STEP} entries</b>\n` +
+    `✅ Pick <b>1, 2, 3 or 5 Boosts</b> per giveaway\n` +
+    `✅ <b>No limits</b> · no Boosts spent\n\n` +
     (active
       ? `🟢 <b>Active</b> · ${chat.passN} ${boostWord(chat.passN)} per giveaway · until <b>${dateLabel(chat.passUntil)}</b>\n\n`
       : '') +
