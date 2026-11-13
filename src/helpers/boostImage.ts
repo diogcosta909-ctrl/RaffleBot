@@ -884,6 +884,52 @@ export async function renderTopupDoneImage(info: { added: number; balance: numbe
   return canvas.toBuffer('image/png')
 }
 
+/** Monthly Pass screen: the options with their prices */
+export async function renderPassMenuImage(info: { options: { n: number; stars: number; usdt: number }[]; active?: string }): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const H = 720
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  x.fillStyle = '#12082e'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(1100, 80, 700, 'rgba(255,190,40,0.28)')
+  glow(100, 700, 800, 'rgba(120,70,255,0.50)')
+  x.globalAlpha = 0.07
+  bolt(x, 1060, 300, 520, '#ffffff')
+  x.globalAlpha = 1
+  const gold = x.createLinearGradient(70, 0, 700, 0)
+  gold.addColorStop(0, '#fff1b0')
+  gold.addColorStop(0.5, '#ffc83c')
+  gold.addColorStop(1, '#ff9a1f')
+  pillBox(x, 70, 56, info.active ? 560 : 330, 50, 'rgba(255,200,60,0.18)', info.active || 'MONTHLY PASS', '#ffc83c', '22px InterX')
+  txt(x, 'Boost every giveaway', 70, 200, '82px InterX', '#ffffff', 'left')
+  txt(x, 'automatically. No limits.', 70, 280, '82px InterX', gold as any, 'left')
+  txt(x, '30 days · no Boosts spent', 70, 335, '32px InterB', '#d9c8ff', 'left')
+  const list = info.options.slice(0, 4)
+  const gap = 20
+  const w = Math.floor((1140 - gap * (list.length - 1)) / list.length)
+  list.forEach((o, i) => {
+    const px = 70 + i * (w + gap)
+    const py = 380
+    x.fillStyle = 'rgba(255,255,255,0.10)'
+    rrect(x, px, py, w, 270, 28)
+    x.fill()
+    txt(x, `${o.n}`, px + w / 2, py + 130, '130px InterX', gold as any, 'center')
+    txt(x, `${o.n === 1 ? 'BOOST' : 'BOOSTS'} / GIVEAWAY`, px + w / 2, py + 172, '21px InterX', '#ffffff', 'center')
+    txt(x, `${o.stars} Stars`, px + w / 2, py + 220, '32px InterX', '#ffc83c', 'center')
+    txt(x, `or $${o.usdt} USDT`, px + w / 2, py + 252, '22px InterB', '#d9c8ff', 'center')
+  })
+  return canvas.toBuffer('image/png')
+}
+
 /** Monthly Pass: bot confirmation (no name) or public feed card (with name) */
 export async function renderPassImage(info: { n: number; until: string; name?: string }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()

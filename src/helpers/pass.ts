@@ -14,6 +14,7 @@ import {
   CRYPTO_EXPIRY_MIN,
 } from './cryptoPay'
 import { editScreen, pickNetwork } from './boost'
+import { showPhoto } from './photoScreen'
 
 // Monthly Pass: one payment = 30 days of Auto-Boost in every giveaway, with no limit and no Boosts spent.
 // PASS_OPTIONS="Boosts:Stars:USDT,..." (defaults below). Texts are in English (they go to the bot's users).
@@ -180,6 +181,18 @@ async function showPass(ctx: any, edit: boolean) {
   const keyboard: any[] = []
   for (let i = 0; i < buttons.length; i += 2) keyboard.push(buttons.slice(i, i + 2))
   keyboard.push([{ text: '← Back', callback_data: 'ab~m' }])
+  const caption = active
+    ? `✅ Pass active · ${chat.passN} ${boostWord(chat.passN)} per giveaway · until ${dateLabel(chat.passUntil)}\nBuying again adds 30 days.\n\nHow many Boosts per giveaway? 👇`
+    : `One payment, 30 days.\nWe boost every giveaway you join, automatically.\n\nHow many Boosts per giveaway? 👇`
+  try {
+    const image = await require('./boostImage').renderPassMenuImage({
+      options: passOptions(),
+      active: active ? `ACTIVE · UNTIL ${dateLabel(chat.passUntil).toUpperCase()}` : '',
+    })
+    if (await showPhoto(ctx, image, keyboard, edit, caption)) return
+  } catch (err) {
+    console.error('Pass image failed, sending text', err)
+  }
   const extra = { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
   if (edit) {
     try {
