@@ -400,7 +400,7 @@ function getButtons(raffle: InstanceType<Raffle>, language: string) {
     ],
   ]
   if (raffle.boostEnabled) {
-    keyboard.push(boostButton(raffle, language))
+    boostButton(raffle, language).forEach((row) => keyboard.push(row))
   }
   return { inline_keyboard: keyboard }
 }

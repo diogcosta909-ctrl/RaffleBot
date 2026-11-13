@@ -222,15 +222,20 @@ export function boostBlock(language: string, extra: number, boosters = 0) {
 
 /** Boost button row for the raffle message */
 export function boostButton(raffle: Raffle & { id?: string }, language: string) {
+  // One button per row, so the Monthly Pass text is never cut
   return [
-    {
-      text: loc('boost_button', language),
-      callback_data: `b~${raffle.id}`,
-    },
-    {
-      text: loc('autoboost_button', language),
-      url: `https://t.me/${process.env.USERNAME}?start=pass`,
-    },
+    [
+      {
+        text: loc('boost_button', language),
+        callback_data: `b~${raffle.id}`,
+      },
+    ],
+    [
+      {
+        text: loc('autoboost_button', language),
+        url: `https://t.me/${process.env.USERNAME}?start=pass`,
+      },
+    ],
   ]
 }
 
