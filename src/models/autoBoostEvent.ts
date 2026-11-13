@@ -4,6 +4,7 @@ import { prop, Typegoose } from 'typegoose'
 // Auto-Boost funnel and usage events, for the owner's /stars numbers
 // type: open | open_nobal | activate | pick | off_manual | buy_click | pack_pick | applied | partial |
 //       low_warn | paused | off_auto | limit_hit | resumed | gift_sent | gift_claimed | recharge_after_warn |
+//       pass_open | pass_pick | pass_stars | pass_usdt | pass_paid | pass_applied (Monthly Pass funnel)
 //       streak_reward | ref_join | ref_reward | ref_commission | invite_open
 export class AutoBoostEvent extends Typegoose {
   @prop({ required: true, index: true })
@@ -18,6 +19,9 @@ export class AutoBoostEvent extends Typegoose {
   k?: number
   @prop({ index: true })
   raffleId?: string
+  // Where it came from (Monthly Pass: menu, link, cmd) or how it was paid (stars, usdt)
+  @prop()
+  src?: string
 }
 
 export const AutoBoostEventModel = new AutoBoostEvent().getModelForClass(AutoBoostEvent, {

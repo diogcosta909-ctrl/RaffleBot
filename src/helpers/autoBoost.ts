@@ -349,7 +349,7 @@ async function passOnJoin(raffle: any, from: any, chat: any): Promise<string> {
   if (!upd || !upd.nModified) return ''
   await ChatModel.updateOne({ chatId: userId }, { $inc: { passBoosts: k, autoBoostCount: 1 } })
   await trackBoost({ type: 'invoice', userId, raffleId, boosts: k, method: 'pass', reminded: true })
-  void trackAuto('applied', userId, { k, raffleId })
+  void trackAuto('pass_applied', userId, { k, raffleId })
   const value = res.value + k * mult
   const base = entryValueOf(res.raffle)
   try {

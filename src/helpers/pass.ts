@@ -15,6 +15,7 @@ import {
 } from './cryptoPay'
 import { editScreen, pickNetwork, BOOST_STEP, BOOST_PRICE } from './boost'
 import { showPhoto } from './photoScreen'
+import { AutoBoostEventModel, trackAuto } from '../models/autoBoostEvent'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 
 // Monthly Pass: one payment = 30 days of Auto-Boost in every giveaway, with no limit and no Boosts spent.
@@ -151,17 +152,19 @@ export async function onPassPaid(ctx: any, p: any) {
     userName: u.username ? `@${u.username}` : `${u.first_name}${u.last_name ? ` ${u.last_name}` : ''}`,
   })
   const until = await activatePass(u.id, n)
+  void trackAuto('pass_paid', u.id, { n, src: 'stars' })
   await sendPaidMessage(ctx.telegram, u, n, until, `⭐ ${p.total_amount} Stars`)
 }
 
 /** USDT payment of a Pass (order with raffleId "pass") */
 export async function onPassCrypto(telegram: any, order: any, txHash: string) {
   const until = await activatePass(order.userId, order.boosts)
+  void trackAuto('pass_paid', order.userId, { n: order.boosts, src: 'usdt' })
   const who = { id: order.userId, username: order.username, first_name: order.firstName, last_name: order.lastName }
   await sendPaidMessage(telegram, who, order.boosts, until, `🪙 ${formatUnits(order.amountUnits)} USDT · ${txHash}`)
 }
 
-async function showPass(ctx: any, edit: boolean) {
+async function showPass(ctx: any, edit: boolean, src = 'menu') {
   const chat: any = await findChat(ctx.from.id)
   if (!(await hasAcceptedTerms(ctx.from.id))) {
     return ctx.replyWithHTML(`${termsText(chat.language)}\n\n${loc('terms_accept_prompt', chat.language)}`, {
@@ -169,6 +172,7 @@ async function showPass(ctx: any, edit: boolean) {
       reply_markup: { inline_keyboard: [[{ text: loc('terms_accept_button', chat.language), callback_data: 'pta~' }]] },
     })
   }
+  void trackAuto('pass_open', ctx.from.id, { src })
   const active = passActive(chat)
   const text =
     `👑 <b>Monthly Pass</b>\n\n` +
@@ -236,7 +240,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
   bot.command('pass', async (ctx) => {
     if (ctx.chat.type !== 'private') return
     try {
-      await showPass(ctx, false)
+      await showPass(ctx, false, 'cmd')
     } catch (err) {
       console.error(err)
     }
@@ -247,7 +251,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
     const text = ctx.message && ctx.message.text
     if (!text || !/^\/start pass$/.test(text) || ctx.chat.type !== 'private') return next()
     try {
-      await showPass(ctx, false)
+      await showPass(ctx, false, 'link')
     } catch (err) {
       console.error(err)
     }
@@ -277,6 +281,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
     await answer(ctx)
     const o = passOption(parseInt((ctx as any).match[1], 10))
     if (!o) return
+    void trackAuto('pass_pick', ctx.from.id, { n: o.n })
     try {
       const keyboard: any[] = []
       const row: any[] = []
@@ -300,6 +305,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
     await answer(ctx)
     const o = passOption(parseInt((ctx as any).match[1], 10))
     if (!o || !starsEnabled()) return
+    void trackAuto('pass_stars', ctx.from.id, { n: o.n })
     try {
       await (ctx.telegram as any).callApi('sendInvoice', {
         chat_id: ctx.chat.id,
@@ -335,6 +341,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
         boosts: o.n,
         units: Math.round(o.usdt * 10000),
       })
+      void trackAuto('pass_usdt', u.id, { n: o.n })
       const amount = formatUnits(order.amountUnits)
       const caption =
         `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway · 30 days\n\n` +
@@ -360,7 +367,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
 }
 
 
-/** Numbers for the owner: active Passes, sales and revenue by period */
+/** Numbers for the owner: active Passes, funnel (who opens, picks, starts paying, buys) and sales */
 export async function passStatsText() {
   const now = new Date()
   const opts = passOptions()
@@ -370,35 +377,70 @@ export async function passStatsText() {
   const perN: any = {}
   active.forEach((c) => (perN[c.passN] = (perN[c.passN] || 0) + 1))
   const soon = active.filter((c) => new Date(c.passUntil).getTime() < now.getTime() + 3 * DAY).length
-  const lapsed = await ChatModel.countDocuments({
-    passUntil: { $lte: now, $gt: new Date(now.getTime() - 30 * DAY) },
-  })
-  const used: any[] = await ChatModel.aggregate([{ $group: { _id: null, n: { $sum: '$passBoosts' }, users: { $sum: { $cond: [{ $gt: ['$passBoosts', 0] }, 1, 0] } } } }])
-  let text =
-    `👑 <b>Monthly Pass</b>\n\n` +
-    `Activos ahora: <b>${active.length}</b>` +
-    (active.length ? ` (${opts.map((o) => `${o.n}×: ${perN[o.n] || 0}`).join(' · ')})` : '') +
-    `\nTerminan en 3 días: <b>${soon}</b> · Caducados (30 d): <b>${lapsed}</b>\n` +
-    `Boosts aplicados por Pass: <b>${(used[0] && used[0].n) || 0}</b> (${(used[0] && used[0].users) || 0} personas)\n`
-  const periods: [string, number][] = [['Hoy (24 h)', 1], ['7 días', 7], ['30 días', 30], ['Total', 100000]]
-  for (const [label, days] of periods) {
-    const from = new Date(now.getTime() - days * DAY)
-    const st: any[] = await PaymentModel.find({ raffleId: 'pass', status: 'applied', createdAt: { $gte: from } }).select('stars')
-    const us: any[] = await CryptoOrderModel.find({ raffleId: 'pass', status: 'paid', createdAt: { $gte: from } }).select('amountUnits boosts')
-    const stars = st.reduce((a, p) => a + (p.stars || 0), 0)
-    const usdt = us.reduce((a, o) => a + (o.amountUnits || 0), 0) / 10000
-    const counts: any = {}
-    st.forEach((p) => {
-      const n = byStars[p.stars]
-      if (n) counts[n] = (counts[n] || 0) + 1
+  const lapsed = await ChatModel.countDocuments({ passUntil: { $lte: now }, passN: { $gt: 0 } })
+  const used: any[] = await ChatModel.aggregate([
+    { $group: { _id: null, n: { $sum: '$passBoosts' }, users: { $sum: { $cond: [{ $gt: ['$passBoosts', 0] }, 1, 0] } } } },
+  ])
+  const periods: [string, number][] = [['Hoy', 1], ['7 d', 7], ['30 d', 30], ['Total', 100000]]
+  const pad = (t: any, w: number) => `${t}`.padStart(w, ' ')
+  const cols = await Promise.all(
+    periods.map(async ([, days]) => {
+      const from = new Date(now.getTime() - days * DAY)
+      const ev: any[] = await AutoBoostEventModel.aggregate([
+        { $match: { type: { $regex: '^pass_' }, createdAt: { $gte: from } } },
+        { $group: { _id: '$type', users: { $addToSet: '$userId' }, n: { $sum: 1 } } },
+      ])
+      const u: any = {}
+      ev.forEach((e) => (u[e._id] = e.users.length))
+      const st: any[] = await PaymentModel.find({ raffleId: 'pass', status: 'applied', createdAt: { $gte: from } }).select('stars')
+      const us: any[] = await CryptoOrderModel.find({ raffleId: 'pass', status: 'paid', createdAt: { $gte: from } }).select('amountUnits boosts')
+      return {
+        open: u.pass_open || 0,
+        pick: u.pass_pick || 0,
+        pay: Math.max(u.pass_stars || 0, 0) + (u.pass_usdt || 0),
+        sales: st.length + us.length,
+        stars: st.reduce((a, p) => a + (p.stars || 0), 0),
+        usdt: us.reduce((a, o) => a + (o.amountUnits || 0), 0) / 10000,
+        st,
+        us,
+      }
     })
-    us.forEach((o) => (counts[o.boosts] = (counts[o.boosts] || 0) + 1))
-    const detail = opts.filter((o) => counts[o.n]).map((o) => `${o.n}×: ${counts[o.n]}`).join(' · ')
-    text +=
-      `\n<b>${label}</b>: ${st.length + us.length} ventas` +
-      (st.length + us.length ? ` · ⭐ ${stars} · 🪙 ${usdt.toFixed(2)} USDT${detail ? `\n   ${detail}` : ''}` : '')
-  }
-  return text
+  )
+  const row = (label: string, f: (c: any) => any) => `${label.padEnd(9, ' ')}${cols.map((c) => pad(f(c), 7)).join('')}`
+  const head = `${''.padEnd(9, ' ')}${periods.map(([l]) => pad(l, 7)).join('')}`
+  const conv = (c: any) => (c.open ? `${Math.round((c.sales / c.open) * 100)}%` : '-')
+  // What people pick and where they come from (30 days)
+  const from30 = new Date(now.getTime() - 30 * DAY)
+  const picks: any[] = await AutoBoostEventModel.aggregate([
+    { $match: { type: 'pass_pick', createdAt: { $gte: from30 } } },
+    { $group: { _id: '$n', c: { $sum: 1 } } },
+  ])
+  const srcs: any[] = await AutoBoostEventModel.aggregate([
+    { $match: { type: 'pass_open', createdAt: { $gte: from30 } } },
+    { $group: { _id: '$src', c: { $sum: 1 } } },
+  ])
+  const srcName: any = { link: 'enlace/botón de post', menu: 'menú del bot', cmd: '/pass' }
+  const sold: any = {}
+  cols[2].st.forEach((p: any) => {
+    const n = byStars[p.stars]
+    if (n) sold[n] = (sold[n] || 0) + 1
+  })
+  cols[2].us.forEach((o: any) => (sold[o.boosts] = (sold[o.boosts] || 0) + 1))
+  return (
+    `👑 <b>Monthly Pass</b>\n\n` +
+    `<b>Ahora</b>\n` +
+    `✅ Activos: <b>${active.length}</b>${active.length ? ` (${opts.map((o) => `${o.n}×: ${perN[o.n] || 0}`).join(' · ')})` : ''}\n` +
+    `⏳ Terminan en 3 días: <b>${soon}</b>\n` +
+    `💤 Caducados sin renovar: <b>${lapsed}</b>\n` +
+    `🚀 Boosts aplicados: <b>${(used[0] && used[0].n) || 0}</b> (${(used[0] && used[0].users) || 0} personas)\n\n` +
+    `<b>Embudo</b> (personas distintas)\n<pre>${head}\n${row('Abren', (c) => c.open)}\n${row('Eligen', (c) => c.pick)}\n${row('Pagan', (c) => c.pay)}\n${row('Compran', (c) => c.sales)}\n${row('Conv.', conv)}</pre>\n` +
+    `<b>Ingresos</b>\n<pre>${head}\n${row('Stars', (c) => c.stars)}\n${row('USDT', (c) => c.usdt.toFixed(1))}</pre>\n` +
+    `<b>Últimos 30 días</b>\n` +
+    `🎯 Más elegido: ${picks.length ? picks.sort((a, b) => b.c - a.c).map((p) => `${p._id}× (${p.c})`).join(' · ') : '—'}\n` +
+    `🛒 Vendidos: ${opts.filter((o) => sold[o.n]).map((o) => `${o.n}× (${sold[o.n]})`).join(' · ') || '—'}\n` +
+    `🔗 Origen: ${srcs.length ? srcs.sort((a, b) => b.c - a.c).map((x) => `${srcName[x._id] || x._id} (${x.c})`).join(' · ') : '—'}\n\n` +
+    `<i>Abren = tocan el botón o el enlace del Pass (cuenta los clics de /postbutton pass). Pagan = generan factura Stars u orden USDT.</i>`
+  )
 }
 
 /** Hourly: "ends in 3 days" and "ended" notices, once each */
