@@ -24,7 +24,6 @@ import {
   multiplierNote,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
-import { topBoostersText } from './odds'
 import { updateHallOfFame, recordRaffleWins } from './winners'
 import { Chat, findChat } from '../models/chat'
 import { loc } from './locale'
@@ -282,8 +281,8 @@ export async function refreshRaffleMessage(
     lines.push(loc('boost_first', chat.language))
   }
   const boostLine = lines.length ? `\n${lines.join('\n')}` : ''
-  // Top 3 boosters of this raffle, right below the boosts counter
-  const top = boosts > 0 ? await topBoostersText(telegram, raffle._id, chat.language, BOOST_STEP) : ''
+  // The top boosters list is hidden: the message only shows the boosts counter
+  const top = ''
   // Custom raffle messages get the multiplier line too (the default one has it in boostNote)
   const multNote = raffle.boostEnabled ? multiplierNote(raffle, chat.language) : ''
   let text: string
