@@ -1027,6 +1027,144 @@ export async function renderPassMenuImage(info: {
   return canvas.toBuffer('image/png')
 }
 
+/** Premium card for the public feed: black and gold with a double border */
+async function renderPassPremium(info: { n: number; until: string; name: string; step?: number }): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const W = 1280
+  const H = 720
+  const canvas = createCanvas(W, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  const gold = (x0: number, y0: number, x1: number, y1: number) => {
+    const g = x.createLinearGradient(x0, y0, x1, y1)
+    g.addColorStop(0, '#fff0b8')
+    g.addColorStop(0.35, '#f5c452')
+    g.addColorStop(0.65, '#c98a1b')
+    g.addColorStop(1, '#ffe08a')
+    return g
+  }
+  // Background: warm black with a soft golden glow in the middle
+  x.fillStyle = '#0a0806'
+  x.fillRect(0, 0, W, H)
+  const glow = x.createRadialGradient(W / 2, 330, 0, W / 2, 330, 620)
+  glow.addColorStop(0, 'rgba(255,190,70,0.20)')
+  glow.addColorStop(0.5, 'rgba(120,70,10,0.10)')
+  glow.addColorStop(1, 'rgba(0,0,0,0)')
+  x.fillStyle = glow
+  x.fillRect(0, 0, W, H)
+  // Tiny sparkles
+  const star = (cx: number, cy: number, r: number, a: number) => {
+    x.globalAlpha = a
+    x.fillStyle = '#ffe9a8'
+    x.beginPath()
+    x.moveTo(cx, cy - r)
+    x.quadraticCurveTo(cx, cy, cx + r, cy)
+    x.quadraticCurveTo(cx, cy, cx, cy + r)
+    x.quadraticCurveTo(cx, cy, cx - r, cy)
+    x.quadraticCurveTo(cx, cy, cx, cy - r)
+    x.fill()
+    x.globalAlpha = 1
+  }
+  ;[
+    [150, 150, 14, 0.7], [1120, 170, 18, 0.8], [210, 560, 11, 0.5], [1090, 540, 13, 0.6],
+    [330, 90, 8, 0.5], [960, 100, 9, 0.5], [110, 360, 9, 0.4], [1180, 380, 10, 0.45],
+  ].forEach((s) => star(s[0], s[1], s[2], s[3]))
+  // Double gold border with corner diamonds
+  x.strokeStyle = gold(0, 0, W, H) as any
+  x.lineWidth = 7
+  rrect(x, 26, 26, W - 52, H - 52, 34)
+  x.stroke()
+  x.lineWidth = 2
+  x.globalAlpha = 0.8
+  rrect(x, 48, 48, W - 96, H - 96, 22)
+  x.stroke()
+  x.globalAlpha = 1
+  const diamond = (cx: number, cy: number, r: number) => {
+    x.fillStyle = gold(cx - r, cy - r, cx + r, cy + r) as any
+    x.beginPath()
+    x.moveTo(cx, cy - r)
+    x.lineTo(cx + r, cy)
+    x.lineTo(cx, cy + r)
+    x.lineTo(cx - r, cy)
+    x.closePath()
+    x.fill()
+  }
+  ;[[48, 48], [W - 48, 48], [48, H - 48], [W - 48, H - 48]].forEach((c) => diamond(c[0], c[1], 13))
+  // Crown
+  const cx = W / 2
+  const cy = 74
+  x.fillStyle = gold(cx - 60, cy, cx + 60, cy + 62) as any
+  x.beginPath()
+  x.moveTo(cx - 58, cy + 62)
+  x.lineTo(cx - 66, cy + 6)
+  x.lineTo(cx - 30, cy + 34)
+  x.lineTo(cx, cy - 10)
+  x.lineTo(cx + 30, cy + 34)
+  x.lineTo(cx + 66, cy + 6)
+  x.lineTo(cx + 58, cy + 62)
+  x.closePath()
+  x.fill()
+  ;[[-66, 6], [0, -10], [66, 6]].forEach((p) => {
+    x.beginPath()
+    x.arc(cx + p[0], cy + p[1], 7, 0, Math.PI * 2)
+    x.fill()
+  })
+  x.fillStyle = '#0a0806'
+  x.fillRect(cx - 44, cy + 48, 88, 5)
+  // Spaced label
+  const spaced = (t: string, y: number, size: number, col: any, gap: number) => {
+    x.font = `${size}px InterX`
+    x.textAlign = 'left'
+    x.fillStyle = col
+    let w = 0
+    for (const ch of t) w += x.measureText(ch).width + gap
+    w -= gap
+    let px = (W - w) / 2
+    for (const ch of t) {
+      x.fillText(ch, px, y)
+      px += x.measureText(ch).width + gap
+    }
+  }
+  spaced('MONTHLY PASS', 190, 26, '#e9b84a', 9)
+  const who = drawableName(info.name) || 'Someone'
+  txt(x, who, cx, 280, who.length > 18 ? '66px InterX' : '84px InterX', '#fff6dc', 'center')
+  txt(x, 'got the Monthly Pass', cx, 330, '32px InterB', '#e9b84a', 'center')
+  // Divider with a diamond
+  x.strokeStyle = gold(300, 0, 980, 0) as any
+  x.lineWidth = 2
+  x.beginPath()
+  x.moveTo(300, 366)
+  x.lineTo(cx - 20, 366)
+  x.moveTo(cx + 20, 366)
+  x.lineTo(980, 366)
+  x.stroke()
+  diamond(cx, 366, 8)
+  // Number + text, centered as a block
+  const n = Math.max(1, Math.round(info.n))
+  const step = info.step || 10
+  x.font = '190px InterX'
+  const nw = x.measureText(`${n}`).width
+  x.font = '44px InterX'
+  const tw = Math.max(x.measureText(n === 1 ? 'BOOST' : 'BOOSTS').width, 0)
+  x.font = '34px InterX'
+  const sw = x.measureText('IN EVERY GIVEAWAY').width
+  const blockW = nw + 36 + Math.max(tw, sw)
+  const bx = (W - blockW) / 2
+  txt(x, `${n}`, bx, 560, '190px InterX', gold(bx, 400, bx + nw, 560) as any, 'left')
+  txt(x, n === 1 ? 'BOOST' : 'BOOSTS', bx + nw + 36, 502, '52px InterX', '#fff6dc', 'left')
+  txt(x, 'IN EVERY GIVEAWAY', bx + nw + 36, 552, '34px InterX', '#e9b84a', 'left')
+  // Outlined pill
+  const label = `+${n * step} entries per giveaway · until ${info.until}`
+  x.font = '28px InterX'
+  const pw = x.measureText(label).width + 80
+  x.strokeStyle = gold(0, 0, W, 0) as any
+  x.lineWidth = 2.5
+  rrect(x, (W - pw) / 2, 596, pw, 64, 32)
+  x.stroke()
+  txt(x, label, cx, 637, '28px InterX', '#fff6dc', 'center')
+  return canvas.toBuffer('image/png')
+}
+
 /** Monthly Pass: bot confirmation (no name) or public feed card (with name) */
 export async function renderPassImage(info: { n: number; until: string; name?: string; step?: number }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
@@ -1051,7 +1189,8 @@ export async function renderPassImage(info: { n: number; until: string; name?: s
   const mint = x.createLinearGradient(90, 0, 600, 0)
   mint.addColorStop(0, '#c9ffee')
   mint.addColorStop(1, '#2de0a8')
-  const who = info.name ? drawableName(info.name) || 'Someone' : ''
+  if (info.name) return renderPassPremium({ n: info.n, until: info.until, name: info.name, step: info.step })
+  const who: string = ''
   const n = Math.max(1, Math.round(info.n))
   const step = info.step || 10
   pillBox(x, 90, 60, who ? 330 : 440, 52, 'rgba(0,230,170,0.18)', who ? 'MONTHLY PASS' : 'MONTHLY PASS ACTIVE', '#2de0a8', '22px InterX')
