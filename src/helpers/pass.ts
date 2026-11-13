@@ -15,6 +15,7 @@ import {
 } from './cryptoPay'
 import { editScreen, pickNetwork, BOOST_STEP } from './boost'
 import { showPhoto } from './photoScreen'
+import { CryptoOrderModel } from '../models/cryptoOrder'
 
 // Monthly Pass: one payment = 30 days of Auto-Boost in every giveaway, with no limit and no Boosts spent.
 // PASS_OPTIONS="Boosts:Stars:USDT,..." (defaults below). Texts are in English (they go to the bot's users).
@@ -216,6 +217,16 @@ async function answer(ctx: any) {
 }
 
 export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
+  // Owner only: Pass numbers
+  bot.command('passes', async (ctx) => {
+    if (!ctx.from || ctx.from.id !== parseInt(process.env.ADMIN, 10)) return
+    try {
+      await ctx.replyWithHTML(await passStatsText())
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
   bot.command('pass', async (ctx) => {
     if (ctx.chat.type !== 'private') return
     try {
@@ -340,6 +351,48 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
       console.error(err)
     }
   })
+}
+
+
+/** Numbers for the owner: active Passes, sales and revenue by period */
+export async function passStatsText() {
+  const now = new Date()
+  const opts = passOptions()
+  const byStars: any = {}
+  opts.forEach((o) => (byStars[o.stars] = o.n))
+  const active: any[] = await ChatModel.find({ passUntil: { $gt: now }, passN: { $gt: 0 } }).select('passN passUntil')
+  const perN: any = {}
+  active.forEach((c) => (perN[c.passN] = (perN[c.passN] || 0) + 1))
+  const soon = active.filter((c) => new Date(c.passUntil).getTime() < now.getTime() + 3 * DAY).length
+  const lapsed = await ChatModel.countDocuments({
+    passUntil: { $lte: now, $gt: new Date(now.getTime() - 30 * DAY) },
+  })
+  const used: any[] = await ChatModel.aggregate([{ $group: { _id: null, n: { $sum: '$passBoosts' }, users: { $sum: { $cond: [{ $gt: ['$passBoosts', 0] }, 1, 0] } } } }])
+  let text =
+    `👑 <b>Monthly Pass</b>\n\n` +
+    `Activos ahora: <b>${active.length}</b>` +
+    (active.length ? ` (${opts.map((o) => `${o.n}×: ${perN[o.n] || 0}`).join(' · ')})` : '') +
+    `\nTerminan en 3 días: <b>${soon}</b> · Caducados (30 d): <b>${lapsed}</b>\n` +
+    `Boosts aplicados por Pass: <b>${(used[0] && used[0].n) || 0}</b> (${(used[0] && used[0].users) || 0} personas)\n`
+  const periods: [string, number][] = [['Hoy (24 h)', 1], ['7 días', 7], ['30 días', 30], ['Total', 100000]]
+  for (const [label, days] of periods) {
+    const from = new Date(now.getTime() - days * DAY)
+    const st: any[] = await PaymentModel.find({ raffleId: 'pass', status: 'applied', createdAt: { $gte: from } }).select('stars')
+    const us: any[] = await CryptoOrderModel.find({ raffleId: 'pass', status: 'paid', createdAt: { $gte: from } }).select('amountUnits boosts')
+    const stars = st.reduce((a, p) => a + (p.stars || 0), 0)
+    const usdt = us.reduce((a, o) => a + (o.amountUnits || 0), 0) / 10000
+    const counts: any = {}
+    st.forEach((p) => {
+      const n = byStars[p.stars]
+      if (n) counts[n] = (counts[n] || 0) + 1
+    })
+    us.forEach((o) => (counts[o.boosts] = (counts[o.boosts] || 0) + 1))
+    const detail = opts.filter((o) => counts[o.n]).map((o) => `${o.n}×: ${counts[o.n]}`).join(' · ')
+    text +=
+      `\n<b>${label}</b>: ${st.length + us.length} ventas` +
+      (st.length + us.length ? ` · ⭐ ${stars} · 🪙 ${usdt.toFixed(2)} USDT${detail ? `\n   ${detail}` : ''}` : '')
+  }
+  return text
 }
 
 /** Hourly: "ends in 3 days" and "ended" notices, once each */

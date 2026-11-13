@@ -1903,7 +1903,8 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         { $match: { method: 'invite_commission' } },
         { $group: { _id: null, n: { $sum: '$delta' } } },
       ])
-      autoLine = `🔁 Auto-Boost activos: <b>${on}</b> · 👥 Comisión de invitados: <b>${(com[0] && com[0].n) || 0}</b> Boosts\n`
+      const passOn = await ChatModel.countDocuments({ passUntil: { $gt: new Date() }, passN: { $gt: 0 } })
+      autoLine = `👑 Monthly Pass activos: <b>${passOn}</b> (/passes)\n🔁 Auto-Boost activos: <b>${on}</b> · 👥 Comisión de invitados: <b>${(com[0] && com[0].n) || 0}</b> Boosts\n`
     } catch {
       autoLine = ''
     }
