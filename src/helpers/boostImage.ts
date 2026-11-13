@@ -884,15 +884,21 @@ export async function renderTopupDoneImage(info: { added: number; balance: numbe
   return canvas.toBuffer('image/png')
 }
 
-/** Monthly Pass screen: the options with their prices */
-export async function renderPassMenuImage(info: { options: { n: number; stars: number; usdt: number }[]; active?: string }): Promise<Buffer> {
+/** Monthly Pass screen: the options with their prices (style a, b or c) */
+export async function renderPassMenuImage(info: {
+  options: { n: number; stars: number; usdt: number }[]
+  active?: string
+  step?: number
+  style?: string
+}): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const H = 720
   const canvas = createCanvas(1280, H)
   const x = canvas.getContext('2d')
   x.textBaseline = 'alphabetic'
-  x.fillStyle = '#12082e'
-  x.fillRect(0, 0, 1280, H)
+  const step = info.step || 10
+  const list = info.options.slice(0, 4)
+  const style = info.style || 'a'
   const glow = (cx: number, cy: number, r: number, col: string) => {
     const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
     g.addColorStop(0, col)
@@ -900,33 +906,102 @@ export async function renderPassMenuImage(info: { options: { n: number; stars: n
     x.fillStyle = g
     x.fillRect(0, 0, 1280, H)
   }
-  glow(1100, 80, 700, 'rgba(255,190,40,0.28)')
-  glow(100, 700, 800, 'rgba(120,70,255,0.50)')
-  x.globalAlpha = 0.07
-  bolt(x, 1060, 300, 520, '#ffffff')
-  x.globalAlpha = 1
-  const gold = x.createLinearGradient(70, 0, 700, 0)
-  gold.addColorStop(0, '#fff1b0')
-  gold.addColorStop(0.5, '#ffc83c')
-  gold.addColorStop(1, '#ff9a1f')
-  pillBox(x, 70, 56, info.active ? 560 : 330, 50, 'rgba(255,200,60,0.18)', info.active || 'MONTHLY PASS', '#ffc83c', '22px InterX')
-  txt(x, 'Boost every giveaway', 70, 200, '82px InterX', '#ffffff', 'left')
-  txt(x, 'automatically. No limits.', 70, 280, '82px InterX', gold as any, 'left')
-  txt(x, '30 days · no Boosts spent', 70, 335, '32px InterB', '#d9c8ff', 'left')
-  const list = info.options.slice(0, 4)
-  const gap = 20
-  const w = Math.floor((1140 - gap * (list.length - 1)) / list.length)
-  list.forEach((o, i) => {
-    const px = 70 + i * (w + gap)
-    const py = 380
-    x.fillStyle = 'rgba(255,255,255,0.10)'
-    rrect(x, px, py, w, 270, 28)
-    x.fill()
-    txt(x, `${o.n}`, px + w / 2, py + 130, '130px InterX', gold as any, 'center')
-    txt(x, `${o.n === 1 ? 'BOOST' : 'BOOSTS'} / GIVEAWAY`, px + w / 2, py + 172, '21px InterX', '#ffffff', 'center')
-    txt(x, `${o.stars} Stars`, px + w / 2, py + 220, '32px InterX', '#ffc83c', 'center')
-    txt(x, `or $${o.usdt} USDT`, px + w / 2, py + 252, '22px InterB', '#d9c8ff', 'center')
-  })
+  const goldGrad = (x0: number, x1: number) => {
+    const g = x.createLinearGradient(x0, 0, x1, 0)
+    g.addColorStop(0, '#fff1b0')
+    g.addColorStop(0.5, '#ffc83c')
+    g.addColorStop(1, '#ff9a1f')
+    return g
+  }
+  const entries = (n: number) => `+${n * step} entries`
+  const tag = info.active || 'MONTHLY PASS'
+  if (style === 'b') {
+    // Bright: pink-violet gradient with white cards
+    const bg = x.createLinearGradient(0, 0, 1280, 720)
+    bg.addColorStop(0, '#ff5fa2')
+    bg.addColorStop(0.5, '#8a3cff')
+    bg.addColorStop(1, '#2a1a9a')
+    x.fillStyle = bg
+    x.fillRect(0, 0, 1280, H)
+    glow(1150, 60, 600, 'rgba(255,255,255,0.22)')
+    pillBox(x, 70, 50, info.active ? 560 : 330, 50, 'rgba(255,255,255,0.22)', tag, '#ffffff', '22px InterX')
+    txt(x, 'Monthly Pass', 70, 190, '100px InterX', '#ffffff', 'left')
+    txt(x, 'We boost every giveaway you join.', 70, 255, '38px InterB', '#ffe9f6', 'left')
+    txt(x, '1 Boost = 10 entries · 30 days · no limits'.replace('10', `${step}`), 70, 305, '30px InterB', '#ffd2ec', 'left')
+    const gap = 22
+    const w = Math.floor((1140 - gap * (list.length - 1)) / list.length)
+    list.forEach((o, i) => {
+      const px = 70 + i * (w + gap)
+      const py = 350
+      const pop = o.n === 3
+      x.fillStyle = 'rgba(20,0,60,0.25)'
+      rrect(x, px, py + 8, w, 310, 30)
+      x.fill()
+      x.fillStyle = '#ffffff'
+      rrect(x, px, py, w, 310, 30)
+      x.fill()
+      if (pop) pillBox(x, px + w / 2 - 95, py - 22, 190, 44, '#ffc83c', 'MOST POPULAR', '#3a1c6b', '19px InterX')
+      txt(x, `${o.n}`, px + w / 2, py + 130, '140px InterX', '#5a2ad0', 'center')
+      txt(x, `${o.n === 1 ? 'BOOST' : 'BOOSTS'} / GIVEAWAY`, px + w / 2, py + 170, '20px InterX', '#2a1a6a', 'center')
+      txt(x, entries(o.n), px + w / 2, py + 210, '26px InterX', '#e0338f', 'center')
+      txt(x, `${o.stars} Stars`, px + w / 2, py + 262, '34px InterX', '#1b1240', 'center')
+      txt(x, `or $${o.usdt} USDT`, px + w / 2, py + 295, '21px InterB', '#7a6aa8', 'center')
+    })
+  } else if (style === 'c') {
+    // Ladder: one row per option
+    x.fillStyle = '#07151f'
+    x.fillRect(0, 0, 1280, H)
+    glow(1100, 100, 800, 'rgba(0,214,170,0.30)')
+    glow(100, 700, 800, 'rgba(70,90,255,0.40)')
+    pillBox(x, 70, 50, info.active ? 560 : 330, 50, 'rgba(0,230,170,0.18)', tag, '#2de0a8', '22px InterX')
+    txt(x, 'Boost every', 70, 190, '80px InterX', '#ffffff', 'left')
+    txt(x, 'giveaway', 70, 275, '80px InterX', '#ffffff', 'left')
+    txt(x, 'automatically', 70, 360, '80px InterX', '#2de0a8', 'left')
+    txt(x, `1 Boost = ${step} entries`, 70, 430, '34px InterB', '#bfeee0', 'left')
+    txt(x, '30 days · no limits', 70, 478, '34px InterB', '#bfeee0', 'left')
+    list.forEach((o, i) => {
+      const py = 60 + i * 158
+      const px = 670
+      x.fillStyle = 'rgba(255,255,255,0.09)'
+      rrect(x, px, py, 550, 138, 30)
+      x.fill()
+      x.fillStyle = '#2de0a8'
+      rrect(x, px + 18, py + 18, 102, 102, 24)
+      x.fill()
+      txt(x, `${o.n}`, px + 69, py + 94, '70px InterX', '#07151f', 'center')
+      txt(x, `${o.n === 1 ? 'Boost' : 'Boosts'} / giveaway`, px + 142, py + 64, '26px InterX', '#ffffff', 'left')
+      txt(x, entries(o.n), px + 142, py + 104, '25px InterB', '#2de0a8', 'left')
+      txt(x, `${o.stars}⭐`.replace('⭐', ' Stars'), px + 530, py + 64, '27px InterX', '#ffc83c', 'right')
+      txt(x, `$${o.usdt} USDT`, px + 530, py + 104, '23px InterB', '#bfeee0', 'right')
+    })
+  } else {
+    // Dark violet and gold
+    x.fillStyle = '#12082e'
+    x.fillRect(0, 0, 1280, H)
+    glow(1100, 80, 700, 'rgba(255,190,40,0.28)')
+    glow(100, 700, 800, 'rgba(120,70,255,0.50)')
+    x.globalAlpha = 0.07
+    bolt(x, 1060, 300, 520, '#ffffff')
+    x.globalAlpha = 1
+    pillBox(x, 70, 56, info.active ? 560 : 330, 50, 'rgba(255,200,60,0.18)', tag, '#ffc83c', '22px InterX')
+    txt(x, 'Boost every giveaway', 70, 195, '82px InterX', '#ffffff', 'left')
+    txt(x, 'automatically. No limits.', 70, 275, '82px InterX', goldGrad(70, 700) as any, 'left')
+    txt(x, `1 Boost = ${step} entries · 30 days`, 70, 330, '32px InterB', '#d9c8ff', 'left')
+    const gap = 20
+    const w = Math.floor((1140 - gap * (list.length - 1)) / list.length)
+    list.forEach((o, i) => {
+      const px = 70 + i * (w + gap)
+      const py = 375
+      x.fillStyle = 'rgba(255,255,255,0.10)'
+      rrect(x, px, py, w, 285, 28)
+      x.fill()
+      txt(x, `${o.n}`, px + w / 2, py + 118, '120px InterX', goldGrad(px, px + w) as any, 'center')
+      txt(x, `${o.n === 1 ? 'BOOST' : 'BOOSTS'} / GIVEAWAY`, px + w / 2, py + 158, '20px InterX', '#ffffff', 'center')
+      txt(x, entries(o.n), px + w / 2, py + 192, '24px InterB', '#ffc83c', 'center')
+      txt(x, `${o.stars} Stars`, px + w / 2, py + 242, '32px InterX', '#ffffff', 'center')
+      txt(x, `or $${o.usdt} USDT`, px + w / 2, py + 272, '21px InterB', '#d9c8ff', 'center')
+    })
+  }
   return canvas.toBuffer('image/png')
 }
 

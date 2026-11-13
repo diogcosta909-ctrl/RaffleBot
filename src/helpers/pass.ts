@@ -13,7 +13,7 @@ import {
   walletOf,
   CRYPTO_EXPIRY_MIN,
 } from './cryptoPay'
-import { editScreen, pickNetwork } from './boost'
+import { editScreen, pickNetwork, BOOST_STEP } from './boost'
 import { showPhoto } from './photoScreen'
 
 // Monthly Pass: one payment = 30 days of Auto-Boost in every giveaway, with no limit and no Boosts spent.
@@ -187,6 +187,8 @@ async function showPass(ctx: any, edit: boolean) {
   try {
     const image = await require('./boostImage').renderPassMenuImage({
       options: passOptions(),
+      step: BOOST_STEP,
+      style: 'c',
       active: active ? `ACTIVE · UNTIL ${dateLabel(chat.passUntil).toUpperCase()}` : '',
     })
     if (await showPhoto(ctx, image, keyboard, edit, caption)) return
