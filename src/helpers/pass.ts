@@ -15,7 +15,7 @@ import {
 } from './cryptoPay'
 import { editScreen, pickNetwork } from './boost'
 
-// Auto-Boost Pass: one payment = 30 days of Auto-Boost in every giveaway, with no limit and no Boosts spent.
+// Monthly Pass: one payment = 30 days of Auto-Boost in every giveaway, with no limit and no Boosts spent.
 // PASS_OPTIONS="Boosts:Stars:USDT,..." (defaults below). Texts are in English (they go to the bot's users).
 
 export interface PassOption {
@@ -73,16 +73,22 @@ export async function activatePass(userId: number, n: number) {
 
 async function sendPaidMessage(telegram: any, u: any, n: number, until: Date, paid: string) {
   const name = u.username ? `@${u.username}` : `${u.first_name || ''}${u.last_name ? ` ${u.last_name}` : ''}`.trim()
+  const caption =
+    `👑 <b>Monthly Pass is active</b>\n\n` +
+    `🚀 <b>${n} ${boostWord(n)}</b> in every giveaway you join\n` +
+    `📅 Valid until <b>${dateLabel(until)}</b>\n` +
+    `♾ No limits. No Boosts spent.\n\n` +
+    `Just join giveaways. We do the rest.`
   try {
-    await telegram.sendMessage(
-      u.id,
-      `👑 <b>Auto-Boost Pass is active</b>\n\n` +
-        `🚀 <b>${n} ${boostWord(n)}</b> in every giveaway you join\n` +
-        `📅 Valid until <b>${dateLabel(until)}</b>\n` +
-        `♾ No limits. No Boosts spent.\n\n` +
-        `Just join giveaways. We do the rest.`,
-      { parse_mode: 'HTML' }
-    )
+    let sent = false
+    try {
+      const image = await require('./boostImage').renderPassImage({ n, until: dateLabel(until) })
+      await telegram.sendPhoto(u.id, { source: image }, { caption, parse_mode: 'HTML' })
+      sent = true
+    } catch (err) {
+      console.error('Pass image failed, sending text', err)
+    }
+    if (!sent) await telegram.sendMessage(u.id, caption, { parse_mode: 'HTML' })
   } catch (err) {
     console.error('Pass confirmation failed', err)
   }
@@ -91,11 +97,30 @@ async function sendPaidMessage(telegram: any, u: any, n: number, until: Date, pa
     try {
       await telegram.sendMessage(
         admin,
-        `👑 <b>Nuevo Auto-Boost Pass</b>\n\n👤 ${esc(name)} (<code>${u.id}</code>)\n🚀 ${n} por sorteo · hasta ${dateLabel(until)}\n💳 ${paid}`,
+        `👑 <b>Nuevo Monthly Pass</b>\n\n👤 ${esc(name)} (<code>${u.id}</code>)\n🚀 ${n} por sorteo · hasta ${dateLabel(until)}\n💳 ${paid}`,
         { parse_mode: 'HTML' }
       )
     } catch (err) {
       console.error(err)
+    }
+  }
+  // Public feed (BOOST_FEED_CHAT)
+  const feed = (process.env.BOOST_FEED_CHAT || '').trim()
+  if (feed) {
+    try {
+      const who = u.username ? esc(name) : `<a href="tg://user?id=${u.id}">${esc(name)}</a>`
+      const text = `👑 <b>${who}</b> got the <b>Monthly Pass</b>\n🚀 <b>${n} ${boostWord(n)}</b> in every giveaway`
+      let sent = false
+      try {
+        const image = await require('./boostImage').renderPassImage({ n, until: dateLabel(until), name })
+        await telegram.sendPhoto(feed, { source: image }, { caption: text, parse_mode: 'HTML', disable_notification: true })
+        sent = true
+      } catch (err) {
+        console.error('Pass feed image failed, sending text', err)
+      }
+      if (!sent) await telegram.sendMessage(feed, text, { parse_mode: 'HTML', disable_notification: true })
+    } catch (err) {
+      console.error('Pass feed message failed', err)
     }
   }
 }
@@ -139,7 +164,7 @@ async function showPass(ctx: any, edit: boolean) {
   }
   const active = passActive(chat)
   const text =
-    `👑 <b>Auto-Boost Pass</b>\n\n` +
+    `👑 <b>Monthly Pass</b>\n\n` +
     `One payment, 30 days.\n` +
     `We boost <b>every giveaway you join</b>, automatically.\n` +
     `♾ No limits · no Boosts spent\n\n` +
@@ -230,7 +255,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
       keyboard.push([{ text: '← Back', callback_data: 'ps~m' }])
       await editScreen(
         ctx,
-        `👑 <b>Auto-Boost Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway\n📅 30 days · no limits\n\nHow do you want to pay? 👇`,
+        `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway\n📅 30 days · no limits\n\nHow do you want to pay? 👇`,
         { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
       )
     } catch (err) {
@@ -246,12 +271,12 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
     try {
       await (ctx.telegram as any).callApi('sendInvoice', {
         chat_id: ctx.chat.id,
-        title: `Auto-Boost Pass · ${o.n} ${boostWord(o.n)} per giveaway`,
+        title: `Monthly Pass · ${o.n} ${boostWord(o.n)} per giveaway`,
         description: '30 days. We boost every giveaway you join, automatically. No limits.',
         payload: `pass:${o.n}`,
         provider_token: '',
         currency: 'XTR',
-        prices: [{ label: `Auto-Boost Pass · ${o.n}/giveaway`, amount: o.stars }],
+        prices: [{ label: `Monthly Pass · ${o.n}/giveaway`, amount: o.stars }],
       })
     } catch (err) {
       console.error(err)
@@ -280,7 +305,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
       })
       const amount = formatUnits(order.amountUnits)
       const caption =
-        `👑 <b>Auto-Boost Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway · 30 days\n\n` +
+        `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway · 30 days\n\n` +
         `1️⃣ Send exactly <i>(tap to copy)</i>\n<code>${amount}</code> USDT\n\n` +
         `2️⃣ To this address <i>(tap to copy)</i> · <b>${networkLabel(network)}</b> only\n<code>${walletOf(network)}</code>\n\n` +
         `⏳ Valid ${CRYPTO_EXPIRY_MIN} min · Pass starts automatically in 1–2 min\n` +
@@ -312,7 +337,7 @@ export async function passSweep(tg: any) {
     try {
       await tg.sendMessage(
         c.chatId,
-        `👑 <b>Your Auto-Boost Pass ends on ${dateLabel(c.passUntil)}</b>\n\nRenew now and the 30 days are added to what you have left.`,
+        `👑 <b>Your Monthly Pass ends on ${dateLabel(c.passUntil)}</b>\n\nRenew now and the 30 days are added to what you have left.`,
         { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '👑 Renew Pass', callback_data: 'ps~m' }]] } }
       )
     } catch {
@@ -328,7 +353,7 @@ export async function passSweep(tg: any) {
     try {
       await tg.sendMessage(
         c.chatId,
-        `👑 <b>Your Auto-Boost Pass has ended</b>\n\nGet it again so you never miss a Boost.`,
+        `👑 <b>Your Monthly Pass has ended</b>\n\nGet it again so you never miss a Boost.`,
         { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '👑 Get Pass', callback_data: 'ps~m' }]] } }
       )
     } catch {

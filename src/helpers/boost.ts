@@ -646,7 +646,7 @@ export async function notifyOwner(
           : `<a href="tg://user?id=${info.userId}">${escHtml(name)}</a>`
         const mult = info.boostMult || multiplierOf()
         const head = info.pass
-          ? `👑 <b>${who}</b> boosted with Auto-Boost Pass`
+          ? `👑 <b>${who}</b> boosted with Monthly Pass`
           : info.auto
           ? `🔁 <b>${who}</b> boosted with Auto-Boost`
           : info.gift

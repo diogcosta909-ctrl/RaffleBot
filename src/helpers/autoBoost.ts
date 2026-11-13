@@ -333,7 +333,7 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
   )
 }
 
-/** Auto-Boost Pass: the Boosts come with the Pass (no credits spent, no daily limit) */
+/** Monthly Pass: the Boosts come with the Pass (no credits spent, no daily limit) */
 async function passOnJoin(raffle: any, from: any, chat: any): Promise<string> {
   const userId = from.id
   const raffleId = `${raffle._id}`

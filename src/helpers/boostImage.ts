@@ -884,6 +884,48 @@ export async function renderTopupDoneImage(info: { added: number; balance: numbe
   return canvas.toBuffer('image/png')
 }
 
+/** Monthly Pass: bot confirmation (no name) or public feed card (with name) */
+export async function renderPassImage(info: { n: number; until: string; name?: string }): Promise<Buffer> {
+  const { createCanvas } = loadCanvas()
+  const H = 720
+  const canvas = createCanvas(1280, H)
+  const x = canvas.getContext('2d')
+  x.textBaseline = 'alphabetic'
+  x.fillStyle = '#12082e'
+  x.fillRect(0, 0, 1280, H)
+  const glow = (cx: number, cy: number, r: number, col: string) => {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, col)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    x.fillStyle = g
+    x.fillRect(0, 0, 1280, H)
+  }
+  glow(1050, 120, 760, 'rgba(255,190,40,0.30)')
+  glow(150, 650, 800, 'rgba(120,70,255,0.50)')
+  x.globalAlpha = 0.08
+  bolt(x, 990, 360, 540, '#ffffff')
+  x.globalAlpha = 1
+  const gold = x.createLinearGradient(90, 0, 640, 0)
+  gold.addColorStop(0, '#fff1b0')
+  gold.addColorStop(0.5, '#ffc83c')
+  gold.addColorStop(1, '#ff9a1f')
+  const who = info.name ? drawableName(info.name) || 'Someone' : ''
+  pillBox(x, 90, 70, who ? 400 : 440, 52, 'rgba(255,200,60,0.18)', who ? 'MONTHLY PASS' : 'MONTHLY PASS ACTIVE', '#ffc83c', '22px InterX')
+  if (who) txt(x, who, 90, 215, who.length > 16 ? '64px InterX' : '78px InterX', '#ffffff', 'left')
+  if (who) txt(x, 'got the Monthly Pass', 90, 275, '38px InterB', '#d9c8ff', 'left')
+  const n = Math.max(1, Math.round(info.n))
+  const big = `${n}`
+  x.font = '250px InterX'
+  const bw = x.measureText(big).width
+  txt(x, big, 90, who ? 505 : 430, '250px InterX', gold as any, 'left')
+  const rx = 90 + bw + 40
+  txt(x, n === 1 ? 'BOOST' : 'BOOSTS', rx, who ? 420 : 345, '64px InterX', '#ffffff', 'left')
+  txt(x, 'IN EVERY GIVEAWAY', rx, who ? 490 : 415, '44px InterX', '#ffc83c', 'left')
+  pillBox(x, 90, who ? 560 : 500, 640, 96, 'rgba(255,255,255,0.1)', `No limits · until ${info.until}`, '#ffffff', '40px InterX')
+  if (!who) txt(x, 'We boost every giveaway you join', 90, 655, '30px InterB', '#d9c8ff', 'left')
+  return canvas.toBuffer('image/png')
+}
+
 /** Daily spin prize (public feed) */
 export async function renderWheelImage(info: { name: string; prize: number; streak: number }): Promise<Buffer> {
   return renderCard({
