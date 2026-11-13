@@ -890,6 +890,8 @@ export async function renderPassMenuImage(info: {
   active?: string
   step?: number
   style?: string
+  // Value example: joining `giveaways` giveaways with 1 Boost each costs `packs` Stars in packs, `pass` Stars with the Pass
+  value?: { giveaways: number; packs: number; pass: number; save: number }
 }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const H = 720
@@ -959,6 +961,26 @@ export async function renderPassMenuImage(info: {
     txt(x, 'automatically', 70, 360, '80px InterX', '#2de0a8', 'left')
     txt(x, `1 Boost = ${step} entries`, 70, 430, '34px InterB', '#bfeee0', 'left')
     txt(x, '30 days · no limits', 70, 478, '34px InterB', '#bfeee0', 'left')
+    if (info.value) {
+      const v = info.value
+      x.fillStyle = 'rgba(255,255,255,0.09)'
+      rrect(x, 70, 515, 560, 170, 28)
+      x.fill()
+      txt(x, `${v.giveaways.toLocaleString('en-US')} giveaways · 1 Boost each`, 98, 564, '25px InterB', '#bfeee0', 'left')
+      const packsT = `${v.packs.toLocaleString('en-US')} Stars`
+      txt(x, packsT, 98, 624, '34px InterX', '#7f98a0', 'left')
+      x.font = '34px InterX'
+      const pw = x.measureText(packsT).width
+      x.strokeStyle = '#ff6b7a'
+      x.lineWidth = 5
+      x.beginPath()
+      x.moveTo(94, 612)
+      x.lineTo(102 + pw, 612)
+      x.stroke()
+      txt(x, `→ ${v.pass} Stars`, 98 + pw + 22, 626, '40px InterX', '#2de0a8', 'left')
+      txt(x, 'with the Monthly Pass', 98, 665, '22px InterB', '#bfeee0', 'left')
+      pillBox(x, 440, 634, 160, 38, '#ffc83c', `SAVE ${v.save}%`, '#07151f', '20px InterX')
+    }
     list.forEach((o, i) => {
       const py = 60 + i * 158
       const px = 670

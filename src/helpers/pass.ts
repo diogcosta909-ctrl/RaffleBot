@@ -13,7 +13,7 @@ import {
   walletOf,
   CRYPTO_EXPIRY_MIN,
 } from './cryptoPay'
-import { editScreen, pickNetwork, BOOST_STEP } from './boost'
+import { editScreen, pickNetwork, BOOST_STEP, BOOST_PRICE } from './boost'
 import { showPhoto } from './photoScreen'
 import { CryptoOrderModel } from '../models/cryptoOrder'
 
@@ -43,6 +43,15 @@ function parseOptions(raw: string): PassOption[] {
 export function passOptions(): PassOption[] {
   const list = parseOptions(process.env.PASS_OPTIONS || DEFAULTS)
   return list.length ? list : parseOptions(DEFAULTS)
+}
+
+/** Example of the saving: 1,000 giveaways with 1 Boost each, in packs vs with the Pass (null when the Pass is not cheaper) */
+export function passValue() {
+  const one = passOptions().filter((o) => o.n === 1)[0] || passOptions()[0]
+  const giveaways = 1000
+  const packs = Math.round(giveaways * one.n * BOOST_PRICE)
+  const save = Math.round((1 - one.stars / packs) * 100)
+  return save > 0 ? { giveaways, packs, pass: one.stars, save } : null
 }
 
 export function passOption(n: number) {
@@ -190,6 +199,7 @@ async function showPass(ctx: any, edit: boolean) {
       options: passOptions(),
       step: BOOST_STEP,
       style: 'c',
+      value: passValue(),
       active: active ? `ACTIVE · UNTIL ${dateLabel(chat.passUntil).toUpperCase()}` : '',
     })
     if (await showPhoto(ctx, image, keyboard, edit, caption)) return
