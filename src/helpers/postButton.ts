@@ -31,7 +31,7 @@ export function setupPostButton(bot: Telegraf<ContextMessageUpdate>) {
     const buy = { text: '🚀 Buy Boosts', url: `https://t.me/${bot_}?start=recharge` }
     const spin = { text: '🎡 Spin the wheel', url: `https://t.me/${bot_}?start=spin` }
     const auto = { text: '🔁 Auto-Boost', url: `https://t.me/${bot_}?start=autoboost` }
-    const pass = { text: '👑 Monthly Pass', url: `https://t.me/${bot_}?start=pass` }
+    const pass = { text: '🪎 Monthly Pass (unlimited)', url: `https://t.me/${bot_}?start=pass` }
     const rows = kind === 'pass' ? [[pass]] : kind === 'pass+' ? [[pass], [buy]] : kind === 'auto' ? [[auto]] : kind === 'auto+' ? [[auto], [buy]] : kind === 'spin' ? [[spin]] : kind === 'boost' ? [[buy]] : kind === 'both' ? [[all], [buy]] : [[all]]
     const reply_markup = { inline_keyboard: rows }
     const reply = msg.reply_to_message
