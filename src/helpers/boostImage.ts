@@ -1006,13 +1006,13 @@ export async function renderPassMenuImage(info: {
 }
 
 /** Monthly Pass: bot confirmation (no name) or public feed card (with name) */
-export async function renderPassImage(info: { n: number; until: string; name?: string }): Promise<Buffer> {
+export async function renderPassImage(info: { n: number; until: string; name?: string; step?: number }): Promise<Buffer> {
   const { createCanvas } = loadCanvas()
   const H = 720
   const canvas = createCanvas(1280, H)
   const x = canvas.getContext('2d')
   x.textBaseline = 'alphabetic'
-  x.fillStyle = '#12082e'
+  x.fillStyle = '#07151f'
   x.fillRect(0, 0, 1280, H)
   const glow = (cx: number, cy: number, r: number, col: string) => {
     const g = x.createRadialGradient(cx, cy, 0, cx, cy, r)
@@ -1021,29 +1021,31 @@ export async function renderPassImage(info: { n: number; until: string; name?: s
     x.fillStyle = g
     x.fillRect(0, 0, 1280, H)
   }
-  glow(1050, 120, 760, 'rgba(255,190,40,0.30)')
-  glow(150, 650, 800, 'rgba(120,70,255,0.50)')
-  x.globalAlpha = 0.08
-  bolt(x, 990, 360, 540, '#ffffff')
+  glow(1100, 100, 800, 'rgba(0,214,170,0.30)')
+  glow(100, 700, 800, 'rgba(70,90,255,0.40)')
+  x.globalAlpha = 0.07
+  bolt(x, 1000, 360, 540, '#ffffff')
   x.globalAlpha = 1
-  const gold = x.createLinearGradient(90, 0, 640, 0)
-  gold.addColorStop(0, '#fff1b0')
-  gold.addColorStop(0.5, '#ffc83c')
-  gold.addColorStop(1, '#ff9a1f')
+  const mint = x.createLinearGradient(90, 0, 600, 0)
+  mint.addColorStop(0, '#c9ffee')
+  mint.addColorStop(1, '#2de0a8')
   const who = info.name ? drawableName(info.name) || 'Someone' : ''
-  pillBox(x, 90, 70, who ? 400 : 440, 52, 'rgba(255,200,60,0.18)', who ? 'MONTHLY PASS' : 'MONTHLY PASS ACTIVE', '#ffc83c', '22px InterX')
-  if (who) txt(x, who, 90, 215, who.length > 16 ? '64px InterX' : '78px InterX', '#ffffff', 'left')
-  if (who) txt(x, 'got the Monthly Pass', 90, 275, '38px InterB', '#d9c8ff', 'left')
   const n = Math.max(1, Math.round(info.n))
-  const big = `${n}`
+  const step = info.step || 10
+  pillBox(x, 90, 60, who ? 330 : 440, 52, 'rgba(0,230,170,0.18)', who ? 'MONTHLY PASS' : 'MONTHLY PASS ACTIVE', '#2de0a8', '22px InterX')
+  if (who) {
+    txt(x, who, 90, 205, who.length > 16 ? '64px InterX' : '80px InterX', '#ffffff', 'left')
+    txt(x, 'got the Monthly Pass', 90, 262, '38px InterB', '#bfeee0', 'left')
+  }
+  const by = who ? 500 : 420
   x.font = '250px InterX'
-  const bw = x.measureText(big).width
-  txt(x, big, 90, who ? 505 : 430, '250px InterX', gold as any, 'left')
+  const bw = x.measureText(`${n}`).width
+  txt(x, `${n}`, 90, by, '250px InterX', mint as any, 'left')
   const rx = 90 + bw + 40
-  txt(x, n === 1 ? 'BOOST' : 'BOOSTS', rx, who ? 420 : 345, '64px InterX', '#ffffff', 'left')
-  txt(x, 'IN EVERY GIVEAWAY', rx, who ? 490 : 415, '44px InterX', '#ffc83c', 'left')
-  pillBox(x, 90, who ? 560 : 500, 640, 96, 'rgba(255,255,255,0.1)', `No limits · until ${info.until}`, '#ffffff', '40px InterX')
-  if (!who) txt(x, 'We boost every giveaway you join', 90, 655, '30px InterB', '#d9c8ff', 'left')
+  txt(x, n === 1 ? 'BOOST' : 'BOOSTS', rx, by - 85, '64px InterX', '#ffffff', 'left')
+  txt(x, 'IN EVERY GIVEAWAY', rx, by - 18, '42px InterX', '#2de0a8', 'left')
+  pillBox(x, 90, by + 50, 800, 90, 'rgba(255,255,255,0.1)', `+${n * step} entries per giveaway · until ${info.until}`, '#ffffff', '34px InterX')
+  if (!who) txt(x, 'No limits. We boost every giveaway you join.', 90, by + 200, '30px InterB', '#bfeee0', 'left')
   return canvas.toBuffer('image/png')
 }
 

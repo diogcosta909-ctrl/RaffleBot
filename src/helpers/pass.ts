@@ -83,7 +83,7 @@ async function sendPaidMessage(telegram: any, u: any, n: number, until: Date, pa
   try {
     let sent = false
     try {
-      const image = await require('./boostImage').renderPassImage({ n, until: dateLabel(until) })
+      const image = await require('./boostImage').renderPassImage({ n, until: dateLabel(until), step: BOOST_STEP })
       await telegram.sendPhoto(u.id, { source: image }, { caption, parse_mode: 'HTML' })
       sent = true
     } catch (err) {
@@ -113,7 +113,7 @@ async function sendPaidMessage(telegram: any, u: any, n: number, until: Date, pa
       const text = `👑 <b>${who}</b> got the <b>Monthly Pass</b>\n🚀 <b>${n} ${boostWord(n)}</b> in every giveaway`
       let sent = false
       try {
-        const image = await require('./boostImage').renderPassImage({ n, until: dateLabel(until), name })
+        const image = await require('./boostImage').renderPassImage({ n, until: dateLabel(until), name, step: BOOST_STEP })
         await telegram.sendPhoto(feed, { source: image }, { caption: text, parse_mode: 'HTML', disable_notification: true })
         sent = true
       } catch (err) {
