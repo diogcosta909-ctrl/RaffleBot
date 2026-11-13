@@ -176,14 +176,18 @@ async function showPass(ctx: any, edit: boolean, src = 'menu') {
   const active = passActive(chat)
   const text =
     `👑 <b>Monthly Pass</b>\n\n` +
-    `One payment, 30 days.\n` +
-    `We boost <b>every giveaway you join</b>, automatically.\n` +
-    `♾ No limits · no Boosts spent\n\n` +
+    `One payment. <b>30 days</b>. Zero effort.\n` +
+    `We <b>boost every giveaway you join</b>, automatically.\n\n` +
+    `✅ <b>1 Boost = ${BOOST_STEP} entries</b>\n` +
+    `✅ Pick <b>1, 2, 3 or 5 Boosts</b> per giveaway\n` +
+    `✅ <b>No limits</b>: every giveaway, all month\n` +
+    `✅ <b>No Boosts spent</b>: it is all included\n` +
+    `✅ Pay with ⭐ <b>Stars</b> or 🪙 <b>USDT</b>\n\n` +
     (active
-      ? `✅ <b>Active</b> · ${chat.passN} ${boostWord(chat.passN)} per giveaway · until <b>${dateLabel(chat.passUntil)}</b>\n` +
-        `Buying again adds 30 days.\n\n`
-      : '') +
-    `How many Boosts per giveaway? 👇`
+      ? `🟢 <b>Your Pass is active</b> · ${chat.passN} ${boostWord(chat.passN)} per giveaway · until <b>${dateLabel(chat.passUntil)}</b>\n` +
+        `Buying again adds <b>30 more days</b>.\n\n`
+      : `🔥 The more giveaways you join, the more you save.\n\n`) +
+    `<b>How many Boosts per giveaway?</b> 👇`
   const buttons = passOptions().map((o) => ({
     text: `🚀 ${o.n} ${boostWord(o.n)}`,
     callback_data: `ps~${o.n}`,
@@ -191,9 +195,7 @@ async function showPass(ctx: any, edit: boolean, src = 'menu') {
   const keyboard: any[] = []
   for (let i = 0; i < buttons.length; i += 2) keyboard.push(buttons.slice(i, i + 2))
   keyboard.push([{ text: '← Back', callback_data: 'ab~m' }])
-  const caption = active
-    ? `✅ Pass active · ${chat.passN} ${boostWord(chat.passN)} per giveaway · until ${dateLabel(chat.passUntil)}\nBuying again adds 30 days.\n\nHow many Boosts per giveaway? 👇`
-    : `One payment, 30 days.\nWe boost every giveaway you join, automatically.\n\nHow many Boosts per giveaway? 👇`
+  const caption = text
   try {
     const image = await require('./boostImage').renderPassMenuImage({
       options: passOptions(),

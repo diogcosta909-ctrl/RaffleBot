@@ -12,7 +12,7 @@ export async function showPhoto(ctx: any, image: Buffer, keyboard: any[], edit =
           msg.chat.id,
           msg.message_id,
           undefined,
-          { type: 'photo', media: { source: image }, ...(caption ? { caption } : {}) } as any,
+          { type: 'photo', media: { source: image }, ...(caption ? { caption, parse_mode: 'HTML' } : {}) } as any,
           { reply_markup } as any
         )
         return true
@@ -20,7 +20,7 @@ export async function showPhoto(ctx: any, image: Buffer, keyboard: any[], edit =
         if (/not modified/i.test(`${(err && (err.description || err.message)) || ''}`)) return true
       }
     }
-    await ctx.replyWithPhoto({ source: image } as any, { reply_markup, ...(caption ? { caption } : {}) } as any)
+    await ctx.replyWithPhoto({ source: image } as any, { reply_markup, ...(caption ? { caption, parse_mode: 'HTML' } : {}) } as any)
     if (edit && msg) {
       try {
         await ctx.deleteMessage()
