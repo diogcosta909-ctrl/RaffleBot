@@ -161,10 +161,6 @@ export async function onPassCrypto(telegram: any, order: any, txHash: string) {
   await sendPaidMessage(telegram, who, order.boosts, until, `🪙 ${formatUnits(order.amountUnits)} USDT · ${txHash}`)
 }
 
-function priceLine(o: PassOption) {
-  return `${o.stars}⭐${cryptoEnabled() ? ` / $${o.usdt}` : ''}`
-}
-
 async function showPass(ctx: any, edit: boolean) {
   const chat: any = await findChat(ctx.from.id)
   if (!(await hasAcceptedTerms(ctx.from.id))) {
@@ -185,7 +181,7 @@ async function showPass(ctx: any, edit: boolean) {
       : '') +
     `How many Boosts per giveaway? 👇`
   const buttons = passOptions().map((o) => ({
-    text: `🚀 ${o.n} ${boostWord(o.n)} · ${priceLine(o)}`,
+    text: `🚀 ${o.n} ${boostWord(o.n)}`,
     callback_data: `ps~${o.n}`,
   }))
   const keyboard: any[] = []
