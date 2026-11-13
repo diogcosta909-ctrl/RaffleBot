@@ -29,6 +29,7 @@ import {
   editScreen,
 } from './boost'
 import { showPhoto } from './photoScreen'
+import { passActive, passSweep, dateLabel } from './pass'
 
 // Auto-Boost: Boosts paid with credits and added automatically to every giveaway a person joins.
 // Texts are in English (they are sent to the users of the bot).
@@ -114,7 +115,10 @@ export async function autoBoostStatus(userId: number) {
 
 /** Auto-Boost can only be turned on with Boosts in the balance */
 async function needBoosts(ctx: any, edit: boolean) {
-  const keyboard: any[] = [[{ text: '💳 Buy Boosts', callback_data: 'abr~' }]]
+  const keyboard: any[] = [
+    [{ text: '💳 Buy Boosts', callback_data: 'abr~' }],
+    [{ text: '👑 Monthly Pass · unlimited', callback_data: 'ps~m' }],
+  ]
   try {
     const image = await require('./boostImage').renderAutoNeedImage()
     if (await showPhoto(ctx, image, keyboard, edit, '🔁 Auto-Boost needs Boosts. Buy some first 👇')) return
@@ -149,7 +153,8 @@ async function showMenu(ctx: any, edit = false, track = true) {
     })
   }
   const n = chat.autoBoost || 0
-  if (!n && (await getCredits(userId)) <= 0) {
+  const hasPass = passActive(chat)
+  if (!n && !hasPass && (await getCredits(userId)) <= 0) {
     void trackAuto('open_nobal', userId)
     return needBoosts(ctx, edit)
   }
@@ -159,6 +164,9 @@ async function showMenu(ctx: any, edit = false, track = true) {
     `Boost every giveaway you join, automatically.\n` +
     `Paid with your Boosts. Free Boosts are used first.\n\n` +
     ((await autoBoostCountLine()) ? `${await autoBoostCountLine()}\n\n` : '') +
+    (hasPass
+      ? `👑 <b>Pass active</b> · ${chat.passN} ${boostWord(chat.passN)} per giveaway · until ${dateLabel(chat.passUntil)}\n\n`
+      : '') +
     (n ? `Now: <b>ON · ${n} ${boostWord(n)} per giveaway</b>\n\n` : '') +
     `How many Boosts per giveaway?`
   const keyboard: any[] = [
@@ -168,6 +176,7 @@ async function showMenu(ctx: any, edit = false, track = true) {
       { text: `${n === 3 ? '✅ ' : ''}🚀 3 Boosts`, callback_data: 'ab~3' },
     ],
   ]
+  keyboard.push([{ text: hasPass ? '👑 Pass · extend' : '👑 Monthly Pass · unlimited', callback_data: 'ps~m' }])
   if (n) {
     keyboard.push([
       { text: '🛡 Daily limit', callback_data: 'abl~m' },
@@ -324,6 +333,60 @@ async function pauseOrOff(chat: any, raffle: any, res: any, today: string) {
   )
 }
 
+/** Auto-Boost Pass: the Boosts come with the Pass (no credits spent, no daily limit) */
+async function passOnJoin(raffle: any, from: any, chat: any): Promise<string> {
+  const userId = from.id
+  const raffleId = `${raffle._id}`
+  const res: any = await validateBoost(raffleId, userId, 1)
+  if (res.error) return '' // over, Boost off, or already at the maximum
+  const k = Math.min(chat.passN || 1, maxBoosts() - res.used)
+  if (k <= 0) return ''
+  const mult = multiplierOf()
+  const upd: any = await RaffleModel.updateOne(
+    { _id: raffle._id, winners: { $exists: false } },
+    { $push: { boostIds: { $each: Array(k).fill(userId) }, boostMults: { $each: Array(k).fill(mult) } } }
+  )
+  if (!upd || !upd.nModified) return ''
+  await ChatModel.updateOne({ chatId: userId }, { $inc: { passBoosts: k, autoBoostCount: 1 } })
+  await trackBoost({ type: 'invoice', userId, raffleId, boosts: k, method: 'pass', reminded: true })
+  void trackAuto('applied', userId, { k, raffleId })
+  const value = res.value + k * mult
+  const base = entryValueOf(res.raffle)
+  try {
+    const fresh: any = await RaffleModel.findById(raffle._id).select('-participantsIds')
+    const raffleChat = await findChat(fresh.chatId)
+    await require('./raffle').refreshRaffleMessage(tg, fresh, raffleChat)
+    void overtakeAlerts(tg, fresh, from, k, mult)
+  } catch {
+    // message may be unchanged or deleted
+  }
+  const step = BOOST_STEP * mult
+  await notifyOwner(
+    { telegram: tg, from },
+    {
+      userId,
+      stars: 0,
+      credits: true,
+      auto: true,
+      pass: true,
+      n: k,
+      chatId: raffle.chatId,
+      messageId: raffle.messageId,
+      step,
+      boostMult: mult,
+      mult: multLabel(value, 'es', base),
+      total: base + BOOST_STEP * value,
+    }
+  )
+  const { title, link } = await giveawayInfo(raffle)
+  await send(
+    userId,
+    `👑 <b>Pass applied</b>\n\n🎁 <b>${esc(title)}</b>\n🚀 ${pctLabel(k, 'en', step)} · you have ${multLabel(value, 'en', base)}\n📅 Pass active until ${dateLabel(chat.passUntil)}`,
+    linkRow(link)
+  )
+  return `\n👑 ${pctLabel(k, 'en', step)} applied`
+}
+
 /**
  * Called right after somebody joins a giveaway. Returns a short text for the "You're in" pop-up
  * ('' when Auto-Boost did nothing). The private message goes out on its own.
@@ -332,6 +395,7 @@ export async function autoBoostOnJoin(raffle: any, from: any): Promise<string> {
   if (!tg || !from) return ''
   const userId = from.id
   const chat: any = await ChatModel.findOne({ chatId: userId })
+  if (chat && passActive(chat)) return passOnJoin(raffle, from, chat)
   if (!chat || !(chat.autoBoost > 0)) return ''
   const raffleId = `${raffle._id}`
   const res: any = await validateBoost(raffleId, userId, 1)
@@ -527,6 +591,11 @@ export async function afterCredit(userId: number, type: string) {
 
 /** Hourly: offer the gift to people paused for 48 hours, expire free credits */
 async function sweep() {
+  try {
+    await passSweep(tg)
+  } catch (err) {
+    console.error('Pass sweep failed', err)
+  }
   try {
     await expireFreeCredits(tg)
   } catch (err) {

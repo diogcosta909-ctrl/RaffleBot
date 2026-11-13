@@ -190,6 +190,8 @@ export async function createOrder(info: {
   backRaffleId?: string
   network?: Network
   mult?: number
+  // Exact price in units of 0.0001 USDT (Auto-Boost Pass); default = boosts x CRYPTO_PRICE
+  units?: number
 }) {
   const now = new Date()
   const network: Network = info.network === 'ton' ? 'ton' : 'bsc'
@@ -211,7 +213,7 @@ export async function createOrder(info: {
     }
     return existing
   }
-  const base = unitsFor(info.boosts)
+  const base = info.units || unitsFor(info.boosts)
   // Pack price + the lowest free tail: 0.0201, 0.0202, 0.0203... (grows only when many are open)
   const grace = new Date(now.getTime() - 10 * 60000)
   const taken = (
@@ -219,8 +221,10 @@ export async function createOrder(info: {
   ).map((o: any) => o.amountUnits)
   let units = base + 1
   while (taken.indexOf(units) >= 0) units++
+  const fields: any = { ...info }
+  delete fields.units
   return CryptoOrderModel.create({
-    ...info,
+    ...fields,
     network,
     amountUnits: units,
     startBlock: lastLatest,

@@ -31,6 +31,7 @@ import { setupWinners } from './helpers/winners'
 import { setupOwnerReport, alertOwner } from './helpers/ownerReport'
 import { setupBalances } from './helpers/balances'
 import { setupAutoBoost } from './helpers/autoBoost'
+import { setupPass } from './helpers/pass'
 import { setupReferral } from './helpers/referral'
 import { setupWheel } from './helpers/wheel'
 import { setupPostButton } from './helpers/postButton'
@@ -69,6 +70,7 @@ setupTestWin(bot)
 setupOwnerReport(bot)
 setupBalances(bot)
 setupAutoBoost(bot)
+setupPass(bot)
 setupReferral(bot)
 setupWheel(bot)
 setupPostButton(bot)

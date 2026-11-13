@@ -579,6 +579,7 @@ export async function notifyOwner(
     credits?: boolean
     gift?: boolean
     auto?: boolean
+    pass?: boolean
     userId: number
     stars: number
     n: number
@@ -623,7 +624,7 @@ export async function notifyOwner(
             `👤 <a href="tg://user?id=${info.userId}">${escHtml(name)}</a>\n` +
             `${
               info.credits
-                ? `${info.gift ? '🎁' : '💰'} ${creditsLabel(info.n, 'es')}${info.gift ? ' (gift)' : ''}${info.auto ? ' · 🔁 Auto-Boost' : ''}`
+                ? `${info.gift ? '🎁' : '💰'} ${creditsLabel(info.n, 'es')}${info.gift ? ' (gift)' : ''}${info.pass ? ' · 👑 Pass' : info.auto ? ' · 🔁 Auto-Boost' : ''}`
                 : info.crypto
                 ? `🪙 ${info.crypto} USDT (${networkShort(info.network || 'bsc')})`
                 : `⭐ ${info.stars} Stars`
@@ -644,7 +645,9 @@ export async function notifyOwner(
           ? escHtml(name)
           : `<a href="tg://user?id=${info.userId}">${escHtml(name)}</a>`
         const mult = info.boostMult || multiplierOf()
-        const head = info.auto
+        const head = info.pass
+          ? `👑 <b>${who}</b> boosted with Auto-Boost Pass`
+          : info.auto
           ? `🔁 <b>${who}</b> boosted with Auto-Boost`
           : info.gift
           ? `🎁 <b>${who}</b> used a free gift Boost`
@@ -826,6 +829,9 @@ async function notifyTopup(
 
 /** A USDT payment was matched to an order: apply the boost like a Stars payment */
 async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
+  if (order.raffleId === 'pass') {
+    return require('./pass').onPassCrypto(telegram, order, txHash)
+  }
   if (order.raffleId === 'topup') {
     const added = order.boosts + bonusForPay(order.boosts)
     const balance = await addCredits(order.userId, added, {
@@ -983,7 +989,7 @@ async function applyCryptoPayment(telegram: any, order: any, txHash: string) {
 }
 
 /** Network picked for a USDT payment, or the chooser message when there are two */
-async function pickNetwork(ctx: ContextMessageUpdate, picked: string | undefined, back: string, lang: string) {
+export async function pickNetwork(ctx: ContextMessageUpdate, picked: string | undefined, back: string, lang: string) {
   const nets = networks()
   if (picked && (nets as string[]).indexOf(picked) >= 0) return picked as Network
   if (nets.length === 1) return nets[0]
@@ -1935,11 +1941,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         { $group: { _id: null, n: { $sum: { $multiply: ['$delta', -1] } }, users: { $addToSet: '$userId' } } },
       ])
       const st: any[] = await PaymentModel.aggregate([
-        { $match: { status: 'applied', raffleId: { $ne: 'topup' }, createdAt: { $gte: from } } },
+        { $match: { status: 'applied', raffleId: { $nin: ['topup', 'pass'] }, createdAt: { $gte: from } } },
         { $group: { _id: null, n: { $sum: '$boosts' }, stars: { $sum: '$stars' } } },
       ])
       const us: any[] = await CryptoOrderModel.aggregate([
-        { $match: { status: 'paid', raffleId: { $ne: 'topup' }, createdAt: { $gte: from } } },
+        { $match: { status: 'paid', raffleId: { $nin: ['topup', 'pass'] }, createdAt: { $gte: from } } },
         { $group: { _id: null, n: { $sum: '$boosts' } } },
       ])
       const au: any[] = await Auto.aggregate([
@@ -2615,6 +2621,9 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   // Validate right before Telegram charges the user
   bot.on('pre_checkout_query', async (ctx) => {
     const q = ctx.preCheckoutQuery
+    if (q.invoice_payload.startsWith('pass:')) {
+      return ctx.answerPreCheckoutQuery(true)
+    }
     if (q.invoice_payload.startsWith(TOPUP_PREFIX)) {
       return ctx.answerPreCheckoutQuery(true)
     }
@@ -2643,6 +2652,9 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   // Payment received: apply the boost (refund if the raffle closed meanwhile)
   bot.on('successful_payment', async (ctx) => {
     const p = (ctx.message as any).successful_payment
+    if (p && p.invoice_payload.startsWith('pass:')) {
+      return require('./pass').onPassPaid(ctx, p)
+    }
     if (p && p.invoice_payload.startsWith(TOPUP_PREFIX)) {
       const [nStr, backId] = p.invoice_payload.substr(TOPUP_PREFIX.length).split(':')
       const n = parseInt(nStr, 10) || 0

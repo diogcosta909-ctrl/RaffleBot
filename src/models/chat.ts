@@ -78,6 +78,19 @@ export class Chat extends Typegoose {
   // Giveaways boosted by Auto-Boost in total (tiers: Bronze 10, Silver 50, Gold 100)
   @prop({ default: 0 })
   autoBoostCount?: number
+  // Auto-Boost Pass: active until this date, with this many Boosts per giveaway (no Boosts spent)
+  @prop()
+  passUntil?: Date
+  @prop({ default: 0 })
+  passN?: number
+  // Boosts applied by the Pass in total
+  @prop({ default: 0 })
+  passBoosts?: number
+  // "ends soon" and "ended" notices already sent for the current Pass
+  @prop({ default: false })
+  passWarned?: boolean
+  @prop({ default: false })
+  passEndedSent?: boolean
   // Who invited this person (user id) and whether the invite reward was already paid
   @prop({ index: true })
   referredBy?: number
