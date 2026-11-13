@@ -21,6 +21,7 @@ import {
   entryValueOf,
   boostValues,
   boostBlock,
+  boostersLabel,
   multiplierNote,
 } from './boost'
 import { checkIfAdmin } from './checkAdmin'
@@ -251,6 +252,7 @@ export async function refreshRaffleMessage(
         $project: {
           participantsIds: { $size: { $setUnion: [{ $ifNull: ['$participantsIds', []] }, []] } },
           boosts: { $size: { $ifNull: ['$boostIds', []] } },
+          boosters: { $size: { $setUnion: [{ $ifNull: ['$boostIds', []] }, []] } },
           multCount: { $size: { $ifNull: ['$boostMults', []] } },
           multSum: { $sum: { $ifNull: ['$boostMults', []] } },
         },
@@ -274,7 +276,7 @@ export async function refreshRaffleMessage(
   const lines: string[] = []
   if (boosts > 0) {
     lines.push(
-      loc('boost_count', chat.language).replace('$n', `${extra}`)
+      loc('boost_count', chat.language).replace('$n', `${extra}`) + boostersLabel(counts.boosters)
     )
   }
   if (raffle.boostEnabled && boosts === 0) {
@@ -288,7 +290,7 @@ export async function refreshRaffleMessage(
   let text: string
   if (raffle.boostEnabled && raffle.boostLayout === 2) {
     // New layout: text + "Boost your odds" block
-    const block = boostBlock(chat.language, extra)
+    const block = boostBlock(chat.language, extra, counts.boosters)
     if (raffle.raffleMessage) {
       const raffleMessage = raffle.raffleMessage
       text = `${(raffleMessage.text || raffleMessage.caption)

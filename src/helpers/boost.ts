@@ -200,7 +200,13 @@ export function boostNote(raffle: Raffle, language: string) {
  * header, rate per ⭐ (adapts to the multiplier) and boosted entries so far.
  * extra = boosted entries bought so far (0 → "No boosts yet")
  */
-export function boostBlock(language: string, extra: number) {
+/** " (1👤)" for one booster, " (3👥)" for several; empty when there are none */
+export function boostersLabel(boosters: number) {
+  const n = Math.round(boosters || 0)
+  return n <= 0 ? '' : n === 1 ? ' (1👤)' : ` (${n}👥)`
+}
+
+export function boostBlock(language: string, extra: number, boosters = 0) {
   const n = Math.round(stepOf())
   const rate = loc(n === 1 ? 'boost_rate_one' : 'boost_rate_many', language).replace('$n', `${n}`)
   const tag =
@@ -209,7 +215,7 @@ export function boostBlock(language: string, extra: number) {
       : ''
   const count =
     extra > 0
-      ? loc('boost_count', language).replace('$n', `${extra}`)
+      ? loc('boost_count', language).replace('$n', `${extra}`) + boostersLabel(boosters)
       : loc('boost_first', language)
   return `${rate}${tag}\n${count}`
 }
