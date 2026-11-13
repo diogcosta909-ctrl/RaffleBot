@@ -7,7 +7,7 @@ import { trackAuto } from '../models/autoBoostEvent'
 import { addCredits, removeCredits } from './credits'
 
 // Invite friends: you get 10% of every Boost your friend buys, for life. The friend gets +1 free Boost on buying and turning on Auto-Boost.
-// Streak and tiers: every 10 giveaways in a row boosted by Auto-Boost = +1 free Boost.
+// Streak: every 10 giveaways in a row boosted by Auto-Boost = +1 free Boost.
 // Texts are in English (they are sent to the users of the bot).
 
 // Share of the Boosts bought by an invited friend that the person who invited gets (lifetime, in Boosts)
@@ -17,14 +17,6 @@ export const STREAK_EVERY = 10
 let tg: any = null
 
 const link = (userId: number) => `https://t.me/${process.env.USERNAME}?start=ref_${userId}`
-
-/** Tier by giveaways boosted with Auto-Boost (lifetime) */
-export function tierOf(count: number) {
-  if (count >= 100) return { icon: '🥇', name: 'Gold' }
-  if (count >= 50) return { icon: '🥈', name: 'Silver' }
-  if (count >= 10) return { icon: '🥉', name: 'Bronze' }
-  return null
-}
 
 async function send(userId: number, text: string, keyboard?: any[]) {
   if (!tg) return
@@ -53,11 +45,9 @@ export async function streakStep(userId: number) {
     if (streak > 0 && streak % STREAK_EVERY === 0) {
       await addCredits(userId, 1, { type: 'code', method: 'auto_streak', free: 1 })
       void trackAuto('streak_reward', userId, { n: streak })
-      const t = tierOf(count)
       await send(
         userId,
         `🔥 <b>${streak} giveaways in a row with Auto-Boost!</b>\n\n🎁 <b>+1 free Boost</b> added to your balance` +
-          (t ? `\n${t.icon} Your tier: <b>${t.name}</b>` : '') +
           `\n\nKeep the streak going 🚀`
       )
     }

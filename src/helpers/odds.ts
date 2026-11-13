@@ -115,10 +115,9 @@ async function nameOf(telegram: any, id: number) {
 /** True when the person has Auto-Boost on (🔁 badge in the top boosters) */
 async function hasAutoBoost(userId: number) {
   try {
-    const c: any = await require('../models/chat').ChatModel.findOne({ chatId: userId }).select('autoBoost autoBoostCount')
+    const c: any = await require('../models/chat').ChatModel.findOne({ chatId: userId }).select('autoBoost')
     if (!(c && c.autoBoost > 0)) return ''
-    const t = require('./referral').tierOf(c.autoBoostCount || 0)
-    return t ? `🔁 ${t.name}` : '🔁'
+    return '🔁'
   } catch {
     return ''
   }

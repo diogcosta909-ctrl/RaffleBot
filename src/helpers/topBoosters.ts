@@ -50,12 +50,9 @@ export async function topBoosters(days = DAYS) {
     .slice(0, TOP)
   // 🔁 badge for people with Auto-Boost on
   try {
-    const on: any[] = await ChatModel.find({ chatId: { $in: top.map((u) => u.id) }, autoBoost: { $gt: 0 } }).select('chatId autoBoostCount')
+    const on: any[] = await ChatModel.find({ chatId: { $in: top.map((u) => u.id) }, autoBoost: { $gt: 0 } }).select('chatId')
     const badge = new Map<number, string>()
-    on.forEach((c) => {
-      const t = require('./referral').tierOf(c.autoBoostCount || 0)
-      badge.set(c.chatId, t ? `🔁 ${t.name}` : '🔁')
-    })
+    on.forEach((c) => badge.set(c.chatId, '🔁'))
     top.forEach((u) => (u.auto = badge.get(u.id) || ''))
   } catch (err) {
     console.error(err)
@@ -68,7 +65,7 @@ function rankingText(list: { name: string; boosts: number; auto?: string }[]) {
     (u, i) =>
       `${MEDALS[i]} <b>${esc(u.name || 'Anonymous')}</b>${u.auto ? ` ${u.auto}` : ''} · ${u.boosts} ${u.boosts > 1 ? 'boosts' : 'boost'}`
   )
-  return `🏆 <b>Top Boosters of the week</b>\n\n${lines.join('\n')}\n\n🔁 = Auto-Boost on · Bronze 10 · Silver 50 · Gold 100 giveaways\n🚀 Want to be on the list? Boost your odds in the next giveaway!`
+  return `🏆 <b>Top Boosters of the week</b>\n\n${lines.join('\n')}\n\n🔁 = Auto-Boost on\n🚀 Want to be on the list? Boost your odds in the next giveaway!`
 }
 
 async function postRanking(telegram: any) {
