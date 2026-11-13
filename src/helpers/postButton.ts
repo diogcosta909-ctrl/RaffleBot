@@ -11,6 +11,8 @@ import { checkIfAdmin } from './checkAdmin'
  *   /postbutton spin   → 🎡 Spin the wheel (daily spin)
  *   /postbutton auto   → 🔁 Auto-Boost (opens the Auto-Boost menu)
  *   /postbutton auto+  → 🔁 Auto-Boost + 🚀 Buy Boosts
+ *   /postbutton pass   → 👑 Monthly Pass (opens the Pass screen)
+ *   /postbutton pass+  → 👑 Monthly Pass + 🚀 Buy Boosts
  * The original post and the command are deleted when the bot is allowed to.
  */
 export function setupPostButton(bot: Telegraf<ContextMessageUpdate>) {
@@ -21,14 +23,16 @@ export function setupPostButton(bot: Telegraf<ContextMessageUpdate>) {
     if (!msg) return
     const body = ((msg.text || '') as string).replace(/^\/postbutton(@\w+)?\s*/i, '')
     const first = body.split(/\s+/)[0].toLowerCase()
-    const kind = ['both', 'boost', 'all', 'spin', 'auto', 'auto+'].indexOf(first) >= 0 ? first : 'all'
-    const text = ['both', 'boost', 'all', 'spin', 'auto', 'auto+'].indexOf(first) >= 0 ? body.slice(first.length).trim() : body.trim()
+    const KINDS = ['both', 'boost', 'all', 'spin', 'auto', 'auto+', 'pass', 'pass+']
+    const kind = KINDS.indexOf(first) >= 0 ? first : 'all'
+    const text = KINDS.indexOf(first) >= 0 ? body.slice(first.length).trim() : body.trim()
     const bot_ = process.env.USERNAME
     const all = { text: '🎯 Boost All', url: `https://t.me/${bot_}?start=boostall` }
     const buy = { text: '🚀 Buy Boosts', url: `https://t.me/${bot_}?start=recharge` }
     const spin = { text: '🎡 Spin the wheel', url: `https://t.me/${bot_}?start=spin` }
     const auto = { text: '🔁 Auto-Boost', url: `https://t.me/${bot_}?start=autoboost` }
-    const rows = kind === 'auto' ? [[auto]] : kind === 'auto+' ? [[auto], [buy]] : kind === 'spin' ? [[spin]] : kind === 'boost' ? [[buy]] : kind === 'both' ? [[all], [buy]] : [[all]]
+    const pass = { text: '👑 Monthly Pass', url: `https://t.me/${bot_}?start=pass` }
+    const rows = kind === 'pass' ? [[pass]] : kind === 'pass+' ? [[pass], [buy]] : kind === 'auto' ? [[auto]] : kind === 'auto+' ? [[auto], [buy]] : kind === 'spin' ? [[spin]] : kind === 'boost' ? [[buy]] : kind === 'both' ? [[all], [buy]] : [[all]]
     const reply_markup = { inline_keyboard: rows }
     const reply = msg.reply_to_message
     try {
