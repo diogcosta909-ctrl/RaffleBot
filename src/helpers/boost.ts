@@ -1950,11 +1950,11 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
         { $group: { _id: null, n: { $sum: { $multiply: ['$delta', -1] } }, users: { $addToSet: '$userId' } } },
       ])
       const st: any[] = await PaymentModel.aggregate([
-        { $match: { status: 'applied', raffleId: { $nin: ['topup', 'pass'] }, createdAt: { $gte: from } } },
+        { $match: { status: 'applied', raffleId: { $nin: ['topup', 'pass', 'surprise'] }, createdAt: { $gte: from } } },
         { $group: { _id: null, n: { $sum: '$boosts' }, stars: { $sum: '$stars' } } },
       ])
       const us: any[] = await CryptoOrderModel.aggregate([
-        { $match: { status: 'paid', raffleId: { $nin: ['topup', 'pass'] }, createdAt: { $gte: from } } },
+        { $match: { status: 'paid', raffleId: { $nin: ['topup', 'pass', 'surprise'] }, createdAt: { $gte: from } } },
         { $group: { _id: null, n: { $sum: '$boosts' } } },
       ])
       const au: any[] = await Auto.aggregate([
@@ -2630,7 +2630,7 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
   // Validate right before Telegram charges the user
   bot.on('pre_checkout_query', async (ctx) => {
     const q = ctx.preCheckoutQuery
-    if (q.invoice_payload.startsWith('pass:')) {
+    if (q.invoice_payload.startsWith('pass:') || q.invoice_payload.startsWith('surprise:')) {
       return ctx.answerPreCheckoutQuery(true)
     }
     if (q.invoice_payload.startsWith(TOPUP_PREFIX)) {
@@ -2663,6 +2663,9 @@ export function setupBoost(bot: Telegraf<ContextMessageUpdate>) {
     const p = (ctx.message as any).successful_payment
     if (p && p.invoice_payload.startsWith('pass:')) {
       return require('./pass').onPassPaid(ctx, p)
+    }
+    if (p && p.invoice_payload.startsWith('surprise:')) {
+      return require('./surprise').onSurprisePaid(ctx, p)
     }
     if (p && p.invoice_payload.startsWith(TOPUP_PREFIX)) {
       const [nStr, backId] = p.invoice_payload.substr(TOPUP_PREFIX.length).split(':')
