@@ -72,7 +72,7 @@ function buttonOf(p: Pending) {
   const buy = [{ text: '🚀 Buy Boosts', callback_data: 'r~0' }]
   const all = [{ text: '🎯 Boost all giveaways', callback_data: 'ba~0' }]
   const auto = [{ text: '🔁 Turn on Auto-Boost', callback_data: 'ab~m' }]
-  const pass = [{ text: '🪎 Monthly Pass', callback_data: 'ps~m' }]
+  const pass = [{ text: '🪎 Monthly Pass', callback_data: 'ps~new' }]
   const rows =
     p.button === 'pass' ? [pass] : p.button === 'boost' ? [buy] : p.button === 'all' ? [all] : p.button === 'auto' ? [auto] : p.button === 'autobuy' ? [auto, buy] : [all, buy]
   return { inline_keyboard: rows }

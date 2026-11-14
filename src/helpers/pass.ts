@@ -273,6 +273,16 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
     }
   })
 
+  // From announcements: opens the Pass in a NEW message and leaves the announcement untouched
+  bot.action('ps~new', async (ctx) => {
+    await answer(ctx)
+    try {
+      await showPass(ctx, false, 'broadcast')
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
   bot.action('pta~', async (ctx) => {
     await answer(ctx)
     try {
