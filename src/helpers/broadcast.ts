@@ -102,6 +102,29 @@ async function deliver(telegram: any, to: number, p: Pending) {
  * /broadcast your text (HTML allowed). The owner gets a preview and confirms before it is sent.
  */
 export function setupBroadcast(bot: Telegraf<ContextMessageUpdate>) {
+  // /postchannel [@channel] (owner, private chat): reply to a message (photo + caption...) and the bot
+  // publishes a copy in the channel with the 🪎 Monthly Pass button. Default channel: SURPRISE_CHAT, then BOOST_FEED_CHAT.
+  bot.command('postchannel', async (ctx: any) => {
+    if (!isAdmin(ctx)) return
+    const reply = ctx.message.reply_to_message
+    const arg = (ctx.message.text || '').replace(/^\/postchannel(@\w+)?\s*/i, '').trim().split(/\s+/)[0]
+    const target = arg || (process.env.SURPRISE_CHAT || process.env.BOOST_FEED_CHAT || '').trim()
+    if (!reply || !target) {
+      return ctx.replyWithHTML('Responde con <code>/postchannel @canal</code> al mensaje que quieres publicar (foto + texto). Sin @canal usa <code>SURPRISE_CHAT</code>.')
+    }
+    try {
+      await ctx.telegram.callApi('copyMessage', {
+        chat_id: target,
+        from_chat_id: ctx.chat.id,
+        message_id: reply.message_id,
+        reply_markup: { inline_keyboard: [[{ text: '🪎 Monthly Pass (unlimited)', url: `https://t.me/${process.env.USERNAME}?start=pass` }]] },
+      })
+      return ctx.reply(`✅ Publicado en ${target}`)
+    } catch (err) {
+      return ctx.reply(`❌ No se pudo publicar: ${(err && (err.description || err.message)) || err}`)
+    }
+  })
+
   bot.command('broadcast', async (ctx: any) => {
     if (!isAdmin(ctx)) return
     const reply = ctx.message.reply_to_message
