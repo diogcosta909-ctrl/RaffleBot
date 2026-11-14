@@ -372,8 +372,9 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
       void trackAuto('pass_usdt', u.id, { n: o.n })
       const amount = formatUnits(order.amountUnits)
       const caption =
-        `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway · 30 days\n\n` +
-        `1️⃣ Send exactly <i>(tap to copy)</i>\n<code>${amount}</code> USDT\n\n` +
+        `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway · 30 days\n` +
+        (passBonusDays() ? `🎁 <b>+${passBonusDays()} bonus days FREE</b> included\n` : '') +
+        `\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>${amount}</code> USDT\n\n` +
         `2️⃣ To this address <i>(tap to copy)</i> · <b>${networkLabel(network)}</b> only\n<code>${walletOf(network)}</code>\n\n` +
         `⏳ Valid ${CRYPTO_EXPIRY_MIN} min · Pass starts automatically in 1–2 min\n` +
         `⚠️ Send the exact amount, only on ${networkLabel(network)}.`
