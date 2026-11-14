@@ -55,7 +55,7 @@ export function setupSurprise(bot: Telegraf<ContextMessageUpdate>) {
     try {
       const args = ctx.message.text.split(/\s+/)
       const stars = parseInt(args[1], 10)
-      const target = args[2] || (process.env.BOOST_FEED_CHAT || '').trim()
+      const target = args[2] || (process.env.SURPRISE_CHAT || process.env.BOOST_FEED_CHAT || '').trim()
       if (!stars || stars < 1 || !target) {
         return ctx.replyWithHTML('Use: <code>/surprise 50</code> (Stars to unlock) or <code>/surprise 50 @channel</code>')
       }
