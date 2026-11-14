@@ -71,11 +71,18 @@ export function dateLabel(d: Date) {
 }
 
 /** Starts the Pass, or adds 30 days when it is still running */
+/** Launch bonus: extra days added automatically while PASS_BONUS_UNTIL (ISO date) is in the future */
+export function passBonusDays(): number {
+  const d = parseInt(process.env.PASS_BONUS_DAYS || '0', 10) || 0
+  const until = new Date(process.env.PASS_BONUS_UNTIL || '').getTime()
+  return d > 0 && until && Date.now() < until ? d : 0
+}
+
 export async function activatePass(userId: number, n: number) {
   const chat: any = await findChat(userId)
   const now = Date.now()
   const current = chat.passUntil ? new Date(chat.passUntil).getTime() : 0
-  const until = new Date(Math.max(now, current) + DAYS * DAY)
+  const until = new Date(Math.max(now, current) + (DAYS + passBonusDays()) * DAY)
   await ChatModel.updateOne(
     { chatId: userId },
     { $set: { passUntil: until, passN: n, passWarned: false, passEndedSent: false } }
@@ -89,6 +96,7 @@ async function sendPaidMessage(telegram: any, u: any, n: number, until: Date, pa
     `👑 <b>Monthly Pass is active</b>\n\n` +
     `🚀 <b>${n} ${boostWord(n)}</b> in every giveaway you join\n` +
     `📅 Valid until <b>${dateLabel(until)}</b>\n` +
+    (passBonusDays() ? `🎁 <b>+${passBonusDays()} bonus days</b> included\n` : '') +
     `♾ No limits. No Boosts spent.\n\n` +
     `Just join giveaways. We do the rest.`
   try {
@@ -109,7 +117,7 @@ async function sendPaidMessage(telegram: any, u: any, n: number, until: Date, pa
     try {
       await telegram.sendMessage(
         admin,
-        `👑 <b>Nuevo Monthly Pass</b>\n\n👤 ${esc(name)} (<code>${u.id}</code>)\n🚀 ${n} por sorteo · hasta ${dateLabel(until)}\n💳 ${paid}`,
+        `👑 <b>Nuevo Monthly Pass</b>\n\n👤 ${esc(name)} (<code>${u.id}</code>)\n🚀 ${n} por sorteo · hasta ${dateLabel(until)}${passBonusDays() ? ` (incluye +${passBonusDays()} días bonus)` : ''}\n💳 ${paid}`,
         { parse_mode: 'HTML' }
       )
     } catch (err) {
