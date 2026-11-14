@@ -13,7 +13,8 @@ export async function showPhoto(ctx: any, image: Buffer, keyboard: any[], edit =
           msg.message_id,
           undefined,
           { type: 'photo', media: { source: image }, ...(caption ? { caption, parse_mode: 'HTML' } : {}) } as any,
-          { reply_markup } as any
+          // Telegraf overwrites media.parse_mode with extra.parse_mode, so it must be passed here
+          { reply_markup, parse_mode: 'HTML' } as any
         )
         return true
       } catch (err) {
