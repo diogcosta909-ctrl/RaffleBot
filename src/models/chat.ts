@@ -91,6 +91,9 @@ export class Chat extends Typegoose {
   passWarned?: boolean
   @prop({ default: false })
   passEndedSent?: boolean
+  // When this person unlocked the surprise post and got the free Pass trial (once)
+  @prop()
+  surpriseAt?: Date
   // Who invited this person (user id) and whether the invite reward was already paid
   @prop({ index: true })
   referredBy?: number

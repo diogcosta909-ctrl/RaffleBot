@@ -32,6 +32,7 @@ import { setupOwnerReport, alertOwner } from './helpers/ownerReport'
 import { setupBalances } from './helpers/balances'
 import { setupAutoBoost } from './helpers/autoBoost'
 import { setupPass } from './helpers/pass'
+import { setupSurprise } from './helpers/surprise'
 import { setupReferral } from './helpers/referral'
 import { setupWheel } from './helpers/wheel'
 import { setupPostButton } from './helpers/postButton'
@@ -71,6 +72,7 @@ setupOwnerReport(bot)
 setupBalances(bot)
 setupAutoBoost(bot)
 setupPass(bot)
+setupSurprise(bot)
 setupReferral(bot)
 setupWheel(bot)
 setupPostButton(bot)

@@ -379,6 +379,7 @@ export async function passStatsText() {
   const used: any[] = await ChatModel.aggregate([
     { $group: { _id: null, n: { $sum: '$passBoosts' }, users: { $sum: { $cond: [{ $gt: ['$passBoosts', 0] }, 1, 0] } } } },
   ])
+  const trials = await ChatModel.countDocuments({ surpriseAt: { $exists: true } })
   const periods: [string, number][] = [['Hoy', 1], ['7 d', 7], ['30 d', 30], ['Total', 100000]]
   const pad = (t: any, w: number) => `${t}`.padStart(w, ' ')
   const cols = await Promise.all(
@@ -430,7 +431,8 @@ export async function passStatsText() {
     `✅ Activos: <b>${active.length}</b>${active.length ? ` (${opts.map((o) => `${o.n}×: ${perN[o.n] || 0}`).join(' · ')})` : ''}\n` +
     `⏳ Terminan en 3 días: <b>${soon}</b>\n` +
     `💤 Caducados sin renovar: <b>${lapsed}</b>\n` +
-    `🚀 Boosts aplicados: <b>${(used[0] && used[0].n) || 0}</b> (${(used[0] && used[0].users) || 0} personas)\n\n` +
+    `🚀 Boosts aplicados: <b>${(used[0] && used[0].n) || 0}</b> (${(used[0] && used[0].users) || 0} personas)\n` +
+    `🎁 Pruebas gratis (post sorpresa): <b>${trials}</b>\n\n` +
     `<b>Embudo</b> (personas distintas)\n<pre>${head}\n${row('Abren', (c) => c.open)}\n${row('Eligen', (c) => c.pick)}\n${row('Pagan', (c) => c.pay)}\n${row('Compran', (c) => c.sales)}\n${row('Conv.', conv)}</pre>\n` +
     `<b>Ingresos</b>\n<pre>${head}\n${row('Stars', (c) => c.stars)}\n${row('USDT', (c) => c.usdt.toFixed(1))}</pre>\n` +
     `<b>Últimos 30 días</b>\n` +
