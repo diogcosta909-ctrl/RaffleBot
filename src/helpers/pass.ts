@@ -74,8 +74,9 @@ export function dateLabel(d: Date) {
 /** Launch bonus: extra days added automatically while PASS_BONUS_UNTIL (ISO date) is in the future */
 export function passBonusDays(): number {
   const d = parseInt(process.env.PASS_BONUS_DAYS || '0', 10) || 0
-  const until = new Date(process.env.PASS_BONUS_UNTIL || '').getTime()
-  return d > 0 && until && Date.now() < until ? d : 0
+  // Without PASS_BONUS_UNTIL the bonus stays on until PASS_BONUS_DAYS is removed
+  const until = process.env.PASS_BONUS_UNTIL ? new Date(process.env.PASS_BONUS_UNTIL).getTime() : Infinity
+  return d > 0 && Date.now() < until ? d : 0
 }
 
 export async function activatePass(userId: number, n: number) {
