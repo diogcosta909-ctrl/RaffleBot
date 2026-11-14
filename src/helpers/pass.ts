@@ -79,6 +79,15 @@ export function passBonusDays(): number {
   return d > 0 && Date.now() < until ? d : 0
 }
 
+/** Line shown on the Pass screens while the launch bonus is on */
+function bonusLine(): string {
+  const d = passBonusDays()
+  if (!d) return ''
+  const until = process.env.PASS_BONUS_UNTIL ? new Date(process.env.PASS_BONUS_UNTIL).getTime() : 0
+  const h = until ? Math.max(1, Math.ceil((until - Date.now()) / 3600000)) : 0
+  return `🎁 <b>Launch bonus: +${d} days FREE</b>${h ? ` · ends in <b>${h}h</b>` : ''}\n`
+}
+
 export async function activatePass(userId: number, n: number) {
   const chat: any = await findChat(userId)
   const now = Date.now()
@@ -189,7 +198,9 @@ async function showPass(ctx: any, edit: boolean, src = 'menu') {
     `We <b>boost every giveaway you join</b>, automatically.\n\n` +
     `✅ <b>1 Boost = ${BOOST_STEP} entries</b>\n` +
     `✅ Pick <b>1, 2, 3 or 5 Boosts</b> per giveaway\n` +
-    `✅ <b>Unlimited giveaways</b> · all month ♾\n\n` +
+    `✅ <b>Unlimited giveaways</b> · all month ♾\n` +
+    bonusLine() +
+    `\n` +
     (active
       ? `🟢 <b>Active</b> · ${chat.passN} ${boostWord(chat.passN)} per giveaway · until <b>${dateLabel(chat.passUntil)}</b>\n\n`
       : '') +
@@ -207,7 +218,7 @@ async function showPass(ctx: any, edit: boolean, src = 'menu') {
       options: passOptions(),
       step: BOOST_STEP,
       style: 'c',
-      active: active ? `ACTIVE · UNTIL ${dateLabel(chat.passUntil).toUpperCase()}` : 'NEW · MONTHLY PASS',
+      active: active ? `ACTIVE · UNTIL ${dateLabel(chat.passUntil).toUpperCase()}` : passBonusDays() ? `LAUNCH BONUS · +${passBonusDays()} DAYS FREE` : 'NEW · MONTHLY PASS',
     })
     if (await showPhoto(ctx, image, keyboard, edit, caption)) return
   } catch (err) {
@@ -309,7 +320,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
       keyboard.push([{ text: '← Back', callback_data: 'ps~m' }])
       await editScreen(
         ctx,
-        `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway\n📅 30 days · no limits\n\nHow do you want to pay? 👇`,
+        `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway\n📅 30 days · no limits\n${bonusLine()}\nHow do you want to pay? 👇`,
         { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard } }
       )
     } catch (err) {
@@ -327,7 +338,7 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
       await (ctx.telegram as any).callApi('sendInvoice', {
         chat_id: ctx.chat.id,
         title: `Monthly Pass · ${o.n} ${boostWord(o.n)} per giveaway`,
-        description: '30 days. We boost every giveaway you join, automatically. No limits.',
+        description: `${passBonusDays() ? `30 days + ${passBonusDays()} bonus days FREE.` : '30 days.'} We boost every giveaway you join, automatically. No limits.`,
         payload: `pass:${o.n}`,
         provider_token: '',
         currency: 'XTR',
