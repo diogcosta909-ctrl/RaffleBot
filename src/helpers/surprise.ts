@@ -67,7 +67,7 @@ export function setupSurprise(bot: Telegraf<ContextMessageUpdate>) {
         star_count: stars,
         media: [{ type: 'photo', media: fileId }],
         payload: `surprise:${Date.now()}`,
-        caption: `🎁 <b>Surprise inside!</b>\n\nUnlock it and get <b>${days()} days of Monthly Pass free</b> 🚀\n\n<b>Comment "UNLOCKED"</b> if you see it 👇`,
+        caption: `🎁 <b>We have a surprise for you</b>\n\n🔒 <b>Unlock it</b> to see what's inside 👇`,
         parse_mode: 'HTML',
       })
       await ctx.replyWithHTML(`✅ Surprise posted in ${target} · ${stars} Stars to unlock`)
