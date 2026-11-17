@@ -947,7 +947,6 @@ export async function renderPassMenuImage(info: {
       txt(x, `${o.n === 1 ? 'BOOST' : 'BOOSTS'} / GIVEAWAY`, px + w / 2, py + 170, '20px InterX', '#2a1a6a', 'center')
       txt(x, entries(o.n), px + w / 2, py + 210, '26px InterX', '#e0338f', 'center')
       txt(x, `${o.stars} Stars`, px + w / 2, py + 262, '34px InterX', '#1b1240', 'center')
-      txt(x, `or $${o.usdt} USDT`, px + w / 2, py + 295, '21px InterB', '#7a6aa8', 'center')
     })
   } else if (style === 'c') {
     // Ladder: one row per option
@@ -993,8 +992,7 @@ export async function renderPassMenuImage(info: {
       txt(x, `${o.n}`, px + 69, py + 94, '70px InterX', '#07151f', 'center')
       txt(x, `${o.n === 1 ? 'Boost' : 'Boosts'} / giveaway`, px + 142, py + 64, '26px InterX', '#ffffff', 'left')
       txt(x, entries(o.n), px + 142, py + 104, '25px InterB', '#2de0a8', 'left')
-      txt(x, `${o.stars}⭐`.replace('⭐', ' Stars'), px + 530, py + 64, '27px InterX', '#ffc83c', 'right')
-      txt(x, `$${o.usdt} USDT`, px + 530, py + 104, '23px InterB', '#bfeee0', 'right')
+      txt(x, `${o.stars} Stars`, px + 530, py + 84, '25px InterX', '#ffc83c', 'right')
     })
   } else {
     // Dark violet and gold
@@ -1021,7 +1019,6 @@ export async function renderPassMenuImage(info: {
       txt(x, `${o.n === 1 ? 'BOOST' : 'BOOSTS'} / GIVEAWAY`, px + w / 2, py + 158, '20px InterX', '#ffffff', 'center')
       txt(x, entries(o.n), px + w / 2, py + 192, '24px InterB', '#ffc83c', 'center')
       txt(x, `${o.stars} Stars`, px + w / 2, py + 242, '32px InterX', '#ffffff', 'center')
-      txt(x, `or $${o.usdt} USDT`, px + w / 2, py + 272, '21px InterB', '#d9c8ff', 'center')
     })
   }
   return canvas.toBuffer('image/png')

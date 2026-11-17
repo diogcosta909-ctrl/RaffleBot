@@ -36,7 +36,7 @@ function parseOptions(raw: string): PassOption[] {
   for (const part of raw.split(',')) {
     const [n, stars, usdt] = part.trim().split(':')
     const o = { n: parseInt(n, 10), stars: parseInt(stars, 10), usdt: parseFloat((usdt || '').replace(',', '.')) }
-    if (o.n > 0 && o.stars > 0 && o.usdt > 0) list.push(o)
+    if (o.n > 0 && o.stars > 0) list.push({ ...o, usdt: o.usdt > 0 ? o.usdt : 0 })
   }
   return list
 }
@@ -314,7 +314,6 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
       const keyboard: any[] = []
       const row: any[] = []
       if (starsEnabled()) row.push({ text: `⭐ ${o.stars} Stars`, callback_data: `pst~${o.n}` })
-      if (cryptoEnabled()) row.push({ text: `🪙 ${o.usdt} USDT`, callback_data: `psc~${o.n}` })
       if (!row.length) return
       keyboard.push(row)
       keyboard.push([{ text: '← Back', callback_data: 'ps~m' }])
@@ -344,51 +343,6 @@ export function setupPass(bot: Telegraf<ContextMessageUpdate>) {
         currency: 'XTR',
         prices: [{ label: `Monthly Pass · ${o.n}/giveaway`, amount: o.stars }],
       })
-    } catch (err) {
-      console.error(err)
-    }
-  })
-
-  // USDT order
-  bot.action(/^psc~(\d+)(?:~(bsc|ton))?$/, async (ctx) => {
-    await answer(ctx)
-    const o = passOption(parseInt((ctx as any).match[1], 10))
-    if (!o || !cryptoEnabled()) return
-    try {
-      const lang = (await findChat(ctx.from.id)).language
-      const network = await pickNetwork(ctx, (ctx as any).match[2], `psc~${o.n}`, lang)
-      if (!network) return
-      const u = ctx.from
-      const order = await createOrder({
-        network,
-        userId: u.id,
-        username: u.username,
-        firstName: u.first_name,
-        lastName: u.last_name,
-        raffleId: 'pass',
-        boosts: o.n,
-        units: Math.round(o.usdt * 10000),
-      })
-      void trackAuto('pass_usdt', u.id, { n: o.n })
-      const amount = formatUnits(order.amountUnits)
-      const caption =
-        `👑 <b>Monthly Pass</b> · ${o.n} ${boostWord(o.n)} per giveaway · 30 days\n` +
-        (passBonusDays() ? `🎁 <b>+${passBonusDays()} bonus days FREE</b> included\n` : '') +
-        `\n1️⃣ Send exactly <i>(tap to copy)</i>\n<code>${amount}</code> USDT\n\n` +
-        `2️⃣ To this address <i>(tap to copy)</i> · <b>${networkLabel(network)}</b> only\n<code>${walletOf(network)}</code>\n\n` +
-        `⏳ Valid ${CRYPTO_EXPIRY_MIN} min · Pass starts automatically in 1–2 min\n` +
-        `⚠️ Send the exact amount, only on ${networkLabel(network)}.`
-      try {
-        const image = await require('./boostImage').renderUsdtImage({
-          amount,
-          pct: `Pass · ${o.n}/giveaway`,
-          network: networkLabel(network),
-        })
-        return await ctx.replyWithPhoto({ source: image }, { caption, parse_mode: 'HTML' } as any)
-      } catch (err) {
-        console.error('USDT image failed, sending text', err)
-      }
-      return ctx.replyWithHTML(caption, { disable_web_page_preview: true })
     } catch (err) {
       console.error(err)
     }
@@ -467,12 +421,12 @@ export async function passStatsText() {
     `🚀 Boosts aplicados: <b>${(used[0] && used[0].n) || 0}</b> (${(used[0] && used[0].users) || 0} personas)\n` +
     `🎁 Sorpresa: <b>${sOpen}</b> abren → <b>${trials}</b> desbloquean (⭐ ${(sStars[0] && sStars[0].s) || 0})\n\n` +
     `<b>Embudo</b> (personas distintas)\n<pre>${head}\n${row('Abren', (c) => c.open)}\n${row('Eligen', (c) => c.pick)}\n${row('Pagan', (c) => c.pay)}\n${row('Compran', (c) => c.sales)}\n${row('Conv.', conv)}</pre>\n` +
-    `<b>Ingresos</b>\n<pre>${head}\n${row('Stars', (c) => c.stars)}\n${row('USDT', (c) => c.usdt.toFixed(1))}</pre>\n` +
+    `<b>Ingresos</b>\n<pre>${head}\n${row('Stars', (c) => c.stars)}</pre>\n` +
     `<b>Últimos 30 días</b>\n` +
     `🎯 Más elegido: ${picks.length ? picks.sort((a, b) => b.c - a.c).map((p) => `${p._id}× (${p.c})`).join(' · ') : '—'}\n` +
     `🛒 Vendidos: ${opts.filter((o) => sold[o.n]).map((o) => `${o.n}× (${sold[o.n]})`).join(' · ') || '—'}\n` +
     `🔗 Origen: ${srcs.length ? srcs.sort((a, b) => b.c - a.c).map((x) => `${srcName[x._id] || x._id} (${x.c})`).join(' · ') : '—'}\n\n` +
-    `<i>Abren = tocan el botón o el enlace del Pass (cuenta los clics de /postbutton pass). Pagan = generan factura Stars u orden USDT.</i>`
+    `<i>Abren = tocan el botón o el enlace del Pass (cuenta los clics de /postbutton pass). Pagan = generan factura de Stars.</i>`
   )
 }
 

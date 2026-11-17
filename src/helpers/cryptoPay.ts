@@ -32,11 +32,16 @@ const USDT_TON = (
   process.env.TON_USDT_MASTER || 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs'
 ).trim()
 
+// USDT payments are switched off: digital goods may only be sold with Telegram Stars.
+const CRYPTO_OFF = true
+
 export function bscEnabled() {
+  if (CRYPTO_OFF) return false
   return /^0x[a-f0-9]{40}$/.test(CRYPTO_WALLET)
 }
 
 export function tonEnabled() {
+  if (CRYPTO_OFF) return false
   return /^(EQ|UQ|kQ|0Q)[A-Za-z0-9_-]{46}$/.test(TON_WALLET)
 }
 
